@@ -1,5 +1,6 @@
 import rawRates from '../../content/rates.json';
-import { RatesSchema, type RatesConfig } from './content-schemas';
+import rawActivities from '../../content/activities.json';
+import { ActivitiesSchema, RatesSchema, type ActivitiesConfig, type RatesConfig } from './content-schemas';
 
 /**
  * The one runtime import path for content. Raw JSON is parsed exactly once here;
@@ -8,8 +9,16 @@ import { RatesSchema, type RatesConfig } from './content-schemas';
  */
 export interface ContentRegistry {
   rates: RatesConfig;
+  activities: ActivitiesConfig;
 }
 
 export const content: ContentRegistry = {
   rates: RatesSchema.parse(rawRates),
+  activities: ActivitiesSchema.parse(rawActivities),
 };
+
+export function activityById(id: string) {
+  const def = content.activities.activities.find((a) => a.id === id);
+  if (!def) throw new Error(`unknown activity id "${id}"`);
+  return def;
+}
