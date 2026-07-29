@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import { Canvas, Rect, useCanvasRef } from '@shopify/react-native-skia';
+import { Canvas, Group, Rect, useCanvasRef } from '@shopify/react-native-skia';
 import { kv } from '../persistence/kv';
+import { AtlasProof, ATLAS_PROOF_SPRITE_COUNT } from '../render/AtlasProof';
 
 /**
  * P0 platform proof. Three claims, each able to fail honestly:
@@ -81,15 +82,21 @@ export function ProofScreen() {
     <View style={styles.root}>
       <Canvas ref={canvasRef} style={styles.canvas}>
         <Rect x={16} y={16} width={96} height={96} color="#bc6b42" />
+        {/* P3 T2: Atlas draws in the SAME canvas, so the single-canvas capture guard
+            above still holds while proving the drawAtlas path on exported web. */}
+        <Group transform={[{ translateY: 120 }]}>
+          <AtlasProof scale={2} />
+        </Group>
       </Canvas>
       <Text style={styles.line} testID="isolation-proof">{`crossOriginIsolated: ${isolated}`}</Text>
       <Text style={styles.line} testID="persist-proof">{persistence}</Text>
+      <Text style={styles.line} testID="atlas-proof">{`atlas sprites drawn: ${ATLAS_PROOF_SPRITE_COUNT}`}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2e4c2', gap: 8 },
-  canvas: { width: 128, height: 128 },
+  canvas: { width: 700, height: 220 },
   line: { fontFamily: 'monospace', fontSize: 14, color: '#2e2119' },
 });

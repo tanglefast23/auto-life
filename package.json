@@ -11,8 +11,10 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-reanimated": "4.5.1",
     "react-native-web": "^0.21.2",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -34,6 +36,7 @@
     "test:watch": "jest --watch",
     "validate:content": "tsx scripts/validate-content.ts",
     "art:a0": "tsx scripts/art/build-a0-sheet.ts",
+    "art:atlas": "tsx scripts/art/build-atlas.ts",
     "check": "npm run validate:content && npm run typecheck && npm test",
     "postinstall": "setup-skia-web public",
     "setup:skia-web": "setup-skia-web public",
