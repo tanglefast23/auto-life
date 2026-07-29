@@ -13,5 +13,5 @@ void LoadSkiaWeb({ locateFile: (file) => `/${file}` })
     // The loader sits in front of the proof screen, so it must fail visibly too.
     console.error('CanvasKit failed to load:', err);
     const root = document.getElementById('root');
-    if (root) root.textContent = 'Failed to load renderer — check your connection and reload.';
+    if (root) root.textContent = 'Failed to start — see console for details, then reload.';
   });

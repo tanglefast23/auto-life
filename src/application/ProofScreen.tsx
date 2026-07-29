@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Canvas, Rect, useCanvasRef } from '@shopify/react-native-skia';
 import { kv } from '../persistence/kv';
 
@@ -48,13 +48,17 @@ export function ProofScreen() {
     // so this forces a redraw and copies the WebGL buffer in the SAME frame — the
     // one timing at which a non-preserved buffer is readable. (The first committed
     // "proof" PNG was a blank cross-frame toDataURL; this exists so that can't recur.)
+    if (Platform.OS !== 'web') return;
     const g = globalThis as Record<string, unknown>;
     g.__captureProofPng = () =>
       new Promise<string>((resolve, reject) => {
         canvasRef.current?.redraw();
         requestAnimationFrame(() => {
           try {
-            const src = document.querySelector('canvas');
+            const all = document.querySelectorAll('canvas');
+            // Evidence must never quietly capture the wrong surface (the blank-PNG lesson).
+            if (all.length !== 1) throw new Error(`expected exactly 1 canvas, found ${all.length}`);
+            const src = all[0];
             if (!src) throw new Error('no canvas element');
             const copy = document.createElement('canvas');
             copy.width = src.width;
