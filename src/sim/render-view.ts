@@ -20,6 +20,16 @@ import type { SimState } from './state';
 
 export type Facing = 'up' | 'down' | 'left' | 'right';
 
+/**
+ * What the body is doing, for sprite selection. Derived here rather than in the
+ * renderer so two renderers cannot disagree about what "sitting" means.
+ *
+ * A0 authored `walk×4dir` and one seated frame, so P3's placeholder atlas maps
+ * `stand` onto walk frame 0 and `sleep` onto the seated frame. The remaining poses
+ * are P6's art (design.md §6 lists the full ~48-frame v1 bill).
+ */
+export type Pose = 'walk' | 'stand' | 'sit' | 'sleep';
+
 export interface TravelView {
   /** Full tile path, so the renderer can lerp between ticks rather than teleport. */
   readonly path: readonly { readonly x: number; readonly y: number }[];
@@ -31,6 +41,7 @@ export interface RenderView {
   /** Authoritative tile position at the end of this tick. */
   readonly position: { readonly x: number; readonly y: number };
   readonly facing: Facing;
+  readonly pose: Pose;
   /** Non-null only while travelling. */
   readonly travel: TravelView | null;
   /** 0..1 for the progress ring over the sim (SPEC §11.1). Null when idle or asleep. */
@@ -88,11 +99,26 @@ function deriveProgress(s: SimState): number | null {
   return Math.min(1, Math.max(0, elapsedTicks / durationTicks));
 }
 
+/**
+ * Pose from the running unit. `couch` owns nap and idle in objects.json, so "seated"
+ * is read from the object rather than from a hard-coded activity list — the same
+ * data-driven rule the engine uses everywhere else.
+ */
+function derivePose(s: SimState, content: ContentRegistry): Pose {
+  const cur = s.current;
+  if (cur === null) return 'stand';
+  if (cur.type === 'travel') return 'walk';
+  if (cur.type === 'sleep') return 'sleep';
+  const obj = objectForActivityIn(content, cur.dto.activityId);
+  return obj.id === 'couch' ? 'sit' : 'stand';
+}
+
 export function deriveRenderView(s: SimState, content: ContentRegistry): RenderView {
   const cur = s.current;
   return {
     position: { x: s.position.x, y: s.position.y },
     facing: deriveFacing(s, content),
+    pose: derivePose(s, content),
     travel:
       cur !== null && cur.type === 'travel'
         ? { path: cur.path, elapsedTicks: cur.elapsedTicks, totalTicks: cur.totalTicks }
