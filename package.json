@@ -32,7 +32,12 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "validate:content": "tsx scripts/validate-content.ts",
-    "check": "npm run validate:content && npm run typecheck && npm test"
+    "check": "npm run validate:content && npm run typecheck && npm test",
+    "postinstall": "setup-skia-web public",
+    "setup:skia-web": "setup-skia-web public",
+    "export:web": "expo export --platform web && cp serve.json dist/serve.json",
+    "serve:dist": "serve dist --listen 4173",
+    "verify": "npm run validate:content && npm run typecheck && npm test && npm run export:web"
   },
   "private": true
 }
