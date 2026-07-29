@@ -5,11 +5,14 @@ export type BarId = z.infer<typeof BarIdSchema>;
 
 const finiteNonNegative = z.number().finite().min(0);
 
-/** Rates must survive ratePerMinuteFixed: at most two decimals (same 1e-9 tolerance). */
-const twoDecimalRate = finiteNonNegative.refine(
-  (v) => Math.abs(v * 100 - Math.round(v * 100)) <= 1e-9,
-  'rates must have at most two decimal places',
-);
+/**
+ * Rates must survive ratePerMinuteFixed: at most two decimals (same 1e-9 tolerance),
+ * and bounded to the bar domain (≤100/h — bars are 0–100, so faster than full-drain-
+ * in-an-hour is content nonsense and unbounded magnitudes reach runtime throws).
+ */
+const twoDecimalRate = finiteNonNegative
+  .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) <= 1e-9, 'rates must have at most two decimal places')
+  .refine((v) => v <= 100, 'rates must be at most 100 per hour');
 
 const BarRateSchema = z.strictObject({
   awake: twoDecimalRate,
@@ -35,7 +38,9 @@ export const RatesSchema = z.strictObject({
     movement: BarRateSchema,
     hygiene: BarRateSchema,
   }),
-  sleepRestorePerHour: twoDecimalRate.refine((v) => v > 0, 'must be positive'),
+  // Positive ON THE GRID: 1e-12 passes float positivity but quantizes to a zero
+  // per-minute delta, silently voiding the closure guarantee.
+  sleepRestorePerHour: twoDecimalRate.refine((v) => Math.round(v * 100) >= 1, 'must be at least 0.01/h'),
   // Zod 4: an enum-keyed record is exhaustive — a missing bar weight fails the parse.
   weights: z.record(BarIdSchema, z.number().finite().positive()),
   wellFed: z.strictObject({
@@ -58,8 +63,11 @@ export type RatesConfig = z.infer<typeof RatesSchema>;
 
 // ---------- activities (SPEC §6.2; signed pro-rata effects close the stop-at-99% exploit) ----------
 
-/** Sparse signed effect map: some bars, never an unknown bar (Zod 4 partial record). */
-const BarEffectsSchema = z.partialRecord(BarIdSchema, z.number().finite());
+/** Sparse signed effect map: some bars, never an unknown bar; magnitude bounded to the bar domain. */
+const BarEffectsSchema = z.partialRecord(
+  BarIdSchema,
+  z.number().finite().refine((v) => Math.abs(v) <= 100, 'effect magnitude must be at most 100'),
+);
 
 const ActivityBase = {
   id: z.string().min(1),
@@ -73,12 +81,14 @@ const TimedActivitySchema = z
     baseMin: z.number().int().positive(),
     effects: BarEffectsSchema,
     tags: z.array(z.enum(['workout'])).optional(),
-    // Two-decimal grid so fillStartTick's integer round-half-up is exact (frac×100 ∈ ℤ).
+    // Two-decimal grid so fillStartTick's integer round-half-up is exact (frac×100 ∈ 0…99;
+    // the ≤99 refine keeps values like 0.9999999999995 from rounding onto the excluded 1.00).
     fillStartsAfterFraction: z
       .number()
       .min(0)
       .lt(1)
       .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) <= 1e-9, 'fraction must have at most two decimals')
+      .refine((v) => Math.round(v * 100) <= 99, 'fraction must round to at most 0.99')
       .optional(),
     effectiveUsesPerDay: z.number().int().positive().optional(),
     startBelow: z.partialRecord(BarIdSchema, z.number().min(0).max(100)).optional(),

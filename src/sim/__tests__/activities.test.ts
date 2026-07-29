@@ -135,6 +135,32 @@ test('activities with an effective-use budget refuse to start without an explici
   expect(() => startTimedActivity(nap, bars(40, 50, 50, 50), rates)).toThrow(/effectiveUse/);
 });
 
+test('durationTicks is exact integer ceil-division (the baseMin-17 float trap)', () => {
+  const synthetic = {
+    id: 'synthetic-17',
+    kind: 'timed',
+    object: 'bench',
+    baseMin: 17,
+    effects: { movement: 10 },
+  } as const;
+  // Energy exactly 18.00 → mSpeed 0.68; 17/0.68 = 25 exactly, but the float form
+  // computed 25.000000000000004 → ceil 26 (round-2 math adversary, 99 of 79.2M cases).
+  const a = startTimedActivity(synthetic, bars(18, 50, 50, 50), rates);
+  expect(a.durationTicks).toBe(25);
+});
+
+test('start rejects corrupt bars at the trust boundary', () => {
+  const b = bars(100, 50, 50, 50);
+  b.energy = NaN;
+  expect(() => startTimedActivity(activityById('shower'), b, rates)).toThrow(/energy/);
+});
+
+test('napEligibility throws for window-less activities (caller-bug guard)', () => {
+  const meal = activityById('meal');
+  if (meal.kind !== 'timed') throw new Error('meal must be timed');
+  expect(() => napEligibility(meal, bars(40, 50, 50, 50), 480, 420, 0)).toThrow(/budget-bearing/);
+});
+
 test('fillStartTick round-half-up is exact in integers (the 45×0.7 float trap)', () => {
   const synthetic = {
     id: 'synthetic-70',

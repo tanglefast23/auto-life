@@ -58,10 +58,42 @@ test('sleepWindow/idle cannot masquerade as timed activities', () => {
   expect(() => ActivitiesSchema.parse(bad2)).toThrow();
 });
 
-test("nap's effective-use fields form one coherent rule", () => {
-  const bad = cloned();
-  delete bad.activities.find((a) => a.id === 'nap')!.effectiveWindow;
-  expect(() => ActivitiesSchema.parse(bad)).toThrow(/suppressPassiveEnergyWhenEffective/);
+test("nap's effective-use fields form one coherent rule, both directions", () => {
+  const noWindow = cloned();
+  delete noWindow.activities.find((a) => a.id === 'nap')!.effectiveWindow;
+  expect(() => ActivitiesSchema.parse(noWindow)).toThrow();
+
+  const windowOnly = cloned();
+  const stretch = windowOnly.activities.find((a) => a.id === 'stretch')!;
+  stretch.effectiveWindow = { wakeOffsetStart: 0, wakeOffsetEnd: 100 };
+  expect(() => ActivitiesSchema.parse(windowOnly)).toThrow(/together/);
+
+  const budgetOnly = cloned();
+  windowOnly.activities.find((a) => a.id === 'stretch');
+  budgetOnly.activities.find((a) => a.id === 'stretch')!.effectiveUsesPerDay = 1;
+  expect(() => ActivitiesSchema.parse(budgetOnly)).toThrow(/together/);
+});
+
+test('fraction, threshold, and magnitude refines reject out-of-grid content', () => {
+  const threeDecimals = cloned();
+  threeDecimals.activities.find((a) => a.id === 'meal')!.fillStartsAfterFraction = 0.333;
+  expect(() => ActivitiesSchema.parse(threeDecimals)).toThrow(/two decimals/);
+
+  const nearOne = cloned();
+  nearOne.activities.find((a) => a.id === 'meal')!.fillStartsAfterFraction = 0.9999999999995;
+  expect(() => ActivitiesSchema.parse(nearOne)).toThrow(/0\.99/);
+
+  const bigThreshold = cloned();
+  (bigThreshold.activities.find((a) => a.id === 'nap')!.startBelow as Record<string, number>).energy = 150;
+  expect(() => ActivitiesSchema.parse(bigThreshold)).toThrow();
+
+  const negThreshold = cloned();
+  (negThreshold.activities.find((a) => a.id === 'nap')!.startBelow as Record<string, number>).energy = -5;
+  expect(() => ActivitiesSchema.parse(negThreshold)).toThrow();
+
+  const hugeEffect = cloned();
+  (hugeEffect.activities.find((a) => a.id === 'snack')!.effects as Record<string, number>).nutrition = 1e300;
+  expect(() => ActivitiesSchema.parse(hugeEffect)).toThrow(/magnitude/);
 });
 
 test('quick-option invariant holds in the shipped content (SPEC §6.2)', () => {

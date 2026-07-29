@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { fillDelta, ratePerMinuteFixed, toFixed, toDisplay } from './fixed';
 import { isWellFedAtStart, mSpeedAtStart } from './bars';
-import type { ActivityDef, RatesConfig, TimedActivityDef } from './content-schemas';
-import type { BarContribution } from './bar-deltas';
+import { BarIdSchema, type ActivityDef, type RatesConfig, type TimedActivityDef } from './content-schemas';
+import { assertValidBars, type BarContribution } from './bar-deltas';
 import { type BarId, type Bars } from './types';
 
 /**
@@ -42,6 +42,11 @@ export function napEligibility(
   wakeTarget: number,
   effectiveUsesToday: number,
 ): NapEligibility {
+  // Only defined for budget-bearing activities — a window-less def would be
+  // permanently unstartable here, which is a caller bug, not an answer.
+  if (def.effectiveUsesPerDay === undefined || def.effectiveWindow === undefined) {
+    throw new Error(`napEligibility is only defined for budget-bearing activities; "${def.id}" has no effective-use rule`);
+  }
   const below = Object.entries(def.startBelow ?? {}).every(
     ([bar, threshold]) => toDisplay(bars[bar as BarId]) < (threshold as number),
   );
@@ -67,9 +72,13 @@ export function crossedWakeBoundary(
   if (
     !Number.isInteger(prevAbsoluteMinute) ||
     !Number.isInteger(nextAbsoluteMinute) ||
+    prevAbsoluteMinute < 0 ||
     nextAbsoluteMinute < prevAbsoluteMinute
   ) {
     throw new Error('invalid minute range');
+  }
+  if (!Number.isInteger(wakeTarget) || wakeTarget < 0 || wakeTarget > 1439) {
+    throw new Error(`invalid wakeTarget: ${wakeTarget}`);
   }
   const wakesUpTo = (m: number) => Math.floor((m - wakeTarget) / 1440);
   return wakesUpTo(nextAbsoluteMinute) > wakesUpTo(prevAbsoluteMinute);
@@ -95,10 +104,16 @@ export function startTimedActivity(
   if (def.effectiveUsesPerDay !== undefined && options.effectiveUse === undefined) {
     throw new Error(`activity "${def.id}" has a daily effective-use budget — pass options.effectiveUse from napEligibility`);
   }
+  assertValidBars(bars);
   const effectiveUse = options.effectiveUse ?? true;
   const mSpeed = mSpeedAtStart(bars);
   const wellFed = isWellFedAtStart(bars, cfg);
-  const durationTicks = Math.max(1, Math.ceil(def.baseMin / mSpeed));
+  // Duration derived in INTEGERS (round-2 math adversary: the float form
+  // ceil(baseMin / mSpeed) over-counted by +1 in 99 of 79.2M cases — e.g. baseMin 17
+  // at Energy 18.00 → 26 instead of 25). mSpeed = (300000 + energyFixed) / 600000,
+  // so duration = ceil(baseMin × 600000 / (300000 + energyFixed)), exactly.
+  const denom = 300_000 + bars.energy;
+  const durationTicks = Math.max(1, Math.floor((def.baseMin * 600_000 + denom - 1) / denom));
 
   // Explicit rounding rule, computed IN INTEGERS so it is exactly decimal
   // round-half-up (a float form of this comment previously lied: 45×0.7 gave 31,
@@ -142,7 +157,7 @@ export const ActiveTimedActivitySchema = z
     elapsedTicks: z.number().int().min(0),
     fillStartTick: z.number().int().min(0),
     effectTotalsFixed: z.partialRecord(
-      z.enum(['energy', 'nutrition', 'movement', 'hygiene']),
+      BarIdSchema, // the one bar enum — no drift-prone third copy
       z.number().int().refine(Number.isSafeInteger, 'totals must be safe integers'),
     ),
     suppressPassiveEnergy: z.boolean(),

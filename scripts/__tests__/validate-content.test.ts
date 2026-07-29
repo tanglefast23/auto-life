@@ -27,6 +27,16 @@ test('a missing weight fails (exhaustive enum record)', () => {
   expect(() => RatesSchema.parse(bad)).toThrow();
 });
 
+test('rate magnitude and grid-positivity bounds hold', () => {
+  const huge = cloned();
+  (huge.rates as Record<string, { awake: number }>).energy!.awake = 9.1e13;
+  expect(() => RatesSchema.parse(huge)).toThrow(/100 per hour/);
+
+  const dust = cloned();
+  dust.sleepRestorePerHour = 1e-12; // float-positive but quantizes to a zero delta
+  expect(() => RatesSchema.parse(dust)).toThrow(/0\.01/);
+});
+
 test('rates with more than two decimals fail (must survive ratePerMinuteFixed)', () => {
   const bad = cloned();
   (bad.rates as Record<string, { awake: number }>).energy!.awake = 3.333;
