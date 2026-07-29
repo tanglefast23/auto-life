@@ -32,6 +32,7 @@ export function findPath(
   walkable: boolean[][],
   from: TilePos,
   to: TilePos,
+  neighbourOrder: readonly ('up' | 'down' | 'left' | 'right')[] = ['up', 'down', 'left', 'right'],
 ): TilePos[] | null {
   const height = walkable.length;
   const width = walkable[0]?.length ?? 0;
@@ -72,13 +73,10 @@ export function findPath(
       }
       return path;
     }
-    // Fixed expansion order: up, down, left, right.
-    const neighbours: TilePos[] = [
-      { x: best.pos.x, y: best.pos.y - 1 },
-      { x: best.pos.x, y: best.pos.y + 1 },
-      { x: best.pos.x - 1, y: best.pos.y },
-      { x: best.pos.x + 1, y: best.pos.y },
-    ];
+    // Expansion order is a parameter ONLY so the determinism test can prove the
+    // result is order-independent (the total-order tie-break carries that weight).
+    const offsets = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+    const neighbours: TilePos[] = neighbourOrder.map((d) => ({ x: best.pos.x + offsets[d].x, y: best.pos.y + offsets[d].y }));
     for (const n of neighbours) {
       if (!inBounds(n) || !walkable[n.y]?.[n.x]) continue;
       const key = idx(n);

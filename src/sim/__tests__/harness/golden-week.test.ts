@@ -14,8 +14,10 @@ import { ENGINE_VERSION } from '../../version';
 interface DayDigest {
   morningCheck: Record<string, number> | null;
   minPerBar: Record<string, number>;
+  maxPerBar: Record<string, number>;
   completions: Record<string, number>;
   travelMinutes: number;
+  urgentEvents: number;
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -24,7 +26,8 @@ function runGoldenWeek() {
   let s = newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
   const mc = morningCheckMinute('baseline', content.rates);
   const days: DayDigest[] = [];
-  let day: DayDigest = { morningCheck: null, minPerBar: { energy: 100, nutrition: 100, movement: 100, hygiene: 100 }, completions: {}, travelMinutes: 0 };
+  const freshDay = (): DayDigest => ({ morningCheck: null, minPerBar: { energy: 100, nutrition: 100, movement: 100, hygiene: 100 }, maxPerBar: { energy: 0, nutrition: 0, movement: 0, hygiene: 0 }, completions: {}, travelMinutes: 0, urgentEvents: 0 });
+  let day: DayDigest = freshDay();
   let firstWakeOrder: string[] = [];
   let urgentCount = 0;
 
@@ -36,28 +39,29 @@ function runGoldenWeek() {
         day.completions[e.detail] = (day.completions[e.detail] ?? 0) + 1;
         if (days.length === 0 && firstWakeOrder.length < 4) firstWakeOrder.push(e.detail);
       }
+      if (e.type === 'urgent') day.urgentEvents += 1;
       if (e.type === 'wakeBoundary') {
         days.push(day);
-        day = { morningCheck: null, minPerBar: { energy: 100, nutrition: 100, movement: 100, hygiene: 100 }, completions: {}, travelMinutes: 0 };
+        day = freshDay();
       }
     }
     if (s.current?.type === 'travel') day.travelMinutes += 1;
     for (const bar of ['energy', 'nutrition', 'movement', 'hygiene'] as const) {
       const v = toDisplay(s.bars[bar]);
-      const cur = day.minPerBar[bar] ?? 100;
-      if (v < cur) day.minPerBar[bar] = round2(v);
+      if (v < (day.minPerBar[bar] ?? 100)) day.minPerBar[bar] = round2(v);
+      if (v > (day.maxPerBar[bar] ?? 0)) day.maxPerBar[bar] = round2(v);
     }
     if (r.snapshot.minuteOfDay === mc) {
       day.morningCheck = Object.fromEntries(Object.entries(r.snapshot.bars).map(([k, v]) => [k, round2(v)]));
     }
   }
   urgentCount = s.events.urgentCount;
-  return { engineVersion: ENGINE_VERSION, seed: 1234, chronotype: 'baseline', firstWakeOrder, urgentCount, anchorsMissed: s.events.anchorsMissed, days };
+  return { engineVersion: ENGINE_VERSION, seed: 1234, chronotype: 'baseline', commands: [], firstWakeOrder, urgentCount, anchorsMissed: s.events.anchorsMissed, days };
 }
 
 test('golden week: digest matches the recorded replay and the pinned ENGINE_VERSION', () => {
   const golden = runGoldenWeek();
-  expect(golden.engineVersion).toBe(1);
+  expect(golden.engineVersion).toBe(2);
   expect(golden.firstWakeOrder).toEqual(['toilet', 'brush', 'shower', 'meal']); // §7.1 Day-1 order
   expect(golden).toMatchSnapshot();
 });

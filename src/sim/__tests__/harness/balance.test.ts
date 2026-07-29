@@ -38,15 +38,9 @@ test('fairness: unattended week holds every band', () => {
       travelToday = 0;
       dayIndex += 1;
     }
-    if (r.snapshot.minuteOfDay === mc && dayIndex >= 2) {
+    if (r.snapshot.minuteOfDay === mc && dayIndex >= bands.morningCheck.fromDay) {
       for (const [bar, v] of Object.entries(r.snapshot.bars)) {
-        // Day 2 grants Movement its recorded transient floor (Day-1 starts at 60 and
-        // the first workout's effect converges one day later than the pre-travel trace).
-        const floor =
-          bar === 'movement' && dayIndex < bands.morningCheck.fromDay
-            ? bands.morningCheck.day2MovementFloor
-            : bands.morningCheck.floor;
-        if (v < floor) mcFailures.push(`day ${dayIndex} ${bar}=${v} < ${floor}`);
+        if (v < bands.morningCheck.floor) mcFailures.push(`day ${dayIndex} ${bar}=${v} < ${bands.morningCheck.floor}`);
       }
     }
   }

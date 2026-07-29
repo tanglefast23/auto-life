@@ -21,6 +21,8 @@ export interface ActiveTimedActivity {
     mSpeed: number;
     wellFed: boolean;
     effectiveUse: boolean;
+    /** Practice-only: full award multiplier frozen at start (§6.6). */
+    pointsMultiplier?: number;
   };
 }
 
@@ -166,6 +168,8 @@ export const ActiveTimedActivitySchema = z
       mSpeed: z.number().min(0.5).max(1.5),
       wellFed: z.boolean(),
       effectiveUse: z.boolean(),
+      // Practice-only (§6.6 start-sampling): the full points multiplier is frozen at start.
+      pointsMultiplier: z.number().positive().optional(),
     }),
   })
   .refine((a) => a.elapsedTicks < a.durationTicks, 'elapsedTicks must be below durationTicks')

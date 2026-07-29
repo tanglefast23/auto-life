@@ -52,7 +52,6 @@ export const SimStateSchema = z.strictObject({
     prevCompletionWasPractice: z.boolean(),
     mintyArmed: z.boolean(),
     mintyPaidToday: z.boolean(),
-    freshMindUntil: z.number().int().nullable(),
   }),
   decayModifiers: z.array(
     z.strictObject({ bar: BarIdSchema, factor: z.number().gt(0).lt(1), untilMinute: z.number().int(), source: z.string() }),
@@ -93,7 +92,6 @@ export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed:
       prevCompletionWasPractice: false,
       mintyArmed: false,
       mintyPaidToday: false,
-      freshMindUntil: null,
     },
     decayModifiers: [],
     lastCompletion: null,

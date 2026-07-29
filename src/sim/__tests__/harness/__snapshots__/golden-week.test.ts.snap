@@ -4,6 +4,7 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
 {
   "anchorsMissed": 0,
   "chronotype": "baseline",
+  "commands": [],
   "days": [
     {
       "completions": {
@@ -12,6 +13,12 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "shower": 1,
         "toilet": 1,
         "weights": 1,
+      },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 93.87,
+        "nutrition": 100,
       },
       "minPerBar": {
         "energy": 21,
@@ -26,6 +33,7 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "nutrition": 95.8,
       },
       "travelMinutes": 27,
+      "urgentEvents": 0,
     },
     {
       "completions": {
@@ -35,19 +43,26 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "toilet": 1,
         "weights": 1,
       },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 100,
+        "nutrition": 100,
+      },
       "minPerBar": {
-        "energy": 21,
+        "energy": 21.08,
         "hygiene": 54.65,
-        "movement": 47.83,
-        "nutrition": 47.53,
+        "movement": 59.82,
+        "nutrition": 47.6,
       },
       "morningCheck": {
         "energy": 90,
         "hygiene": 95.4,
-        "movement": 63,
+        "movement": 74.98,
         "nutrition": 77.4,
       },
-      "travelMinutes": 26,
+      "travelMinutes": 24,
+      "urgentEvents": 0,
     },
     {
       "completions": {
@@ -57,19 +72,26 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "toilet": 1,
         "weights": 1,
       },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 100,
+        "nutrition": 100,
+      },
       "minPerBar": {
-        "energy": 21,
+        "energy": 21.08,
         "hygiene": 54.65,
-        "movement": 53.97,
-        "nutrition": 47.53,
+        "movement": 65.95,
+        "nutrition": 47.6,
       },
       "morningCheck": {
         "energy": 90,
         "hygiene": 95.4,
-        "movement": 69.13,
+        "movement": 81.12,
         "nutrition": 77.4,
       },
-      "travelMinutes": 26,
+      "travelMinutes": 24,
+      "urgentEvents": 0,
     },
     {
       "completions": {
@@ -79,19 +101,26 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "toilet": 1,
         "weights": 1,
       },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 100,
+        "nutrition": 100,
+      },
       "minPerBar": {
-        "energy": 21,
+        "energy": 21.08,
         "hygiene": 54.65,
-        "movement": 53.97,
-        "nutrition": 47.53,
+        "movement": 65.95,
+        "nutrition": 47.6,
       },
       "morningCheck": {
         "energy": 90,
         "hygiene": 95.4,
-        "movement": 69.13,
+        "movement": 81.12,
         "nutrition": 77.4,
       },
-      "travelMinutes": 26,
+      "travelMinutes": 24,
+      "urgentEvents": 0,
     },
     {
       "completions": {
@@ -101,19 +130,26 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "toilet": 1,
         "weights": 1,
       },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 100,
+        "nutrition": 100,
+      },
       "minPerBar": {
-        "energy": 21,
+        "energy": 21.08,
         "hygiene": 54.65,
-        "movement": 53.97,
-        "nutrition": 47.53,
+        "movement": 65.95,
+        "nutrition": 47.6,
       },
       "morningCheck": {
         "energy": 90,
         "hygiene": 95.4,
-        "movement": 69.13,
+        "movement": 81.12,
         "nutrition": 77.4,
       },
-      "travelMinutes": 26,
+      "travelMinutes": 24,
+      "urgentEvents": 0,
     },
     {
       "completions": {
@@ -123,19 +159,26 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "toilet": 1,
         "weights": 1,
       },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 100,
+        "nutrition": 100,
+      },
       "minPerBar": {
-        "energy": 21,
+        "energy": 21.08,
         "hygiene": 54.65,
-        "movement": 53.97,
-        "nutrition": 47.53,
+        "movement": 65.95,
+        "nutrition": 47.6,
       },
       "morningCheck": {
         "energy": 90,
         "hygiene": 95.4,
-        "movement": 69.13,
+        "movement": 81.12,
         "nutrition": 77.4,
       },
-      "travelMinutes": 26,
+      "travelMinutes": 24,
+      "urgentEvents": 0,
     },
     {
       "completions": {
@@ -145,22 +188,29 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
         "toilet": 1,
         "weights": 1,
       },
+      "maxPerBar": {
+        "energy": 100,
+        "hygiene": 100,
+        "movement": 100,
+        "nutrition": 100,
+      },
       "minPerBar": {
-        "energy": 21,
+        "energy": 21.08,
         "hygiene": 54.65,
-        "movement": 53.97,
-        "nutrition": 47.53,
+        "movement": 65.95,
+        "nutrition": 47.6,
       },
       "morningCheck": {
         "energy": 90,
         "hygiene": 95.4,
-        "movement": 69.13,
+        "movement": 81.12,
         "nutrition": 77.4,
       },
-      "travelMinutes": 26,
+      "travelMinutes": 24,
+      "urgentEvents": 0,
     },
   ],
-  "engineVersion": 1,
+  "engineVersion": 2,
   "firstWakeOrder": [
     "toilet",
     "brush",

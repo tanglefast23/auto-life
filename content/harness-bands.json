@@ -1,6 +1,6 @@
 {
-  "recordedAt": "2026-07-30, travel-inclusive unattended run, seed 1234 (Q6 record-before-assert)",
-  "morningCheck": { "floor": 65, "fromDay": 3, "day2MovementFloor": 60 },
+  "recordedAt": "2026-07-30, ENGINE_VERSION 2, travel-inclusive unattended run, seed 1234 (Q6 record-before-assert; v2 measured: mc E90/N77.4/M81.1/H95.4, day-2 M74.98, recovery 77.27, travel 24-27)",
+  "morningCheck": { "floor": 65, "fromDay": 2 },
   "urgentMax": 0,
   "anchorsMissedMax": 0,
   "nutritionMinBand": [47, 53],

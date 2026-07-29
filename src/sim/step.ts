@@ -44,6 +44,28 @@ export interface SimSnapshot {
 
 const STOP_SUPPRESSION_MIN = 60;
 
+/** §7.4: new AUTO cards enter the EARLIEST run — immediately after the leading PINNED prefix. */
+function insertIntoEarliestRun(queue: QueueCard[], card: QueueCard): QueueCard[] {
+  const firstAuto = queue.findIndex((c) => c.owner === 'AUTO');
+  const at = firstAuto === -1 ? queue.length : firstAuto;
+  return [...queue.slice(0, at), card, ...queue.slice(at)];
+}
+
+/** The activity id currently running (travel counts as its target card's activity). */
+function currentActivityId(s: SimState): string | null {
+  if (!s.current) return null;
+  if (s.current.type === 'activity') return s.current.dto.activityId;
+  if (s.current.type === 'sleep') return 'sleep';
+  const card = s.queue.find((c) => c.id === (s.current as { cardId: string }).cardId);
+  return card?.activityId ?? null;
+}
+
+/** The card id currently being executed or traveled toward. */
+function currentCardId(s: SimState): string | null {
+  if (!s.current) return null;
+  return s.current.type === 'sleep' ? s.current.cardId : s.current.cardId;
+}
+
 /** One game-minute. `state.clock.absoluteMinute` is the minute ABOUT TO RUN. */
 export function step(
   state: SimState,
@@ -70,11 +92,14 @@ export function step(
       s.queue = r.queue;
       s.suppression = r.suppression;
     } else if (cmd.type === 'stopCurrent' && s.current) {
-      if (s.current.type === 'activity') {
-        const def = activityById(s.current.dto.activityId);
-        if (def.kind === 'timed') s.suppression[def.id] = now + STOP_SUPPRESSION_MIN;
+      const stoppedId = currentCardId(s);
+      const stoppedCard = s.queue.find((c) => c.id === stoppedId);
+      // §7.4: stop suppresses the TYPE for 1h only when the stopped card is AUTO —
+      // stopping your own pinned card suppresses nothing; travel-toward-AUTO counts.
+      if (stoppedCard?.owner === 'AUTO') {
+        s.suppression[stoppedCard.activityId] = now + STOP_SUPPRESSION_MIN;
       }
-      s.queue = s.queue.filter((c) => c.id !== (s.current?.type === 'travel' || s.current?.type === 'activity' ? s.current.cardId : s.current?.cardId));
+      if (stoppedId !== null) s.queue = s.queue.filter((c) => c.id !== stoppedId);
       s.current = null;
     }
   }
@@ -94,7 +119,7 @@ export function step(
     const queued = s.queue.some((c) => c.blockId === blockId);
     const started = s.anchorsConsumedOnDay[anchor.id] === today;
     if (queued && !started && isMissed(anchor, anchorCtx, false)) {
-      s.queue = s.queue.filter((c) => c.blockId !== blockId);
+      s.queue = s.queue.filter((c) => !(c.blockId === blockId && c.owner === 'AUTO'));
       s.anchorsConsumedOnDay[anchor.id] = today;
       s.events.anchorsMissed += 1;
       emit('anchorMissed', anchor.id);
@@ -105,20 +130,23 @@ export function step(
     const blockId = `${anchor.id}#${today}`;
     if (s.queue.some((c) => c.blockId === blockId)) continue;
     const steps = resolveBlock(anchor, anchorCtx);
-    for (const activityId of steps) {
-      s.queue.push({ id: `c${s.nextCardSeq++}`, activityId, owner: 'AUTO', urgent: false, source: 'anchor', blockId, enqueuedTick: now });
+    for (const activityId of [...steps].reverse()) {
+      s.queue = insertIntoEarliestRun(s.queue, { id: `c${s.nextCardSeq++}`, activityId, owner: 'AUTO', urgent: false, source: 'anchor', blockId, enqueuedTick: now });
     }
   }
   // Reactive rules.
-  const decision = evaluateReactive(content.reactive, { absoluteMinute: now, wakeTarget, bars: s.bars }, s.queue, s.suppression);
-  if (decision.evict.length > 0) s.queue = s.queue.filter((c) => !decision.evict.includes(c.id));
+  const runningCardId = currentCardId(s);
+  const runningActivity = currentActivityId(s);
+  const decision = evaluateReactive(content.reactive, { absoluteMinute: now, wakeTarget, bars: s.bars }, s.queue, s.suppression, runningActivity);
+  const evictable = decision.evict.filter((id) => id !== runningCardId);
+  if (evictable.length > 0) s.queue = s.queue.filter((c) => !evictable.includes(c.id));
   for (const a of decision.add) {
-    if (hasAutoCardFor(s.queue, a.activityId)) continue;
+    if (hasAutoCardFor(s.queue, a.activityId) || a.activityId === runningActivity) continue;
     if (a.activityId === 'nap') {
       const def = activityById('nap');
       if (def.kind !== 'timed' || !napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday).canStart) continue;
     }
-    s.queue.push({ id: `c${s.nextCardSeq++}`, activityId: a.activityId, owner: 'AUTO', urgent: a.urgent, source: 'reactive', enqueuedTick: now });
+    s.queue = insertIntoEarliestRun(s.queue, { id: `c${s.nextCardSeq++}`, activityId: a.activityId, owner: 'AUTO', urgent: a.urgent, source: 'reactive', enqueuedTick: now });
     if (a.urgent) {
       s.events.urgentCount += 1;
       emit('urgent', a.activityId);
@@ -126,6 +154,7 @@ export function step(
   }
   // Auto-cleanup at trigger+10, then order the runs.
   s.queue = autoCleanup(s.queue, (card) => {
+    if (card.id === runningCardId) return false; // §7.4: only UNSTARTED cards poof
     const rule = content.reactive.rules.find((r) => r.activity === card.activityId || r.supersededBelow?.activity === card.activityId);
     if (!rule) return false;
     return toDisplay(s.bars[rule.bar]) > rule.below + 10;
@@ -289,6 +318,30 @@ function beginCard(
   if (def.kind === 'practice') {
     const denom = 300_000 + s.bars.energy;
     const durationTicks = Math.max(1, Math.floor((def.baseMin * 600_000 + denom - 1) / denom));
+    // §6.6: EVERY award multiplier samples at start. Gaps measure first-END to
+    // second-START (§6.7); lastCompletion is the intervener rule by construction.
+    const wellFed = isWellFedAtStart(s.bars, content.rates);
+    let pointsMultiplier = mOutAtStart(s.bars, content.rates);
+    if (wellFed) pointsMultiplier *= 1 + content.rates.wellFed.outputBonus;
+    const freshPair = content.adjacency.pairs.find((x) => x.id === 'fresh-mind')!;
+    const lastDone = s.lastCompletion;
+    if (
+      lastDone !== null &&
+      lastDone.activityId === freshPair.first &&
+      now - lastDone.atMinute <= freshPair.gapMaxMin &&
+      freshPair.effect.kind === 'scalePoints'
+    ) {
+      pointsMultiplier *= freshPair.effect.factor;
+    }
+    const mintyPair = content.adjacency.pairs.find((x) => x.id === 'minty-fresh')!;
+    const beforeMorningCheck =
+      minuteOfDay(now) >= wakeTarget && minuteOfDay(now) < morningCheckMinute(s.chronotype, content.rates);
+    if (s.practice.mintyArmed && !s.practice.mintyPaidToday && beforeMorningCheck && mintyPair.effect.kind === 'scalePoints') {
+      pointsMultiplier *= mintyPair.effect.factor;
+      s.practice.mintyPaidToday = true; // paid at start — never twice a day
+    }
+    const focus = content.practice.hygieneFocus;
+    if (toDisplay(s.bars.hygiene) < focus.below) pointsMultiplier *= focus.factor; // §6.5 Hygiene focus
     const dto: ActiveTimedActivity = {
       activityId: def.id,
       durationTicks,
@@ -296,11 +349,25 @@ function beginCard(
       fillStartTick: 0,
       effectTotalsFixed: {},
       suppressPassiveEnergy: false,
-      sampled: { mSpeed: mSpeedAtStart(s.bars), wellFed: isWellFedAtStart(s.bars, content.rates), effectiveUse: true },
+      sampled: { mSpeed: mSpeedAtStart(s.bars), wellFed, effectiveUse: true, pointsMultiplier },
     };
     return { type: 'activity', cardId: card.id, dto };
   }
   // timed
+  // §6.2: player naps obey the same startability window — an ineligible nap card drops.
+  if (def.effectiveUsesPerDay !== undefined) {
+    const elig = napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday);
+    if (!elig.canStart) {
+      s.queue = s.queue.filter((c) => c.id !== card.id);
+      return null;
+    }
+  }
+  // Anchor meal gate re-check at START (the enqueue-time gate can go stale behind a
+  // running reactive meal): a meal completed within the no-meal clause drops the card.
+  if (card.source === 'anchor' && def.id === 'meal' && s.lastMealCompletedAt !== null && now - s.lastMealCompletedAt < 180) {
+    s.queue = s.queue.filter((c) => c.id !== card.id);
+    return null;
+  }
   let effectiveUse = true;
   if (def.effectiveUsesPerDay !== undefined) {
     const elig = napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday);
@@ -308,16 +375,26 @@ function beginCard(
     if (effectiveUse) s.napEffectiveUsesToday += 1;
   }
   const dto = startTimedActivity(def, s.bars, content.rates, { effectiveUse });
-  // Adjacency at start: warmed-up (workout→shower halves duration), cramp (meal→workout −10 Movement).
+  // Adjacency at start (§6.7: first-END to second-START, data-driven, lastCompletion = intervener rule).
   const last = s.lastCompletion;
   if (last) {
     const gap = now - last.atMinute;
-    if (def.id === 'shower' && last.isWorkout && gap <= 30) {
+    const warm = content.adjacency.pairs.find((x) => x.id === 'warmed-up')!;
+    if (def.id === warm.second && last.isWorkout && gap <= warm.gapMaxMin && warm.effect.kind === 'halveDuration') {
       dto.durationTicks = Math.max(1, Math.ceil(dto.durationTicks / 2));
       if (dto.fillStartTick >= dto.durationTicks) dto.fillStartTick = dto.durationTicks - 1;
     }
-    if ((def.tags?.includes('workout') ?? false) && last.activityId === 'meal' && gap <= 30) {
-      s.pendingInstantDeltas.push({ source: 'adjacency:cramp', deltas: { movement: toFixed(-10) } });
+    const cramp = content.adjacency.pairs.find((x) => x.id === 'cramp')!;
+    if ((def.tags?.includes('workout') ?? false) && last.activityId === cramp.first && gap <= cramp.gapMaxMin && cramp.effect.kind === 'barDelta') {
+      const deltas: Partial<Record<BarId, number>> = {};
+      for (const [bar, v] of Object.entries(cramp.effect.deltas)) deltas[bar as BarId] = toFixed(v as number);
+      s.pendingInstantDeltas.push({ source: 'adjacency:cramp', deltas });
+    }
+    const sticks = content.adjacency.pairs.find((x) => x.id === 'it-sticks')!;
+    if (def.id === sticks.second && last.isWorkout && gap <= sticks.gapMaxMin && sticks.effect.kind === 'scaleDecay') {
+      // Re-trigger REPLACES the old instance (§6.7: a bonus never stacks with itself).
+      s.decayModifiers = s.decayModifiers.filter((m) => m.source !== 'adjacency:it-sticks');
+      s.decayModifiers.push({ bar: sticks.effect.bar, factor: sticks.effect.factor, untilMinute: now + sticks.effect.durationMin, source: 'adjacency:it-sticks' });
     }
   }
   return { type: 'activity', cardId: card.id, dto };
@@ -337,33 +414,19 @@ function completeActivity(
   emit('activityCompleted', def.id);
 
   if (def.id === 'meal') s.lastMealCompletedAt = now;
-  if (def.id === 'shower') s.practice.freshMindUntil = now + 60;
 
   if (def.kind === 'practice') {
     const p = content.practice;
     const idx = s.practice.sessionsCountedToday;
     const curve = s.practice.prevCompletionWasPractice ? p.blockCurve : p.scatteredCurve;
     const factor = idx < p.maxCountedSessionsPerDay ? (curve[idx] ?? 0) : 0;
-    let mult = mOutAtStart(s.bars, content.rates);
-    if (dto.sampled.wellFed) mult *= 1 + content.rates.wellFed.outputBonus;
-    if (s.practice.freshMindUntil !== null && now < s.practice.freshMindUntil) mult *= 1.2;
-    const beforeMorningCheck = minuteOfDay(now) < morningCheckMinute(s.chronotype, content.rates) && minuteOfDay(now) >= wakeTarget;
-    if (s.practice.mintyArmed && !s.practice.mintyPaidToday && beforeMorningCheck) {
-      mult *= 1.15;
-      s.practice.mintyPaidToday = true;
-    }
+    const mult = dto.sampled.pointsMultiplier ?? 1; // frozen at start (§6.6)
     if (factor > 0) {
       const award = Math.round(p.basePoints * factor * mult * 100); // one round per award (SPEC §8)
       s.practice.points100 += award;
       s.practice.sessionsCountedToday += 1;
       emit('practiceAwarded', String(award));
     }
-  }
-
-  // it-sticks: meal completed ≤60 min after a workout → movement decay ×0.5 for 12h.
-  const last = s.lastCompletion;
-  if (def.id === 'meal' && last?.isWorkout && now - last.atMinute <= 60) {
-    s.decayModifiers.push({ bar: 'movement', factor: 0.5, untilMinute: now + 720, source: 'adjacency:it-sticks' });
   }
 
   s.practice.prevCompletionWasPractice = def.kind === 'practice';

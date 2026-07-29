@@ -40,10 +40,17 @@ export function evaluateReactive(
   ctx: ReactiveContext,
   queue: readonly QueueCard[],
   suppression: SuppressionMap,
+  runningActivityId: string | null = null,
 ): ReactiveDecision {
   const add: ReactiveDecision['add'] = [];
   const evict: string[] = [];
   const groupWinner = new Map<string, { rule: ReactiveRule; activityId: string; urgent: boolean }>();
+
+  const groupOfActivity = (activityId: string): string | undefined =>
+    cfg.rules.find((r) => r.activity === activityId || r.supersededBelow?.activity === activityId)?.exclusiveGroup;
+  // A RUNNING member occupies its exclusive group entirely — the planner never
+  // interrupts (§7.4), so nothing in that group may be added while it runs.
+  const runningGroup = runningActivityId !== null ? groupOfActivity(runningActivityId) : undefined;
 
   for (const rule of cfg.rules) {
     const { active, activityId } = ruleActive(rule, ctx);
@@ -63,14 +70,18 @@ export function evaluateReactive(
   }
 
   for (const [group, winner] of groupWinner) {
-    // Evict queued-unstarted AUTO cards of the same group that lost to a superseder.
-    for (const card of queue) {
+    if (group === runningGroup) continue; // running member owns the group — no adds, no evictions
+    const occupants = queue.filter((c) => groupOfActivity(c.activityId) === group);
+    // An anchor block step or player card in the group (queued breakfast, pinned meal)
+    // already handles the need — the corrective net must not double-book around it.
+    const handledOutsideReactive = occupants.some((c) => c.owner !== 'AUTO' || c.source !== 'reactive');
+    // Evict queued-unstarted reactive cards that lost to a superseder (Q5: urgent
+    // sleep replaces a queued nap — reactive occupants are replaceable, others never).
+    for (const card of occupants) {
       if (card.owner !== 'AUTO' || card.source !== 'reactive') continue;
-      const cardRule = cfg.rules.find(
-        (r) => r.exclusiveGroup === group && (r.activity === card.activityId || r.supersededBelow?.activity === card.activityId),
-      );
-      if (cardRule && card.activityId !== winner.activityId) evict.push(card.id);
+      if (card.activityId !== winner.activityId) evict.push(card.id);
     }
+    if (handledOutsideReactive) continue;
     if (!hasAutoCardFor(queue, winner.activityId)) add.push(winner);
   }
 

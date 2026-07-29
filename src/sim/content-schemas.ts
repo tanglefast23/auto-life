@@ -270,6 +270,10 @@ const CurveSchema = z
 export const PracticeSchema = z
   .strictObject({
     basePoints: z.number().int().positive().max(1000),
+    hygieneFocus: z.strictObject({
+      below: z.number().min(0).max(100),
+      factor: z.number().gt(0).lt(1),
+    }),
     scatteredCurve: CurveSchema,
     blockCurve: CurveSchema,
     maxCountedSessionsPerDay: z.number().int().positive().max(24),

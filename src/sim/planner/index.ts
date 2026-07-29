@@ -3,6 +3,9 @@ import type { ReactiveConfig } from '../content-schemas';
 import type { Bars } from '../types';
 import type { QueueCard } from '../queue';
 
+/** The anchor-block priority tier (§7.3): above every Stage-2 score, below every URGENT score. */
+export const BLOCK_TIER = 500;
+
 /**
  * §7.7's sortReactivesAroundBlocks (Q2 ruling): each MAXIMAL AUTO run sorts
  * independently; sorting never crosses a PINNED card; anchor blocks travel as
@@ -28,7 +31,8 @@ export function sortReactivesAroundBlocks(
         if (seenBlocks.has(card.blockId)) continue;
         seenBlocks.add(card.blockId);
         const cards = run.filter((c) => c.blockId === card.blockId);
-        units.push({ cards, sortKey: null, enqueuedTick: cards[0]?.enqueuedTick ?? 0 }); // blocks are never scored
+        // §7.3: blocks hold a FIXED tier between URGENT (1000+) and reactive Stage 2 (≤4).
+        units.push({ cards, sortKey: BLOCK_TIER, enqueuedTick: cards[0]?.enqueuedTick ?? 0 });
       } else {
         const rule = cfg.rules.find(
           (r) => r.activity === card.activityId || r.supersededBelow?.activity === card.activityId,
@@ -40,8 +44,8 @@ export function sortReactivesAroundBlocks(
     // Stable order: scored units sort by score desc; unscored blocks keep relative order
     // among themselves via enqueuedTick; ties break by enqueuedTick (§7.3).
     units.sort((a, b) => {
-      const ka = a.sortKey ?? Number.NEGATIVE_INFINITY;
-      const kb = b.sortKey ?? Number.NEGATIVE_INFINITY;
+      const ka = a.sortKey ?? BLOCK_TIER;
+      const kb = b.sortKey ?? BLOCK_TIER;
       if (ka !== kb) return kb - ka;
       return a.enqueuedTick - b.enqueuedTick;
     });

@@ -24,14 +24,27 @@ test('the path is identical across runs and across a serialization boundary', ()
   expect(a).toEqual(b);
 });
 
-test('shuffled-expansion determinism: an independently reversed-neighbour A* yields the same path', () => {
-  // Re-implement extraction with reversed insertion order by walking the grid mirrored;
-  // the total-order tie-break must make the result identical.
-  const mirrorWalkable = walkable.map((row) => [...row]);
-  const a = findPath(walkable, { x: 2, y: 9 }, { x: 20, y: 9 });
-  const b = findPath(mirrorWalkable, { x: 2, y: 9 }, { x: 20, y: 9 });
-  expect(a).toEqual(b);
-  expect(a!.length).toBeGreaterThan(2);
+test('shuffled-expansion determinism: every neighbour-order permutation yields the identical path', () => {
+  // The round-1 version of this test was a placebo (it compared findPath to itself);
+  // this one actually varies the expansion order — the total-order tie-break must win.
+  const orders: Array<readonly ('up' | 'down' | 'left' | 'right')[]> = [
+    ['up', 'down', 'left', 'right'],
+    ['right', 'left', 'down', 'up'],
+    ['left', 'right', 'up', 'down'],
+    ['down', 'up', 'right', 'left'],
+  ];
+  const cases: Array<[{ x: number; y: number }, { x: number; y: number }]> = [
+    [{ x: 2, y: 9 }, { x: 20, y: 9 }],
+    [{ x: 4, y: 2 }, { x: 21, y: 2 }],
+    [{ x: 6, y: 9 }, { x: 18, y: 2 }],
+  ];
+  for (const [from, to] of cases) {
+    const canonical = findPath(walkable, from, to, orders[0]);
+    expect(canonical).not.toBeNull();
+    for (const order of orders.slice(1)) {
+      expect(findPath(walkable, from, to, order)).toEqual(canonical);
+    }
+  }
 });
 
 test('a blocked destination returns null rather than throwing', () => {
