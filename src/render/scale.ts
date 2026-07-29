@@ -67,17 +67,23 @@ export function solveScale(vp: Viewport): ScaleSolution {
     height: Math.max(0, vp.height - HUD_H - QUEUE_H),
   };
 
+  // The desktop path never renders BELOW 1:1. Adversarial pass 1 found that a narrow
+  // window at DPR 2 chose k=1 → scale 0.5, silently drawing a half-size world and
+  // reporting `tooSmall: false`. Sub-native rendering is exactly the sharp-bilinear
+  // downscale SPEC §11.5 assigns to the v1.1 phone pass; here it must report that it
+  // does not fit and let the caller clip.
   let chosen: number | null = null;
   for (let k = MAX_PHYSICAL_PER_ART_PIXEL; k >= 1; k--) {
     const s = k / dpr;
+    if (s < 1) continue;
     if (WORLD_W * s <= available.width && WORLD_H * s <= available.height) {
       chosen = k;
       break;
     }
   }
 
-  const k = chosen ?? 1;
-  const scale = k / dpr;
+  const scale = chosen === null ? 1 : chosen / dpr;
+  const k = chosen ?? dpr;
   return {
     scale,
     physicalPerArtPixel: k,

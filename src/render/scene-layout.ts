@@ -133,6 +133,16 @@ export function buildCharacterQuad(view: RenderView, alpha: number, phase: numbe
  */
 export const WALK_CYCLES_PER_SECOND = 2;
 export function advancePhase(phase: number, deltaMs: number, mSpeed: number): number {
-  const next = phase + (deltaMs / 1000) * WALK_CYCLES_PER_SECOND * mSpeed;
-  return next % 1;
+  // Frame deltas are hostile input. `performance.now()` differences can come back
+  // non-finite on a first frame and negative when the timestamp source steps backward
+  // (adversarial pass 1 found both): NaN poisoned `phase` permanently — every later
+  // comparison against it is false, so the walk loop froze on frame 0 for the rest of
+  // the session — and a negative delta pushed `phase` out of its [0,1) contract.
+  const dt = Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 0;
+  const rate = Number.isFinite(mSpeed) ? Math.max(0, mSpeed) : 0;
+  const base = Number.isFinite(phase) ? phase : 0;
+  const next = base + (dt / 1000) * WALK_CYCLES_PER_SECOND * rate;
+  // Guard the modulo too: a negative or non-finite `base` must not escape.
+  const wrapped = next % 1;
+  return Number.isFinite(wrapped) ? (wrapped + 1) % 1 : 0;
 }
