@@ -24,7 +24,7 @@ test('anchor offsets reproduce SPEC §7.1 at baseline wakeTarget 420', () => {
   expect(420 + byId.workout!.opensAt).toBe(990); // 16:30
   expect(420 + byId.dinner!.targetAt).toBe(1140); // 19:00
   expect(420 + byId.bedtime!.opensAt).toBe(1350); // 22:30
-  expect(420 + byId.bedtime!.targetAt).toBe(1380); // 23:00
+  expect(420 + byId.bedtime!.targetAt).toBe(1350); // 22:30 [SPEC round-5 ruling: 23:00 crossed urgent nightly]
   expect(byId.wake!.block).toEqual(['toilet', 'brush', 'shower', 'meal']);
 });
 
