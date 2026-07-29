@@ -1,4 +1,4 @@
-import { startTimedActivity, progressTimedActivity, napEligibility, sleepContribution, type ActiveTimedActivity } from '../activities';
+import { startTimedActivity, progressTimedActivity, napEligibility, crossedWakeBoundary, restoreActiveTimedActivity, sleepContribution, type ActiveTimedActivity } from '../activities';
 import { applyBarContributions } from '../bar-deltas';
 import { passiveContribution } from '../rates';
 import { toFixed } from '../fixed';
@@ -106,15 +106,73 @@ test('composed tick: Meal fill + passive decay commit once through the reducer',
   expect(after.nutrition).toBe(toFixed(50) + 17_500 - 400);
 });
 
-test('nap eligibility: below-50 gate, wake-relative window, one effective use per day', () => {
+test('nap eligibility: the window bounds STARTABILITY, not just effectiveness (SPEC §6.2)', () => {
   const nap = activityById('nap');
   if (nap.kind !== 'timed') throw new Error('nap must be timed');
   const wake = 420;
   expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 60, wake, 0)).toEqual({ canStart: true, effective: true });
-  expect(napEligibility(nap, bars(50, 50, 50, 50), wake + 60, wake, 0).canStart).toBe(false);
-  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 59, wake, 0).effective).toBe(false); // before window
-  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 781, wake, 0).effective).toBe(false); // after window
-  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 60, wake, 1).effective).toBe(false); // budget spent
+  expect(napEligibility(nap, bars(50, 50, 50, 50), wake + 60, wake, 0).canStart).toBe(false); // energy gate
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 59, wake, 0).canStart).toBe(false); // before window
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 781, wake, 0).canStart).toBe(false); // after window
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake - 30, wake, 0).canStart).toBe(false); // pre-wake
+  const spent = napEligibility(nap, bars(49, 50, 50, 50), wake + 60, wake, 1);
+  expect(spent).toEqual({ canStart: true, effective: false }); // budget spent: startable, flavor-only
+});
+
+test('the daily effective-use counter resets at the wake boundary, not midnight', () => {
+  const wake = 420;
+  const midnightBefore = 1439;
+  const midnightAfter = 1441;
+  expect(crossedWakeBoundary(midnightBefore, midnightAfter, wake)).toBe(false); // midnight is nothing
+  expect(crossedWakeBoundary(1440 + 419, 1440 + 420, wake)).toBe(true); // Day-2 wake crossing
+  expect(crossedWakeBoundary(1440 + 420, 1440 + 421, wake)).toBe(false); // already past it
+  expect(crossedWakeBoundary(419, 419 + 1440, wake)).toBe(true); // a full day always crosses once
+  expect(() => crossedWakeBoundary(10, 5, wake)).toThrow();
+});
+
+test('activities with an effective-use budget refuse to start without an explicit decision', () => {
+  const nap = activityById('nap');
+  expect(() => startTimedActivity(nap, bars(40, 50, 50, 50), rates)).toThrow(/effectiveUse/);
+});
+
+test('fillStartTick round-half-up is exact in integers (the 45×0.7 float trap)', () => {
+  const synthetic = {
+    id: 'synthetic-70',
+    kind: 'timed',
+    object: 'bench',
+    baseMin: 45,
+    effects: { movement: 10 },
+    fillStartsAfterFraction: 0.7,
+  } as const;
+  // Energy 50 → mSpeed 1.0 → 45 ticks; 45 × 0.7 = 31.5 decimal → rounds UP to 32.
+  const a = startTimedActivity(synthetic, bars(50, 50, 50, 50), rates);
+  expect(a.durationTicks).toBe(45);
+  expect(a.fillStartTick).toBe(32);
+});
+
+test('the ≥1-fill-tick clamp grants the full total even at extreme fractions', () => {
+  const synthetic = {
+    id: 'synthetic-clamp',
+    kind: 'timed',
+    object: 'bench',
+    baseMin: 1,
+    effects: { movement: 3 },
+    fillStartsAfterFraction: 0.9,
+  } as const;
+  const a = startTimedActivity(synthetic, bars(0, 50, 50, 50), rates); // 2 ticks at mSpeed 0.5
+  expect(a.fillStartTick).toBeLessThanOrEqual(a.durationTicks - 1);
+  const done = runTicks(a, a.durationTicks);
+  expect(done.totals.movement).toBe(toFixed(3));
+  expect(done.active).toBeNull();
+});
+
+test('a corrupt persisted DTO is rejected on restore', () => {
+  const a = startTimedActivity(activityById('meal'), bars(100, 50, 50, 50), rates);
+  const good = JSON.parse(JSON.stringify(progressTimedActivity(a).next));
+  expect(() => restoreActiveTimedActivity(good)).not.toThrow();
+  expect(() => restoreActiveTimedActivity({ ...good, fillStartTick: 99 })).toThrow();
+  expect(() => restoreActiveTimedActivity({ ...good, elapsedTicks: good.durationTicks })).toThrow();
+  expect(() => restoreActiveTimedActivity({ ...good, effectTotalsFixed: { nutrition: 1.5 } })).toThrow();
 });
 
 test('first effective nap nets exactly +10 with passive Energy suppressed; others keep awake decay', () => {

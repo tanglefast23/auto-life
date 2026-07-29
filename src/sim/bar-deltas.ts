@@ -14,6 +14,19 @@ export interface BarContribution {
 const MAX = toFixed(100);
 
 export function applyBarContributions(bars: Bars, contributions: readonly BarContribution[]): Bars {
+  // Corrupt persisted state must surface at the commit point, not flow through as NaN.
+  for (const id of BAR_IDS) {
+    if (!Number.isSafeInteger(bars[id])) {
+      throw new Error(`input bar "${id}" is not a safe integer: ${bars[id]}`);
+    }
+  }
+  // Double-applying a contribution is the exact mistake the one-commit rule exists
+  // to prevent; a repeated source is an engine bug, so it throws rather than sums.
+  const seen = new Set<string>();
+  for (const c of contributions) {
+    if (seen.has(c.source)) throw new Error(`duplicate contribution source "${c.source}"`);
+    seen.add(c.source);
+  }
   const next: Bars = { ...bars };
   for (const id of BAR_IDS) {
     let sum = 0;

@@ -27,6 +27,15 @@ test('a missing weight fails (exhaustive enum record)', () => {
   expect(() => RatesSchema.parse(bad)).toThrow();
 });
 
+test('rates with more than two decimals fail (must survive ratePerMinuteFixed)', () => {
+  const bad = cloned();
+  (bad.rates as Record<string, { awake: number }>).energy!.awake = 3.333;
+  expect(() => RatesSchema.parse(bad)).toThrow();
+  const badSleep = cloned();
+  badSleep.sleepRestorePerHour = 10.005;
+  expect(() => RatesSchema.parse(badSleep)).toThrow();
+});
+
 test('negative and non-finite rates fail', () => {
   const neg = cloned();
   (neg.rates as Record<string, { awake: number }>).energy!.awake = -1;

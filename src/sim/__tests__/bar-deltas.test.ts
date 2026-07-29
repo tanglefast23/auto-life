@@ -49,6 +49,17 @@ test('non-integer deltas are rejected with the source named', () => {
   expect(() => applyBarContributions(full(), [{ source: 'bad', deltas: { energy: 0.5 } }])).toThrow(/bad/);
 });
 
+test('corrupt input bars surface at the commit point, never flow through as NaN', () => {
+  const b = full();
+  b.energy = NaN;
+  expect(() => applyBarContributions(b, [])).toThrow(/energy/);
+});
+
+test('duplicate contribution sources throw — the double-apply tripwire', () => {
+  const c = passiveContribution('awake', rates);
+  expect(() => applyBarContributions(full(), [c, c])).toThrow(/duplicate/);
+});
+
 test('16 awake hours drain Energy exactly 100 -> 20', () => {
   let bars = full();
   for (let t = 0; t < 960; t++) bars = applyBarContributions(bars, [passiveContribution('awake', rates)]);

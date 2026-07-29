@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { fillDelta, ratePerMinuteFixed, toFixed, toDisplay } from './fixed';
 import { isWellFedAtStart, mSpeedAtStart } from './bars';
 import type { ActivityDef, RatesConfig, TimedActivityDef } from './content-schemas';
@@ -48,7 +49,30 @@ export function napEligibility(
   const offset = minuteOfDayValue - wakeTarget;
   const inWindow = w !== undefined && offset >= w.wakeOffsetStart && offset <= w.wakeOffsetEnd;
   const budget = (def.effectiveUsesPerDay ?? 0) > effectiveUsesToday;
-  return { canStart: below, effective: below && inWindow && budget };
+  // SPEC §6.2: the window bounds STARTABILITY, not just effectiveness — no 23:00 naps.
+  const canStart = below && inWindow;
+  return { canStart, effective: canStart && budget };
+}
+
+/**
+ * Wake-boundary predicate: the daily effective-use counter (and any per-day state)
+ * resets when the clock crosses the sim's wakeTarget — never at arbitrary midnight.
+ * P2's engine calls this each tick with the minute just simulated and the next one.
+ */
+export function crossedWakeBoundary(
+  prevAbsoluteMinute: number,
+  nextAbsoluteMinute: number,
+  wakeTarget: number,
+): boolean {
+  if (
+    !Number.isInteger(prevAbsoluteMinute) ||
+    !Number.isInteger(nextAbsoluteMinute) ||
+    nextAbsoluteMinute < prevAbsoluteMinute
+  ) {
+    throw new Error('invalid minute range');
+  }
+  const wakesUpTo = (m: number) => Math.floor((m - wakeTarget) / 1440);
+  return wakesUpTo(nextAbsoluteMinute) > wakesUpTo(prevAbsoluteMinute);
 }
 
 export interface StartOptions {
@@ -66,17 +90,26 @@ export function startTimedActivity(
   if (def.kind !== 'timed') {
     throw new Error(`activity "${def.id}" (${def.kind}) cannot start as a timed activity`);
   }
+  // The one exploit-adjacent flag must not fail open: activities with a daily
+  // effective-use budget require the caller to state the eligibility decision.
+  if (def.effectiveUsesPerDay !== undefined && options.effectiveUse === undefined) {
+    throw new Error(`activity "${def.id}" has a daily effective-use budget — pass options.effectiveUse from napEligibility`);
+  }
   const effectiveUse = options.effectiveUse ?? true;
   const mSpeed = mSpeedAtStart(bars);
   const wellFed = isWellFedAtStart(bars, cfg);
   const durationTicks = Math.max(1, Math.ceil(def.baseMin / mSpeed));
 
-  // Explicit rounding rule: floor((ticks*frac*10 + 5) / 10) — decimal round-half-up,
-  // immune to binary-float artifacts like 31.499999999999996; ≥1 fill tick guaranteed.
+  // Explicit rounding rule, computed IN INTEGERS so it is exactly decimal
+  // round-half-up (a float form of this comment previously lied: 45×0.7 gave 31,
+  // not 32 — caught by the round-1 math adversary). The schema constrains the
+  // fraction to two decimals, so frac×100 is integer-representable; ≥1 fill tick
+  // is guaranteed by the min() clamp.
   const frac = def.fillStartsAfterFraction ?? 0;
+  const frac100 = Math.round(frac * 100);
   const fillStartTick = Math.min(
     durationTicks - 1,
-    Math.floor((durationTicks * frac * 10 + 5) / 10),
+    Math.floor((durationTicks * frac100 + 50) / 100),
   );
 
   const isWorkout = def.tags?.includes('workout') ?? false;
@@ -99,6 +132,31 @@ export function startTimedActivity(
     suppressPassiveEnergy: (def.suppressPassiveEnergyWhenEffective ?? false) && effectiveUse,
     sampled: { mSpeed, wellFed, effectiveUse },
   };
+}
+
+/** Untrusted-restore validator for the save-bound DTO (mirrors the PRNG snapshot schema). */
+export const ActiveTimedActivitySchema = z
+  .strictObject({
+    activityId: z.string().min(1),
+    durationTicks: z.number().int().positive(),
+    elapsedTicks: z.number().int().min(0),
+    fillStartTick: z.number().int().min(0),
+    effectTotalsFixed: z.partialRecord(
+      z.enum(['energy', 'nutrition', 'movement', 'hygiene']),
+      z.number().int().refine(Number.isSafeInteger, 'totals must be safe integers'),
+    ),
+    suppressPassiveEnergy: z.boolean(),
+    sampled: z.strictObject({
+      mSpeed: z.number().min(0.5).max(1.5),
+      wellFed: z.boolean(),
+      effectiveUse: z.boolean(),
+    }),
+  })
+  .refine((a) => a.elapsedTicks < a.durationTicks, 'elapsedTicks must be below durationTicks')
+  .refine((a) => a.fillStartTick < a.durationTicks, 'fillStartTick must be below durationTicks');
+
+export function restoreActiveTimedActivity(raw: unknown): ActiveTimedActivity {
+  return ActiveTimedActivitySchema.parse(raw);
 }
 
 export interface ProgressResult {
