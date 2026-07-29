@@ -19,6 +19,7 @@ import { healthDisplay, isWellFedAtStart, mOutAtStart, mSpeedAtStart } from './b
 import { toDisplay, toFixed } from './fixed';
 import { activityByIdIn, objectForActivityIn, type ContentRegistry } from './content';
 import type { SimState } from './state';
+import { deriveRenderView, type RenderView } from './render-view';
 import { type BarId } from './types';
 
 export type Command =
@@ -49,6 +50,12 @@ export interface SimSnapshot {
    */
   processed: 'travel' | 'activity' | 'sleep' | 'idle';
   practicePoints: number;
+  /**
+   * Everything the renderer needs and nothing it does not (P3 T3, master §4's
+   * "snapshots and interpolation data"). Derived per tick from state — never stored,
+   * so `SimState`, the golden digest, and `ENGINE_VERSION` are all untouched.
+   */
+  render: RenderView;
 }
 
 const STOP_SUPPRESSION_MIN = 60;
@@ -391,6 +398,7 @@ export function step(
     currentLabel: s.current === null ? 'idle' : s.current.type === 'activity' ? s.current.dto.activityId : s.current.type,
     processed,
     practicePoints: s.practice.points100 / 100,
+    render: deriveRenderView(s, content),
   };
   return { next: s, events, snapshot };
 }
