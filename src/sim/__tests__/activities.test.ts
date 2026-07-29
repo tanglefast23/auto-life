@@ -1,0 +1,148 @@
+import { startTimedActivity, progressTimedActivity, napEligibility, sleepContribution, type ActiveTimedActivity } from '../activities';
+import { applyBarContributions } from '../bar-deltas';
+import { passiveContribution } from '../rates';
+import { toFixed } from '../fixed';
+import { activityById, content } from '../content';
+import type { Bars } from '../types';
+
+const rates = content.rates;
+const bars = (e: number, n: number, m: number, h: number): Bars =>
+  ({ energy: toFixed(e), nutrition: toFixed(n), movement: toFixed(m), hygiene: toFixed(h) });
+
+const runTicks = (a: ActiveTimedActivity, ticks: number) => {
+  let active: ActiveTimedActivity | null = a;
+  const totals: Partial<Record<string, number>> = {};
+  for (let t = 0; t < ticks; t++) {
+    if (!active) throw new Error('activity ended early');
+    const r = progressTimedActivity(active);
+    for (const [bar, d] of Object.entries(r.contribution.deltas)) totals[bar] = (totals[bar] ?? 0) + (d as number);
+    active = r.next;
+  }
+  return { active, totals };
+};
+
+test('duration = ceil(baseMin / mSpeed), sampled once at start', () => {
+  expect(startTimedActivity(activityById('shower'), bars(100, 50, 50, 50), rates).durationTicks).toBe(14);
+  expect(startTimedActivity(activityById('shower'), bars(0, 50, 50, 50), rates).durationTicks).toBe(40);
+});
+
+test('non-timed kinds are rejected by the timed starter', () => {
+  for (const id of ['sleep', 'idle', 'practice']) {
+    expect(() => startTimedActivity(activityById(id), bars(100, 50, 50, 50), rates)).toThrow(id);
+  }
+});
+
+test('Meal at Energy 100: 20 ticks, first 8 grant nothing, final 12 grant exactly +35', () => {
+  const a = startTimedActivity(activityById('meal'), bars(100, 50, 50, 50), rates);
+  expect(a.durationTicks).toBe(20);
+  expect(a.fillStartTick).toBe(8);
+  const prep = runTicks(a, 8);
+  expect(prep.totals.nutrition ?? 0).toBe(0);
+  const rest = runTicks(prep.active!, 12);
+  expect(rest.totals.nutrition).toBe(toFixed(35));
+  expect(rest.active).toBeNull();
+});
+
+test('stopping Weights halfway: exactly +25 Movement and −2.5 Nutrition already accrued', () => {
+  const a = startTimedActivity(activityById('weights'), bars(100, 50, 50, 50), rates); // 40 ticks
+  const half = runTicks(a, 20);
+  expect(half.totals.movement).toBe(toFixed(25));
+  expect(half.totals.nutrition).toBe(toFixed(-2.5));
+});
+
+test('stopping one tick before completion cannot dodge the proportional cross-cost', () => {
+  const a = startTimedActivity(activityById('weights'), bars(100, 50, 50, 50), rates);
+  const almost = runTicks(a, 39);
+  const cost = almost.totals.nutrition!;
+  expect(cost).toBeLessThanOrEqual(toFixed(-2.5) * 1.9); // ~39/40 of −5 already paid
+  expect(cost).toBeGreaterThanOrEqual(toFixed(-5));
+});
+
+test('Well-fed boosts only the positive workout output, sampled at start', () => {
+  const fed = startTimedActivity(activityById('weights'), bars(100, 70, 50, 50), rates);
+  expect(fed.effectTotalsFixed.movement).toBe(toFixed(55)); // 50 × 1.10
+  expect(fed.effectTotalsFixed.nutrition).toBe(toFixed(-5)); // cost unchanged
+
+  const under = bars(100, 70, 50, 50);
+  under.nutrition -= 1; // one fixed unit below threshold
+  const unfed = startTimedActivity(activityById('weights'), under, rates);
+  expect(unfed.effectTotalsFixed.movement).toBe(toFixed(50));
+  expect(unfed.sampled.wellFed).toBe(false);
+});
+
+test('input bars are never mutated by start', () => {
+  const b = bars(100, 70, 50, 50);
+  startTimedActivity(activityById('weights'), b, rates);
+  expect(b).toEqual(bars(100, 70, 50, 50));
+});
+
+test('JSON round-trip halfway through a Meal completes identically', () => {
+  const a = startTimedActivity(activityById('meal'), bars(100, 50, 50, 50), rates);
+  const straight = runTicks(a, 20);
+
+  const b = startTimedActivity(activityById('meal'), bars(100, 50, 50, 50), rates);
+  const firstHalf = runTicks(b, 10);
+  const revived = JSON.parse(JSON.stringify(firstHalf.active)) as ActiveTimedActivity;
+  const secondHalf = runTicks(revived, 10);
+  expect((firstHalf.totals.nutrition ?? 0) + (secondHalf.totals.nutrition ?? 0)).toBe(straight.totals.nutrition);
+  expect(secondHalf.active).toBeNull();
+});
+
+test('progressing a copy never changes the original DTO', () => {
+  const a = startTimedActivity(activityById('meal'), bars(100, 50, 50, 50), rates);
+  const frozen = JSON.stringify(a);
+  progressTimedActivity(a);
+  expect(JSON.stringify(a)).toBe(frozen);
+});
+
+test('composed tick: Meal fill + passive decay commit once through the reducer', () => {
+  const start = bars(100, 50, 50, 50);
+  const a = startTimedActivity(activityById('meal'), start, rates);
+  // Jump to the first fill tick (tick 9 overall; fillIndex 1 of 12 → floor(35*6000/12)=17500).
+  let active: ActiveTimedActivity | null = a;
+  for (let t = 0; t < 8; t++) active = progressTimedActivity(active!).next;
+  const r = progressTimedActivity(active!);
+  const after = applyBarContributions(start, [r.contribution, passiveContribution('awake', rates)]);
+  expect(after.nutrition).toBe(toFixed(50) + 17_500 - 400);
+});
+
+test('nap eligibility: below-50 gate, wake-relative window, one effective use per day', () => {
+  const nap = activityById('nap');
+  if (nap.kind !== 'timed') throw new Error('nap must be timed');
+  const wake = 420;
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 60, wake, 0)).toEqual({ canStart: true, effective: true });
+  expect(napEligibility(nap, bars(50, 50, 50, 50), wake + 60, wake, 0).canStart).toBe(false);
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 59, wake, 0).effective).toBe(false); // before window
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 781, wake, 0).effective).toBe(false); // after window
+  expect(napEligibility(nap, bars(49, 50, 50, 50), wake + 60, wake, 1).effective).toBe(false); // budget spent
+});
+
+test('first effective nap nets exactly +10 with passive Energy suppressed; others keep awake decay', () => {
+  const nap = activityById('nap');
+  const a = startTimedActivity(nap, bars(40, 50, 50, 50), rates, { effectiveUse: true });
+  expect(a.suppressPassiveEnergy).toBe(true);
+  expect(a.durationTicks).toBe(50); // ceil(45 / 0.9) at Energy 40
+  let active: ActiveTimedActivity | null = a;
+  let barsNow = bars(40, 50, 50, 50);
+  while (active) {
+    const r = progressTimedActivity(active);
+    barsNow = applyBarContributions(barsNow, [r.contribution, passiveContribution('effectiveNap', rates)]);
+    active = r.next;
+  }
+  expect(barsNow.energy).toBe(toFixed(50)); // +10 net, no passive Energy drain
+  expect(barsNow.hygiene).toBe(toFixed(50) - 50 * 300); // awake decay continued
+});
+
+test('later naps are flavor-only: zero restore, ordinary awake decay', () => {
+  const nap = activityById('nap');
+  const a = startTimedActivity(nap, bars(40, 50, 50, 50), rates, { effectiveUse: false });
+  expect(a.suppressPassiveEnergy).toBe(false);
+  expect(a.effectTotalsFixed).toEqual({});
+  const r = progressTimedActivity(a);
+  const after = applyBarContributions(bars(40, 50, 50, 50), [r.contribution, passiveContribution('awake', rates)]);
+  expect(after.energy).toBe(toFixed(40) - 500); // normal drain — no Energy-freeze exploit
+});
+
+test('sleep restore is +10/h exactly, never scaled', () => {
+  expect(sleepContribution(rates).deltas).toEqual({ energy: 1000 });
+});
