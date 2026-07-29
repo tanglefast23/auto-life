@@ -33,6 +33,7 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "validate:content": "tsx scripts/validate-content.ts",
+    "art:a0": "tsx scripts/art/build-a0-sheet.ts",
     "check": "npm run validate:content && npm run typecheck && npm test",
     "postinstall": "setup-skia-web public",
     "setup:skia-web": "setup-skia-web public",
