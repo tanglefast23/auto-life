@@ -69,7 +69,6 @@ test("nap's effective-use fields form one coherent rule, both directions", () =>
   expect(() => ActivitiesSchema.parse(windowOnly)).toThrow(/together/);
 
   const budgetOnly = cloned();
-  windowOnly.activities.find((a) => a.id === 'stretch');
   budgetOnly.activities.find((a) => a.id === 'stretch')!.effectiveUsesPerDay = 1;
   expect(() => ActivitiesSchema.parse(budgetOnly)).toThrow(/together/);
 });
@@ -94,6 +93,10 @@ test('fraction, threshold, and magnitude refines reject out-of-grid content', ()
   const hugeEffect = cloned();
   (hugeEffect.activities.find((a) => a.id === 'snack')!.effects as Record<string, number>).nutrition = 1e300;
   expect(() => ActivitiesSchema.parse(hugeEffect)).toThrow(/magnitude/);
+
+  const marathon = cloned();
+  marathon.activities.find((a) => a.id === 'weights')!.baseMin = 1441; // beyond the one-day cap
+  expect(() => ActivitiesSchema.parse(marathon)).toThrow();
 });
 
 test('quick-option invariant holds in the shipped content (SPEC §6.2)', () => {

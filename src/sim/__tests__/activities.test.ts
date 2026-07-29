@@ -128,6 +128,8 @@ test('the daily effective-use counter resets at the wake boundary, not midnight'
   expect(crossedWakeBoundary(1440 + 420, 1440 + 421, wake)).toBe(false); // already past it
   expect(crossedWakeBoundary(419, 419 + 1440, wake)).toBe(true); // a full day always crosses once
   expect(() => crossedWakeBoundary(10, 5, wake)).toThrow();
+  expect(() => crossedWakeBoundary(0, 1, 1440)).toThrow(/wakeTarget/);
+  expect(() => crossedWakeBoundary(0, 1, -1)).toThrow(/wakeTarget/);
 });
 
 test('activities with an effective-use budget refuse to start without an explicit decision', () => {
@@ -144,7 +146,7 @@ test('durationTicks is exact integer ceil-division (the baseMin-17 float trap)',
     effects: { movement: 10 },
   } as const;
   // Energy exactly 18.00 → mSpeed 0.68; 17/0.68 = 25 exactly, but the float form
-  // computed 25.000000000000004 → ceil 26 (round-2 math adversary, 99 of 79.2M cases).
+  // computed 25.000000000000004 → ceil 26 (round-2/3 math adversary: 106 of 79.2M cases, domain energyFixed 0..600000 x baseMin 1..132).
   const a = startTimedActivity(synthetic, bars(18, 50, 50, 50), rates);
   expect(a.durationTicks).toBe(25);
 });

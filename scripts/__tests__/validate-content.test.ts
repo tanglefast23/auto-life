@@ -35,6 +35,10 @@ test('rate magnitude and grid-positivity bounds hold', () => {
   const dust = cloned();
   dust.sleepRestorePerHour = 1e-12; // float-positive but quantizes to a zero delta
   expect(() => RatesSchema.parse(dust)).toThrow(/0\.01/);
+
+  const greedyBonus = cloned();
+  (greedyBonus.wellFed as { outputBonus: number }).outputBonus = 11;
+  expect(() => RatesSchema.parse(greedyBonus)).toThrow();
 });
 
 test('rates with more than two decimals fail (must survive ratePerMinuteFixed)', () => {

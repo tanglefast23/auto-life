@@ -45,7 +45,7 @@ export const RatesSchema = z.strictObject({
   weights: z.record(BarIdSchema, z.number().finite().positive()),
   wellFed: z.strictObject({
     threshold: z.number().finite().min(0).max(100),
-    outputBonus: z.number().finite().min(0),
+    outputBonus: z.number().finite().min(0).max(10),
   }),
   displayBands: z.strictObject({
     default: BandSchema,
@@ -78,7 +78,9 @@ const TimedActivitySchema = z
   .strictObject({
     ...ActivityBase,
     kind: z.literal('timed'),
-    baseMin: z.number().int().positive(),
+    // ≤1440 (one full day): the integer duration derivation is proven exact on this
+    // domain, and a longer "timed" activity is content nonsense anyway.
+    baseMin: z.number().int().positive().max(1440),
     effects: BarEffectsSchema,
     tags: z.array(z.enum(['workout'])).optional(),
     // Two-decimal grid so fillStartTick's integer round-half-up is exact (frac×100 ∈ 0…99;

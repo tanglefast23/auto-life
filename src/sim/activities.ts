@@ -109,7 +109,8 @@ export function startTimedActivity(
   const mSpeed = mSpeedAtStart(bars);
   const wellFed = isWellFedAtStart(bars, cfg);
   // Duration derived in INTEGERS (round-2 math adversary: the float form
-  // ceil(baseMin / mSpeed) over-counted by +1 in 99 of 79.2M cases — e.g. baseMin 17
+  // ceil(baseMin / mSpeed) over-counted by +1 in 106 of 79.2M cases (count re-derived
+  // in critic round 3 from the git-archived pre-fix expression, energyFixed 0..600000 x baseMin 1..132) — e.g. baseMin 17
   // at Energy 18.00 → 26 instead of 25). mSpeed = (300000 + energyFixed) / 600000,
   // so duration = ceil(baseMin × 600000 / (300000 + energyFixed)), exactly.
   const denom = 300_000 + bars.energy;
