@@ -1,0 +1,14 @@
+{
+  "anchors": [
+    { "id": "wake",    "opensAt": 0,   "closesAt": 60,  "targetAt": 0,
+      "block": ["toilet", "brush", "shower", "meal"], "gate": null },
+    { "id": "lunch",   "opensAt": 300, "closesAt": 480, "targetAt": 360,
+      "block": ["meal"], "gate": { "bar": "nutrition", "below": 90, "noMealWithinMin": 180 } },
+    { "id": "workout", "opensAt": 570, "closesAt": 780, "targetAt": 630,
+      "block": ["__preferredWorkout"], "gate": { "bar": "movement", "below": 70 } },
+    { "id": "dinner",  "opensAt": 660, "closesAt": 840, "targetAt": 720,
+      "block": ["meal"], "gate": { "bar": "nutrition", "below": 90, "noMealWithinMin": 180 } },
+    { "id": "bedtime", "opensAt": 930, "closesAt": 960, "targetAt": 960,
+      "block": ["brush", "sleep"], "gate": null }
+  ]
+}

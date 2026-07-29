@@ -1,0 +1,15 @@
+{
+  "weights": { "energy": 4, "nutrition": 3, "hygiene": 2, "movement": 1 },
+  "urgentThreshold": 15,
+  "neverUrgent": ["movement"],
+  "rules": [
+    { "id": "snack",       "bar": "nutrition", "below": 35, "activity": "snack",   "window": null,
+      "supersededBelow": { "value": 20, "activity": "meal" }, "exclusiveGroup": "food" },
+    { "id": "nap",         "bar": "energy",    "below": 30, "activity": "nap",     "window": [60, 780],
+      "exclusiveGroup": "rest" },
+    { "id": "urgentSleep", "bar": "energy",    "below": 15, "activity": "sleep",   "window": null,
+      "exclusiveGroup": "rest", "supersedesGroup": true },
+    { "id": "shower",      "bar": "hygiene",   "below": 40, "activity": "shower",  "window": null },
+    { "id": "stretch",     "bar": "movement",  "below": 35, "activity": "stretch", "window": [60, 840] }
+  ]
+}

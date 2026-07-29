@@ -147,3 +147,139 @@ export const ActivitiesSchema = z
     }
   });
 export type ActivitiesConfig = z.infer<typeof ActivitiesSchema>;
+
+// ---------- planner content (SPEC §7.1–§7.3, §6.7, §8; offsets are minutes from wakeTarget) ----------
+
+const WakeOffset = z.number().int().min(-1439).max(1439);
+
+const AnchorGateSchema = z
+  .strictObject({
+    bar: BarIdSchema,
+    below: z.number().min(0).max(100),
+    noMealWithinMin: z.number().int().positive().optional(),
+  })
+  .nullable();
+
+export const AnchorsSchema = z
+  .strictObject({
+    anchors: z
+      .array(
+        z
+          .strictObject({
+            id: z.string().min(1),
+            opensAt: WakeOffset,
+            closesAt: WakeOffset,
+            targetAt: WakeOffset,
+            block: z.array(z.string().min(1)).min(1),
+            gate: AnchorGateSchema,
+          })
+          .refine((a) => a.opensAt <= a.targetAt && a.targetAt <= a.closesAt, 'opensAt ≤ targetAt ≤ closesAt'),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    const seen = new Set<string>();
+    for (const a of doc.anchors) {
+      if (seen.has(a.id)) ctx.addIssue({ code: 'custom', message: `duplicate anchor id "${a.id}"` });
+      seen.add(a.id);
+    }
+  });
+export type AnchorsConfig = z.infer<typeof AnchorsSchema>;
+export type AnchorDef = AnchorsConfig['anchors'][number];
+
+export const ReactiveSchema = z.strictObject({
+  weights: z.record(BarIdSchema, z.number().positive()).refine(
+    (w) => !('movement' in w) || w.movement !== undefined,
+    'weights must be exhaustive',
+  ),
+  urgentThreshold: z.number().min(0).max(100),
+  neverUrgent: z.array(BarIdSchema),
+  rules: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1),
+        bar: BarIdSchema,
+        below: z.number().min(0).max(100),
+        activity: z.string().min(1),
+        window: z.tuple([WakeOffset, WakeOffset]).nullable(),
+        supersededBelow: z.strictObject({ value: z.number().min(0).max(100), activity: z.string().min(1) }).optional(),
+        exclusiveGroup: z.string().min(1).optional(),
+        supersedesGroup: z.boolean().optional(),
+      }),
+    )
+    .min(1),
+});
+export type ReactiveConfig = z.infer<typeof ReactiveSchema>;
+export type ReactiveRule = ReactiveConfig['rules'][number];
+
+const AdjacencyEffectSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('halveDuration') }),
+  z.strictObject({
+    kind: z.literal('scaleDecay'),
+    bar: BarIdSchema,
+    factor: z.number().gt(0).lt(1),
+    durationMin: z.number().int().positive().max(1440),
+  }),
+  z.strictObject({
+    kind: z.literal('barDelta'),
+    deltas: z.partialRecord(BarIdSchema, z.number().finite().refine((v) => Math.abs(v) <= 100, 'magnitude ≤ 100')),
+  }),
+  z.strictObject({
+    kind: z.literal('scalePoints'),
+    factor: z.number().gt(1).max(2),
+    appliesTo: z.enum(['thatPractice', 'firstPracticeBeforeMorningCheck']),
+  }),
+]);
+
+export const AdjacencySchema = z
+  .strictObject({
+    pairs: z
+      .array(
+        z
+          .strictObject({
+            id: z.string().min(1),
+            first: z.string().min(1).optional(),
+            firstTag: z.enum(['workout']).optional(),
+            second: z.string().min(1).optional(),
+            secondTag: z.enum(['workout']).optional(),
+            gapMaxMin: z.number().int().min(0).max(1440),
+            effect: AdjacencyEffectSchema,
+          })
+          .refine((p) => (p.first !== undefined) !== (p.firstTag !== undefined), 'exactly one of first/firstTag')
+          .refine((p) => (p.second !== undefined) !== (p.secondTag !== undefined), 'exactly one of second/secondTag'),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    const seen = new Set<string>();
+    for (const p of doc.pairs) {
+      if (seen.has(p.id)) ctx.addIssue({ code: 'custom', message: `duplicate pair id "${p.id}"` });
+      seen.add(p.id);
+    }
+  });
+export type AdjacencyConfig = z.infer<typeof AdjacencySchema>;
+export type AdjacencyPair = AdjacencyConfig['pairs'][number];
+
+const CurveSchema = z
+  .array(z.number().gt(0).max(1))
+  .min(1)
+  .max(8)
+  .refine((c) => c.every((v, i) => i === 0 || v <= (c[i - 1] as number)), 'curves must be non-increasing')
+  .refine((c) => c[0] === 1.0, 'curves start at 1.0');
+
+export const PracticeSchema = z
+  .strictObject({
+    basePoints: z.number().int().positive().max(1000),
+    scatteredCurve: CurveSchema,
+    blockCurve: CurveSchema,
+    maxCountedSessionsPerDay: z.number().int().positive().max(24),
+    levels: z
+      .array(z.number().int().positive())
+      .min(1)
+      .refine((l) => l.every((v, i) => i === 0 || v > (l[i - 1] as number)), 'levels strictly increase'),
+  })
+  .refine(
+    (p) => p.scatteredCurve.length >= p.maxCountedSessionsPerDay && p.blockCurve.length >= p.maxCountedSessionsPerDay,
+    'curves must cover maxCountedSessionsPerDay',
+  );
+export type PracticeConfig = z.infer<typeof PracticeSchema>;
