@@ -17,6 +17,8 @@ export interface ActiveTimedActivity {
   fillStartTick: number;
   effectTotalsFixed: Partial<Record<BarId, number>>;
   suppressPassiveEnergy: boolean;
+  /** Decay-modifier sources granted at THIS start — §6.7 stop-cancels-bonus removes exactly these. */
+  grantedModifierSources?: string[];
   sampled: {
     mSpeed: number;
     wellFed: boolean;
@@ -164,6 +166,7 @@ export const ActiveTimedActivitySchema = z
       z.number().int().refine(Number.isSafeInteger, 'totals must be safe integers'),
     ),
     suppressPassiveEnergy: z.boolean(),
+    grantedModifierSources: z.array(z.string().min(1)).optional(),
     sampled: z.strictObject({
       mSpeed: z.number().min(0.5).max(1.5),
       wellFed: z.boolean(),

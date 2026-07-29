@@ -11,7 +11,8 @@ import {
 import { anchorsToEnqueue, isMissed, resolveBlock } from './planner/anchors';
 import { evaluateReactive } from './planner/reactive';
 import { sortReactivesAroundBlocks } from './planner';
-import { autoCleanup, hasAutoCardFor, insertPlayerCard, isSuppressed, objectClick, removeCard, type QueueCard } from './queue';
+import { autoCleanup, canPlayerInsert, hasAutoCardFor, insertPlayerCard, isSuppressed, objectClick, removeCard, type QueueCard } from './queue';
+import { isUrgentBarValue } from './planner/priority';
 import { buildWalkGrid, findPath, travelTicks } from './travel';
 import { dayNumber, minuteOfDay, morningCheckMinute, targetsFor } from './clock';
 import { healthDisplay, isWellFedAtStart, mOutAtStart, mSpeedAtStart } from './bars';
@@ -82,15 +83,29 @@ export function step(
   // ---- stage 1: commands at the minute boundary ----
   for (const cmd of commands) {
     if (cmd.type === 'insertPlayer') {
-      s.queue = insertPlayerCard(s.queue, { id: `c${s.nextCardSeq++}`, activityId: cmd.activityId, enqueuedTick: now, blockId: undefined });
+      // Over-cap inserts are rejected per-command — a raw player command must
+      // never abort the tick (round-2; P4 pre-validates but the engine is the law).
+      if (canPlayerInsert(s.queue)) {
+        s.queue = insertPlayerCard(s.queue, { id: `c${s.nextCardSeq++}`, activityId: cmd.activityId, enqueuedTick: now, blockId: undefined });
+      }
     } else if (cmd.type === 'objectClick') {
-      s.queue = objectClick(s.queue, cmd.activityId, `c${s.nextCardSeq++}`, now);
+      if (s.queue.some((c) => c.activityId === cmd.activityId) || canPlayerInsert(s.queue)) {
+        s.queue = objectClick(s.queue, cmd.activityId, `c${s.nextCardSeq++}`, now);
+      }
     } else if (cmd.type === 'removeCard') {
       const card = s.queue.find((c) => c.id === cmd.cardId);
-      if (card?.blockId) s.anchorsConsumedOnDay[card.blockId.split('#')[0] ?? ''] = today; // Q4
+      // Q4: deleting a block card consumes the anchor for the BLOCK'S day, not
+      // today's — a stale bedtime deleted after midnight must not eat tonight's.
+      if (card?.blockId) {
+        const [anchorId = '', blockDay] = card.blockId.split('#');
+        s.anchorsConsumedOnDay[anchorId] = blockDay !== undefined ? Number(blockDay) : today;
+      }
       const r = removeCard(s.queue, cmd.cardId, now, s.suppression);
       s.queue = r.queue;
       s.suppression = r.suppression;
+      // Removing the travel target stops the walk — nobody keeps walking to a
+      // task that no longer exists.
+      if (s.current?.type === 'travel' && s.current.cardId === cmd.cardId) s.current = null;
     } else if (cmd.type === 'stopCurrent' && s.current) {
       const stoppedId = currentCardId(s);
       const stoppedCard = s.queue.find((c) => c.id === stoppedId);
@@ -98,6 +113,16 @@ export function step(
       // stopping your own pinned card suppresses nothing; travel-toward-AUTO counts.
       if (stoppedCard?.owner === 'AUTO') {
         s.suppression[stoppedCard.activityId] = now + STOP_SUPPRESSION_MIN;
+      }
+      // §6.7 lifecycle: stopping early cancels bonuses granted at THIS start —
+      // the it-sticks modifier a stopped meal banked, the minty arming a stopped
+      // sleep created. Bonuses from other instances are untouched.
+      if (s.current.type === 'activity' && s.current.dto.grantedModifierSources !== undefined) {
+        const granted = s.current.dto.grantedModifierSources;
+        s.decayModifiers = s.decayModifiers.filter((m) => !granted.includes(m.source));
+      }
+      if (s.current.type === 'sleep' && s.current.armedMinty === true) {
+        s.practice.mintyArmed = false;
       }
       if (stoppedId !== null) s.queue = s.queue.filter((c) => c.id !== stoppedId);
       s.current = null;
@@ -144,27 +169,62 @@ export function step(
     if (hasAutoCardFor(s.queue, a.activityId) || a.activityId === runningActivity) continue;
     if (a.activityId === 'nap') {
       const def = activityById('nap');
-      if (def.kind !== 'timed' || !napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday).canStart) continue;
+      // The planner only books EFFECTIVE naps — a budget-exhausted nap is flavor
+      // the player may still pin, never a corrective the sim chains (round-2).
+      if (def.kind !== 'timed' || !napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday).effective) continue;
     }
     s.queue = insertIntoEarliestRun(s.queue, { id: `c${s.nextCardSeq++}`, activityId: a.activityId, owner: 'AUTO', urgent: a.urgent, source: 'reactive', enqueuedTick: now });
-    if (a.urgent) {
+  }
+  // §7.2 row 6: urgency is a LIVE property of the need, not of card creation.
+  // Crisis counting is crossing-based per bar (one urgent event per <15 crossing,
+  // however many cards are added, deleted, or re-added during it); queued cards
+  // serving an urgent bar are promoted to the stage-1 tier and demoted on recovery.
+  const servesBar = new Map<string, BarId>();
+  for (const rule of content.reactive.rules) {
+    servesBar.set(rule.activity, rule.bar);
+    if (rule.supersededBelow) servesBar.set(rule.supersededBelow.activity, rule.bar);
+  }
+  const urgentNowByBar: Partial<Record<BarId, boolean>> = {};
+  for (const bar of ['energy', 'nutrition', 'movement', 'hygiene'] as const) {
+    const urgentNow = isUrgentBarValue(toDisplay(s.bars[bar]), content.reactive, bar);
+    urgentNowByBar[bar] = urgentNow;
+    if (urgentNow && s.urgentActive[bar] !== true) {
+      s.urgentActive[bar] = true;
       s.events.urgentCount += 1;
-      emit('urgent', a.activityId);
+      emit('urgent', bar);
+    } else if (!urgentNow && s.urgentActive[bar] === true) {
+      s.urgentActive[bar] = false;
     }
   }
-  // Auto-cleanup at trigger+10, then order the runs.
+  s.queue = s.queue.map((c) => {
+    const bar = servesBar.get(c.activityId);
+    if (bar === undefined) return c;
+    const urgentNow = urgentNowByBar[bar] === true;
+    return c.urgent === urgentNow ? c : { ...c, urgent: urgentNow };
+  });
+  // Auto-cleanup at trigger+10, then order the runs. A supersession-created card
+  // (Meal from the below-20 clause) cleans at ITS creation threshold (20+10), not
+  // the parent rule's — otherwise it survives to run a second breakfast (round-2).
   s.queue = autoCleanup(s.queue, (card) => {
     if (card.id === runningCardId) return false; // §7.4: only UNSTARTED cards poof
     const rule = content.reactive.rules.find((r) => r.activity === card.activityId || r.supersededBelow?.activity === card.activityId);
     if (!rule) return false;
-    return toDisplay(s.bars[rule.bar]) > rule.below + 10;
+    const trigger = rule.supersededBelow?.activity === card.activityId ? rule.supersededBelow.value : rule.below;
+    return toDisplay(s.bars[rule.bar]) > trigger + 10;
   });
   s.queue = sortReactivesAroundBlocks(s.queue, s.bars, content.reactive);
 
   // ---- stage 3: start the next unit if idle ----
-  if (s.current === null && s.queue.length > 0) {
+  // Startability gates run BEFORE travel (round-2): walking to a card that will
+  // drop on arrival is a visible absurdity, and a dropped card yields the slot to
+  // the next card the same tick instead of idling. beginCard re-checks on arrival —
+  // travel time can change the answer, and arrival-time truth wins.
+  while (s.current === null && s.queue.length > 0) {
     const card = s.queue[0]!;
-    const def = activityById(card.activityId);
+    if (!cardCanBegin(s, card, content)) {
+      s.queue = s.queue.filter((c) => c.id !== card.id);
+      continue;
+    }
     const object = objectForActivity(card.activityId);
     const [ix, iy] = object.interactPoint;
     if (s.position.x !== ix || s.position.y !== iy) {
@@ -174,13 +234,13 @@ export function step(
       const ticks = travelTicks(path.length - 1, s.bars);
       if (ticks > 0) {
         s.current = { type: 'travel', cardId: card.id, path, totalTicks: ticks, elapsedTicks: 0 };
-      } else {
-        s.position = { x: ix, y: iy };
+        break;
       }
+      s.position = { x: ix, y: iy };
     }
-    if (s.current === null) {
-      s.current = beginCard(s, card, content, emit);
-    }
+    s.current = beginCard(s, card, content, emit);
+    if (s.current !== null) break;
+    if (s.queue.some((c) => c.id === card.id)) break; // dropped-nothing safety: never loop on a card beginCard kept
   }
 
   // ---- stage 4: collect named signed deltas ----
@@ -288,6 +348,26 @@ export function step(
   return { next: s, events, snapshot };
 }
 
+/**
+ * Pre-start gates shared by stage-3 selection (before travel) and beginCard
+ * (arrival-time backstop): §6.2 nap window/budget, the anchor-meal no-meal clause.
+ */
+function cardCanBegin(s: SimState, card: QueueCard, content: ContentRegistry): boolean {
+  const def = activityById(card.activityId);
+  const now = s.clock.absoluteMinute;
+  const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
+  if (def.kind === 'timed' && def.effectiveUsesPerDay !== undefined) {
+    const elig = napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday);
+    if (!elig.canStart) return false;
+    // A reactive nap must be EFFECTIVE — the planner never books flavor rest.
+    if (card.source === 'reactive' && !elig.effective) return false;
+  }
+  if (card.source === 'anchor' && def.id === 'meal' && s.lastMealCompletedAt !== null && now - s.lastMealCompletedAt < 180) {
+    return false;
+  }
+  return true;
+}
+
 function beginCard(
   s: SimState,
   card: QueueCard,
@@ -297,19 +377,23 @@ function beginCard(
   const def = activityById(card.activityId);
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
-  // First start of an anchor block consumes the anchor (Q4's counterpart).
+  // First start of an anchor block consumes the anchor for the BLOCK'S own day
+  // (Q4): a bedtime crossing midnight — or a stale leftover starting late — must
+  // never eat the NEW day's anchor (round-2 phantom-bedtime finding).
   if (card.blockId) {
-    const anchorId = card.blockId.split('#')[0] ?? '';
-    s.anchorsConsumedOnDay[anchorId] = dayNumber(now);
+    const [anchorId = '', blockDay] = card.blockId.split('#');
+    s.anchorsConsumedOnDay[anchorId] = blockDay !== undefined ? Number(blockDay) : dayNumber(now);
   }
   if (def.kind === 'sleepWindow') {
     // Minty arms if the previous completion was brush with no intervening completion (§6.7).
     const pair = content.adjacency.pairs.find((p) => p.id === 'minty-fresh')!;
+    let armedNow = false;
     if (s.lastCompletion?.activityId === 'brush' && now - s.lastCompletion.atMinute <= pair.gapMaxMin) {
       s.practice.mintyArmed = true;
+      armedNow = true;
     }
     emit('slept', 'start');
-    return { type: 'sleep', cardId: card.id };
+    return armedNow ? { type: 'sleep', cardId: card.id, armedMinty: true } : { type: 'sleep', cardId: card.id };
   }
   if (def.kind === 'idle') {
     s.queue = s.queue.filter((c) => c.id !== card.id);
@@ -354,17 +438,9 @@ function beginCard(
     return { type: 'activity', cardId: card.id, dto };
   }
   // timed
-  // §6.2: player naps obey the same startability window — an ineligible nap card drops.
-  if (def.effectiveUsesPerDay !== undefined) {
-    const elig = napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday);
-    if (!elig.canStart) {
-      s.queue = s.queue.filter((c) => c.id !== card.id);
-      return null;
-    }
-  }
-  // Anchor meal gate re-check at START (the enqueue-time gate can go stale behind a
-  // running reactive meal): a meal completed within the no-meal clause drops the card.
-  if (card.source === 'anchor' && def.id === 'meal' && s.lastMealCompletedAt !== null && now - s.lastMealCompletedAt < 180) {
+  // Arrival-time backstop for the stage-3 gates: travel time can change the answer
+  // (a meal completes behind a running reactive meal; the nap window closes mid-walk).
+  if (!cardCanBegin(s, card, content)) {
     s.queue = s.queue.filter((c) => c.id !== card.id);
     return null;
   }
@@ -395,6 +471,8 @@ function beginCard(
       // Re-trigger REPLACES the old instance (§6.7: a bonus never stacks with itself).
       s.decayModifiers = s.decayModifiers.filter((m) => m.source !== 'adjacency:it-sticks');
       s.decayModifiers.push({ bar: sticks.effect.bar, factor: sticks.effect.factor, untilMinute: now + sticks.effect.durationMin, source: 'adjacency:it-sticks' });
+      // Provenance for §6.7 stop-cancels-bonus: stopping THIS meal revokes the grant.
+      dto.grantedModifierSources = [...(dto.grantedModifierSources ?? []), 'adjacency:it-sticks'];
     }
   }
   return { type: 'activity', cardId: card.id, dto };
@@ -437,6 +515,23 @@ function endSleep(s: SimState, content: ContentRegistry, emit: (t: DomainEvent['
   if (s.current?.type === 'sleep' && s.current.cardId) {
     const id = s.current.cardId;
     s.queue = s.queue.filter((c) => c.id !== id);
+  }
+  // The night is resolved: unstarted anchor blocks from PRIOR days are stale — a
+  // bedtime overtaken by urgent sleep must not phantom-run at wake and consume the
+  // new day's anchor (round-2). Consumed for their OWN day; not counted as missed
+  // (the sim slept — the need the block exists for was met).
+  const today = dayNumber(s.clock.absoluteMinute);
+  const staleBlockIds = new Set<string>();
+  for (const c of s.queue) {
+    if (c.owner !== 'AUTO' || c.blockId === undefined) continue;
+    const [anchorId = '', blockDay] = c.blockId.split('#');
+    if (blockDay !== undefined && Number(blockDay) < today) {
+      staleBlockIds.add(c.blockId);
+      s.anchorsConsumedOnDay[anchorId] = Number(blockDay);
+    }
+  }
+  if (staleBlockIds.size > 0) {
+    s.queue = s.queue.filter((c) => !(c.blockId !== undefined && staleBlockIds.has(c.blockId)));
   }
   s.lastCompletion = { activityId: 'sleep', isWorkout: false, atMinute: s.clock.absoluteMinute };
   s.practice.prevCompletionWasPractice = false;

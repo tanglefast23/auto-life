@@ -29,7 +29,9 @@ const CurrentSchema = z.discriminatedUnion('type', [
     elapsedTicks: z.number().int().min(0),
   }),
   z.strictObject({ type: z.literal('activity'), cardId: z.string().min(1), dto: ActiveTimedActivitySchema }),
-  z.strictObject({ type: z.literal('sleep'), cardId: z.string().min(1).nullable() }),
+  // armedMinty records that THIS sleep instance armed the minty bonus — §6.7
+  // stop-cancels-bonus must not clear an arming it did not create.
+  z.strictObject({ type: z.literal('sleep'), cardId: z.string().min(1).nullable(), armedMinty: z.boolean().optional() }),
 ]);
 export type CurrentEntry = z.infer<typeof CurrentSchema>;
 
@@ -64,6 +66,9 @@ export const SimStateSchema = z.strictObject({
   ),
   nextCardSeq: z.number().int().min(0),
   events: z.strictObject({ urgentCount: z.number().int().min(0), anchorsMissed: z.number().int().min(0) }),
+  // §7.2 row 6: one urgent event per <15 crossing per bar — the flag holds while
+  // the crisis lasts so re-adds/deletions never re-count the same crisis.
+  urgentActive: z.partialRecord(BarIdSchema, z.boolean()),
   prng: PrngSnapshotSchema,
 });
 export type SimState = z.infer<typeof SimStateSchema>;
@@ -98,6 +103,7 @@ export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed:
     pendingInstantDeltas: [],
     nextCardSeq: 0,
     events: { urgentCount: 0, anchorsMissed: 0 },
+    urgentActive: {},
     prng,
   };
 }

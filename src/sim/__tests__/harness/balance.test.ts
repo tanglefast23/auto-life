@@ -99,7 +99,7 @@ test('recovery: from all bars 0, autopilot reads healthy at the Day-3 morning ch
   expect(day3mc!).toBeGreaterThanOrEqual(bands.recovery.healthFloorAtDay3MorningCheck);
 });
 
-test('dinner cap-waste stays inside the band', () => {
+test('meal cap-waste stays inside the band and dinner fires near-daily', () => {
   let s = fresh(1234);
   let wasted = 0;
   let dinners = 0;
@@ -109,13 +109,13 @@ test('dinner cap-waste stays inside the band', () => {
     const r = step(s, [], content);
     const completedMeal = r.events.some((e) => e.type === 'activityCompleted' && e.detail === 'meal');
     if (wasMeal && r.next.bars.nutrition === toFixed(100) && before > toFixed(96)) {
-      // fill tick clamped at the cap — count the overflow of this tick approximately via the fill delta
+      // A fill tick clamped at the cap — counted at ANY meal (lunch included);
+      // this is a coarse proxy, not the full §6.6 audit (P4 owns that).
       wasted += 1;
     }
     if (completedMeal && r.snapshot.minuteOfDay > 1000) dinners += 1;
     s = r.next;
   }
-  expect(dinners).toBeGreaterThanOrEqual(6); // dinner fires daily
-  // Coarse waste proxy: capped fill ticks per week stay small (≤ dinnerCapWasteMax per day avg)
-  expect(wasted / 7).toBeLessThanOrEqual(bands.dinnerCapWasteMax);
+  expect(dinners).toBeGreaterThanOrEqual(bands.dinnersMinPerWeek);
+  expect(wasted / 7).toBeLessThanOrEqual(bands.mealCapWastePerDayMax);
 });

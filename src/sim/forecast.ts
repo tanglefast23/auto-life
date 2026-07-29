@@ -1,5 +1,6 @@
-import { step, type SimSnapshot } from './step';
+import { step } from './step';
 import { restoreSimState, type SimState } from './state';
+import { toDisplay } from './fixed';
 import { minuteOfDay, targetsFor, TICKS_PER_DAY } from './clock';
 import type { ContentRegistry } from './content';
 import type { BarId } from './types';
@@ -38,6 +39,9 @@ export function forecast(state: SimState, content: ContentRegistry): ForecastRes
   const conflictSeen = new Set<string>();
 
   for (let t = 0; t < horizonTicks; t++) {
+    // The minute ABOUT TO RUN — snapshot.minuteOfDay is post-advance, one late
+    // for a start that happens THIS tick (round-2 math finding).
+    const tickMinute = minuteOfDay(sim.clock.absoluteMinute);
     const before = sim.current;
     const r = step(sim, [], content);
     sim = r.next;
@@ -53,16 +57,26 @@ export function forecast(state: SimState, content: ContentRegistry): ForecastRes
     if (startedCard && startedCard !== beforeCard && !seenStarted.has(startedCard)) {
       seenStarted.add(startedCard);
       const activityId = after!.type === 'activity' ? after!.dto.activityId : 'sleep';
-      starts.push({ cardId: startedCard, activityId, predictedStartMinute: r.snapshot.minuteOfDay });
+      starts.push({ cardId: startedCard, activityId, predictedStartMinute: tickMinute });
     }
     for (const bar of ['energy', 'nutrition', 'movement', 'hygiene'] as const) {
       if (r.snapshot.bars[bar] < 15 && !conflictSeen.has(bar)) {
         conflictSeen.add(bar);
-        conflicts.push({ bar, atMinute: r.snapshot.minuteOfDay });
+        conflicts.push({ bar, atMinute: tickMinute });
       }
     }
   }
 
-  const finalSnapshot: SimSnapshot = step(sim, [], content).snapshot;
-  return { horizonTicks, starts, conflicts, barsAtHorizon: finalSnapshot.bars };
+  // Bars exactly AT the horizon — an extra step here previously overshot by one tick.
+  return {
+    horizonTicks,
+    starts,
+    conflicts,
+    barsAtHorizon: {
+      energy: toDisplay(sim.bars.energy),
+      nutrition: toDisplay(sim.bars.nutrition),
+      movement: toDisplay(sim.bars.movement),
+      hygiene: toDisplay(sim.bars.hygiene),
+    },
+  };
 }

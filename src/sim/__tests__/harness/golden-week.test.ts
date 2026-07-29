@@ -61,7 +61,7 @@ function runGoldenWeek() {
 
 test('golden week: digest matches the recorded replay and the pinned ENGINE_VERSION', () => {
   const golden = runGoldenWeek();
-  expect(golden.engineVersion).toBe(2);
+  expect(golden.engineVersion).toBe(3);
   expect(golden.firstWakeOrder).toEqual(['toilet', 'brush', 'shower', 'meal']); // §7.1 Day-1 order
   expect(golden).toMatchSnapshot();
 });
