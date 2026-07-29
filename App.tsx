@@ -1,10 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import { ProofScreen } from './src/application/ProofScreen';
+import { GameScreen } from './src/application/GameScreen';
 
 export default function App() {
   return (
     <>
-      <ProofScreen />
+      <GameScreen />
       <StatusBar style="auto" />
     </>
   );

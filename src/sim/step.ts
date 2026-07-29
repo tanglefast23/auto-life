@@ -384,7 +384,23 @@ export function step(
     s.practice.mintyArmed = false;
   }
 
-  const snapshot: SimSnapshot = {
+  return { next: s, events, snapshot: buildSnapshot(s, content, processed) };
+}
+
+/**
+ * Derive a snapshot from a state WITHOUT advancing it.
+ *
+ * `step()` uses this for its own return value, and the application layer uses it for the
+ * very first frame. Before it existed the renderer had nothing to draw until tick 1, so
+ * a game opened paused — or simply the first frame — was blank, even though the tilemap,
+ * the objects, and the sim's starting position are all known at t=0.
+ */
+export function buildSnapshot(
+  s: SimState,
+  content: ContentRegistry,
+  processed: SimSnapshot['processed'] = 'idle',
+): SimSnapshot {
+  return {
     minuteOfDay: minuteOfDay(s.clock.absoluteMinute),
     day: dayNumber(s.clock.absoluteMinute),
     health: healthDisplay(s.bars, content.rates),
@@ -400,7 +416,6 @@ export function step(
     practicePoints: s.practice.points100 / 100,
     render: deriveRenderView(s, content),
   };
-  return { next: s, events, snapshot };
 }
 
 /** Generic §6.7 pair matcher: first/firstTag × second/secondTag, data-only (the

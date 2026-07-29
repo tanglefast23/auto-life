@@ -1,4 +1,4 @@
-import { step, type Command, type DomainEvent, type SimSnapshot } from '../sim/step';
+import { buildSnapshot, step, type Command, type DomainEvent, type SimSnapshot } from '../sim/step';
 import type { ContentRegistry } from '../sim/content';
 import type { SimState } from '../sim/state';
 
@@ -85,6 +85,9 @@ export class GameLoop {
     private readonly observer: LoopObserver = {},
   ) {
     this.state = initial;
+    // The renderer must always have something to draw: the world exists at t=0, and a
+    // game opened paused would otherwise show a blank screen until the first tick.
+    this.lastSnapshot = buildSnapshot(initial, content);
   }
 
   get speed(): Speed {
