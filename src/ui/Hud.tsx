@@ -1,9 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { content } from '../sim/content';
 import type { SimSnapshot } from '../sim/step';
 import type { Speed } from '../application/loop';
 import { SPEEDS } from '../application/loop';
-import { BAR_COLOR, BAR_ICON, BAR_ORDER, bandFor } from './bands';
+import { BAR_COLOR, BAR_ICON, BAR_ORDER, bandFor, type BandName } from './bands';
 import { formatClock } from './clock-format';
 
 /**
@@ -33,17 +34,57 @@ export interface HudProps {
   onSpeed: (speed: Speed) => void;
 }
 
-function Bar({ value, color, width, height, pulse }: { value: number; color: string; width: number; height: number; pulse: boolean }) {
-  const clamped = Math.max(0, Math.min(100, value));
+/**
+ * A bar trough with its band rendered, not just computed.
+ *
+ * design.md §8: the 40–69 band adds a **cream-shadow edge tick** and the alert band adds
+ * a red edge pulse. Adversarial pass 2 caught that the first version computed the band
+ * and then threw the tick away — bars sitting in the middle band looked completely
+ * normal, so the one warning before a crisis was invisible.
+ */
+function Bar({
+  value,
+  color,
+  width,
+  height,
+  band,
+  pulseOpacity,
+}: {
+  value: number;
+  color: string;
+  width: number;
+  height: number;
+  band: BandName;
+  pulseOpacity?: Animated.Value;
+}) {
+  const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
   return (
-    <View style={[styles.trough, { width, height }, pulse && styles.troughAlert]}>
+    <View style={[styles.trough, { width, height }, band === 'alert' && styles.troughAlert]}>
       <View style={{ width: `${clamped}%`, height: '100%', backgroundColor: color }} />
+      {band === 'tick' && <View style={styles.edgeTick} />}
+      {band === 'alert' && pulseOpacity !== undefined && (
+        <Animated.View style={[styles.alertPulse, { opacity: pulseOpacity }]} />
+      )}
     </View>
   );
 }
 
 export function Hud({ snapshot, speed, onSpeed }: HudProps) {
   const health = snapshot?.health ?? 0;
+
+  // design.md §8 says the alert state PULSES. One shared driver for every bar, so the
+  // animation cost is constant regardless of how many bars are in crisis.
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.25, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
   return (
     <View style={styles.root} pointerEvents="box-none">
       {/* Top-left: Health block (§11.1) */}
@@ -52,7 +93,7 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
           <Text style={styles.healthLabel}>HEALTH</Text>
           <Text style={styles.healthValue}>{Math.round(health)}</Text>
         </View>
-        <Bar value={health} color={INK} width={168} height={10} pulse={false} />
+        <Bar value={health} color={INK} width={168} height={10} band="normal" />
 
         {BAR_ORDER.map((bar) => {
           const value = snapshot?.bars[bar] ?? 0;
@@ -66,7 +107,14 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
               >
                 {icon}
               </Text>
-              <Bar value={value} color={BAR_COLOR[bar]} width={120} height={6} pulse={style.pulse} />
+              <Bar
+                value={value}
+                color={BAR_COLOR[bar]}
+                width={120}
+                height={6}
+                band={style.band}
+                pulseOpacity={pulse}
+              />
               <Text style={styles.subValue}>{Math.round(value)}</Text>
             </View>
           );
@@ -132,6 +180,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   troughAlert: { borderColor: RED },
+  // design.md §8: the middle band is a cream-shadow EDGE TICK, not a colour change.
+  edgeTick: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: CREAM_SHADOW },
+  alertPulse: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: RED },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   icon: { fontFamily: 'monospace', fontSize: 12, color: INK, width: 14, textAlign: 'center' },
   iconAlert: { color: RED },

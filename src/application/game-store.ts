@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameLoop, msPerTick, type Speed } from './loop';
+import { GameLoop, type Speed } from './loop';
 import { newGameState } from '../sim/state';
 import { content } from '../sim/content';
 import { PrngStreams } from '../sim/prng';
@@ -52,11 +52,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     setSystemPaused: (paused) => {
       get().loop.setSystemPaused(paused);
     },
-    alpha: () => {
-      const l = get().loop;
-      const per = msPerTick(l.effectiveSpeed);
-      if (!Number.isFinite(per)) return 0; // paused: hold the frame
-      return Math.min(1, l.stats.accumulatorMs / per);
-    },
+    // The loop owns alpha now: it freezes the value on pause instead of snapping the
+    // sim back to the start of its tick (adversarial pass 2).
+    alpha: () => get().loop.alpha,
   };
 });

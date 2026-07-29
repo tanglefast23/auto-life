@@ -19,7 +19,7 @@ import { healthDisplay, isWellFedAtStart, mOutAtStart, mSpeedAtStart } from './b
 import { toDisplay, toFixed } from './fixed';
 import { activityByIdIn, objectForActivityIn, type ContentRegistry } from './content';
 import type { SimState } from './state';
-import { deriveRenderView, type RenderView } from './render-view';
+import { deriveRenderView, type RenderView, type TravelView } from './render-view';
 import { type BarId } from './types';
 
 export type Command =
@@ -289,6 +289,7 @@ export function step(
 
   // ---- stage 4: collect named signed deltas ----
   const processed: SimSnapshot['processed'] = s.current === null ? 'idle' : s.current.type;
+  let processedTravel: TravelView | null = null;
   const contributions: BarContribution[] = [];
   let mode: BodyMode = 'awake';
   if (s.current?.type === 'sleep') mode = 'asleep';
@@ -315,6 +316,10 @@ export function step(
     contributions.push(sleepContribution(content.rates));
   } else if (s.current?.type === 'travel') {
     const t = s.current;
+    // Publish the segment this tick ADVANCES, pre-increment, so the renderer gets
+    // elapsed 0 on the first frame and still gets the final leg on the arrival tick
+    // (pass 2: both were missing, and a one-tick journey had no travel data at all).
+    processedTravel = { path: t.path.map((pt) => ({ x: pt.x, y: pt.y })), elapsedTicks: t.elapsedTicks, totalTicks: t.totalTicks };
     t.elapsedTicks += 1;
     const idx = Math.min(t.path.length - 1, Math.floor((t.path.length * t.elapsedTicks) / t.totalTicks));
     const pos = t.path[idx]!;
@@ -384,7 +389,7 @@ export function step(
     s.practice.mintyArmed = false;
   }
 
-  return { next: s, events, snapshot: buildSnapshot(s, content, processed) };
+  return { next: s, events, snapshot: buildSnapshot(s, content, processed, processedTravel) };
 }
 
 /**
@@ -399,6 +404,7 @@ export function buildSnapshot(
   s: SimState,
   content: ContentRegistry,
   processed: SimSnapshot['processed'] = 'idle',
+  processedTravel: TravelView | null = null,
 ): SimSnapshot {
   return {
     minuteOfDay: minuteOfDay(s.clock.absoluteMinute),
@@ -414,7 +420,7 @@ export function buildSnapshot(
     currentLabel: s.current === null ? 'idle' : s.current.type === 'activity' ? s.current.dto.activityId : s.current.type,
     processed,
     practicePoints: s.practice.points100 / 100,
-    render: deriveRenderView(s, content),
+    render: deriveRenderView(s, content, processedTravel),
   };
 }
 

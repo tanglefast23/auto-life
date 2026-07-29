@@ -78,6 +78,7 @@ export class GameLoop {
   private lastSnapshot: SimSnapshot | null = null;
   private droppedFrames = 0;
   private ticksRun = 0;
+  private frozenAlpha = 0;
 
   constructor(
     initial: SimState,
@@ -113,10 +114,26 @@ export class GameLoop {
   }
 
   setSpeed(speed: Speed): void {
+    if (speed === this.speedValue) return; // idempotent: see below
+    const from = this.effectiveSpeed;
     this.speedValue = speed;
-    // Changing speed must not carry a partial tick measured against the old rate,
-    // or a 1×→4× flip would emit a spurious immediate tick.
-    this.accumulatorMs = 0;
+    // Carry the partial tick as NORMALISED progress, rescaled to the new rate. Zeroing
+    // it (the first version) had two faults found in adversarial pass 2: pausing at
+    // 499 ms rewound interpolation to the start of the tick, and because the UI calls
+    // setSpeed on every press, repeatedly tapping the ALREADY-ACTIVE speed reset the
+    // accumulator forever and the clock never advanced.
+    const fromPer = msPerTick(from);
+    const toPer = msPerTick(this.effectiveSpeed);
+    if (Number.isFinite(fromPer) && Number.isFinite(toPer) && fromPer > 0) {
+      this.accumulatorMs = (this.accumulatorMs / fromPer) * toPer;
+    }
+  }
+
+  /** Progress through the current tick, 0..1 — the renderer's interpolation alpha. */
+  get alpha(): number {
+    const per = msPerTick(this.effectiveSpeed);
+    if (!Number.isFinite(per) || per <= 0) return this.frozenAlpha;
+    return Math.min(1, Math.max(0, this.accumulatorMs / per));
   }
 
   /**
@@ -125,8 +142,10 @@ export class GameLoop {
    */
   setSystemPaused(paused: boolean): void {
     if (paused === this.pausedBySystem) return;
+    // Freeze the interpolation alpha where it stood, so a pause holds the frame instead
+    // of snapping the sim back to the start of its tick.
+    if (paused) this.frozenAlpha = this.alpha;
     this.pausedBySystem = paused;
-    this.accumulatorMs = 0;
   }
 
   /** Queue a command for the next minute boundary (step() applies commands in stage 1). */

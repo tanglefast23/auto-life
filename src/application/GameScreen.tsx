@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Canvas } from '@shopify/react-native-skia';
 import { useGameStore } from './game-store';
@@ -28,13 +28,21 @@ export function GameScreen() {
   const fit = useMemo(() => solveScale({ width, height, devicePixelRatio: dpr }), [width, height, dpr]);
 
   // The one clock in the app. Everything else is handed elapsed milliseconds.
+  //
+  // `frameClock.last` is nulled whenever the page becomes visible again. Without that,
+  // RAF stops while hidden but `last` keeps its pre-hide timestamp, so the first resumed
+  // frame arrives with the whole away-duration as its delta — the hard-pause contract
+  // (SPEC §5, C1) says a 60-second absence advances ZERO game minutes, but it advanced
+  // eight (the per-frame cap). Observed in the browser and initially mistaken for the
+  // cap working correctly; found properly in adversarial pass 2.
+  const frameClock = useRef<{ last: number | null }>({ last: null });
+
   useEffect(() => {
     let raf = 0;
-    let last: number | null = null;
     const frame = (now: number) => {
-      const delta = last === null ? 0 : now - last;
-      last = now;
-      loop.advance(delta);
+      const prev = frameClock.current.last;
+      frameClock.current.last = now;
+      loop.advance(prev === null ? 0 : now - prev);
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
@@ -44,7 +52,12 @@ export function GameScreen() {
   // SPEC §5 / C1: no time passes while the tab is hidden.
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    const onVisibility = () => setSystemPaused(document.visibilityState === 'hidden');
+    const onVisibility = () => {
+      const hidden = document.visibilityState === 'hidden';
+      // Discard the stale timestamp BEFORE unpausing, so no away-time reaches the loop.
+      frameClock.current.last = null;
+      setSystemPaused(hidden);
+    };
     document.addEventListener('visibilitychange', onVisibility);
     onVisibility();
     return () => document.removeEventListener('visibilitychange', onVisibility);
@@ -56,7 +69,9 @@ export function GameScreen() {
     <View style={styles.root}>
       <View style={[styles.stage, { height: fit.available.height, marginTop: HUD_H, marginBottom: QUEUE_H }]}>
         <Canvas style={{ width: fit.width, height: fit.height }}>
-          {view !== null && <WorldScene view={view} alphaRef={alpha} scale={fit.scale} />}
+          {view !== null && (
+            <WorldScene view={view} alphaRef={alpha} scale={fit.scale} effectiveSpeed={loop.effectiveSpeed} />
+          )}
         </Canvas>
       </View>
       <Hud snapshot={snapshot} speed={speed} onSpeed={setSpeed} />

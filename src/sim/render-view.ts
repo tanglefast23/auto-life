@@ -60,33 +60,33 @@ export interface RenderView {
  *     to derive from; a stored "last facing" would put presentation state into the
  *     replay contract for no visible gain.
  */
-function deriveFacing(s: SimState, content: ContentRegistry): Facing {
+function deriveFacing(s: SimState, content: ContentRegistry, travel: TravelView | null): Facing {
   const cur = s.current;
-  if (cur === null) return 'down';
 
-  if (cur.type === 'travel') {
-    // The tile the sim is heading for next, using the same index maths step() uses.
+  if (travel !== null && travel.path.length > 0) {
+    // Derived from the segment the renderer is interpolating, so the sprite never
+    // faces one way while its drawn position moves another (pass-2 finding).
     const idx = Math.min(
-      cur.path.length - 1,
-      Math.floor((cur.path.length * cur.elapsedTicks) / cur.totalTicks),
+      travel.path.length - 1,
+      Math.floor((travel.path.length * travel.elapsedTicks) / Math.max(1, travel.totalTicks)),
     );
-    const here = cur.path[idx] ?? s.position;
-    const next = cur.path[Math.min(cur.path.length - 1, idx + 1)] ?? here;
+    const here = travel.path[idx] ?? s.position;
+    const next = travel.path[Math.min(travel.path.length - 1, idx + 1)] ?? here;
     const dx = next.x - here.x;
     const dy = next.y - here.y;
-    if (dx === 0 && dy === 0) {
-      // Arrived, or a one-tile hop already consumed: face the destination object.
-      const card = s.queue.find((c) => c.id === cur.cardId);
-      if (card) {
-        const obj = objectForActivityIn(content, card.activityId);
-        return obj.facing;
-      }
-      return 'down';
+    if (dx !== 0 || dy !== 0) {
+      if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+      return dy > 0 ? 'down' : 'up';
     }
-    if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 'right' : 'left';
-    return dy > 0 ? 'down' : 'up';
+    // Arrived, or a one-tile hop already consumed: face the destination object.
+    const cardId = cur !== null && cur.type === 'travel' ? cur.cardId : null;
+    const card = cardId === null ? undefined : s.queue.find((c) => c.id === cardId);
+    if (card) return objectForActivityIn(content, card.activityId).facing;
+    return 'down';
   }
 
+  if (cur === null) return 'down';
+  if (cur.type === 'travel') return 'down';
   const activityId = cur.type === 'sleep' ? 'sleep' : cur.dto.activityId;
   return objectForActivityIn(content, activityId).facing;
 }
@@ -113,16 +113,39 @@ function derivePose(s: SimState, content: ContentRegistry): Pose {
   return obj.id === 'couch' ? 'sit' : 'stand';
 }
 
-export function deriveRenderView(s: SimState, content: ContentRegistry): RenderView {
+/**
+ * `processedTravel` is the journey segment the tick actually ADVANCED, captured by
+ * `step()` before it mutates `elapsedTicks` — the same "what was processed" precedent
+ * the `processed` field already sets.
+ *
+ * Reading travel off the post-step state was wrong in three ways, all found by probing
+ * the first journey (adversarial pass 2):
+ *   - the renderer never saw `elapsedTicks: 0`, so the very first frame of a journey was
+ *     already two tiles along — the sim teleported before interpolation began;
+ *   - on the arrival tick `current` has already become the next activity, so `travel`
+ *     was null and the final leg teleported;
+ *   - a one-tick journey (toilet → sink) reported `processed: 'travel'` with
+ *     `travel: null`, so it was 100% teleport with no interpolation data at all.
+ */
+export function deriveRenderView(
+  s: SimState,
+  content: ContentRegistry,
+  processedTravel: TravelView | null = null,
+): RenderView {
   const cur = s.current;
+  const live =
+    cur !== null && cur.type === 'travel'
+      ? { path: cur.path, elapsedTicks: cur.elapsedTicks, totalTicks: cur.totalTicks }
+      : null;
+  const travel = processedTravel ?? live;
   return {
     position: { x: s.position.x, y: s.position.y },
-    facing: deriveFacing(s, content),
-    pose: derivePose(s, content),
-    travel:
-      cur !== null && cur.type === 'travel'
-        ? { path: cur.path, elapsedTicks: cur.elapsedTicks, totalTicks: cur.totalTicks }
-        : null,
+    facing: deriveFacing(s, content, travel),
+    pose: travel !== null ? 'walk' : derivePose(s, content),
+    // Master §4: render never mutates simulation truth. A `readonly` type is a
+    // compile-time promise only — pass 2 proved that touching
+    // `snapshot.render.travel.path[0]` mutated the live GameLoop state. Copy the path.
+    travel: travel === null ? null : { path: travel.path.map((pt) => ({ x: pt.x, y: pt.y })), elapsedTicks: travel.elapsedTicks, totalTicks: travel.totalTicks },
     activityProgress: deriveProgress(s),
     mSpeed: mSpeedAtStart(s.bars),
   };
