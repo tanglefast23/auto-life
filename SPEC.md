@@ -629,7 +629,7 @@ Dev hygiene (HFM lesson): web previews auto-muted in dev builds; QA checklist in
 
 ## 15. Saves
 
-- Versioned JSON snapshot in expo-sqlite: `{schemaVersion, engineVersion, clock, bars, queue, currentActivity+phase, practice, goals, journal, wrinkleDeck, prefs, prngStates}`. **App-global preferences live outside the career save** (§11.7's three layers) — New Game or corruption never resets audio or accessibility.
+- Versioned JSON snapshot behind the **`persistence/kv` adapter** [P0 kill-gate ruling, evidence/P0.md]: web driver = localStorage (expo-sqlite's alpha web support hung the exported-build proof), native driver = expo-sqlite, one interface. Blob shape: `{schemaVersion, engineVersion, clock, bars, queue, currentActivity+phase, practice, goals, journal, wrinkleDeck, prefs, prngStates}`. **App-global preferences live outside the career save** (§11.7's three layers) — New Game or corruption never resets audio or accessibility.
 - **Major decisions bypass the 5-s coalescing** and write immediately: purchases, chapter acceptance, proposal responses, identity edits, New Game.
 - **Write policy** (verified): on activity completion, queue edit (500 ms trailing debounce), day boundary, app background/close (best-effort — not guaranteed by browsers), and major decisions; plus a 60-s throttled periodic. All writes coalesced to ≥5 s apart (4× completion-storms verified otherwise).
 - **3 rotating snapshots**; corrupt-load falls back a generation with a plain notice. Engine-version mismatch: migrate via the migration map, or offer read-only "finish the day" + fresh start if unmigratable.
