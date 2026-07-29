@@ -1,0 +1,22 @@
+{
+  "width": 24,
+  "height": 14,
+  "rooms": { "bedroom": "B", "bathroom": "T", "living": "L", "kitchen": "K", "hall": "H" },
+  "walls": "#",
+  "grid": [
+    "########################",
+    "#BBBBBBBBBB#HH#TTTTTTTT#",
+    "#BBBBBBBBBB#HH#TTTTTTTT#",
+    "#BBBBBBBBBB#HH#TTTTTTTT#",
+    "#BBBBBBBBBBHHHHTTTTTTTT#",
+    "#BBBBBBBBBB#HH#TTTTTTTT#",
+    "######HH####HH##########",
+    "#LLLLLHHLLL#HH#KKKKKKKK#",
+    "#LLLLLLLLLLHHHHKKKKKKKK#",
+    "#LLLLLLLLLL#HH#KKKKKKKK#",
+    "#LLLLLLLLLL#HH#KKKKKKKK#",
+    "#LLLLLLLLLL#HH#KKKKKKKK#",
+    "#LLLLLLLLLL#HH#KKKKKKKK#",
+    "########################"
+  ]
+}

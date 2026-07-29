@@ -4,16 +4,22 @@ import rawAnchors from '../../content/anchors.json';
 import rawReactive from '../../content/reactive.json';
 import rawAdjacency from '../../content/adjacency.json';
 import rawPractice from '../../content/practice.json';
+import rawHomeMap from '../../content/home-map.json';
+import rawObjects from '../../content/objects.json';
 import {
   ActivitiesSchema,
   AdjacencySchema,
   AnchorsSchema,
+  HomeMapSchema,
+  ObjectsSchema,
   PracticeSchema,
   RatesSchema,
   ReactiveSchema,
   type ActivitiesConfig,
   type AdjacencyConfig,
   type AnchorsConfig,
+  type HomeMapConfig,
+  type ObjectsConfig,
   type PracticeConfig,
   type RatesConfig,
   type ReactiveConfig,
@@ -31,6 +37,8 @@ export interface ContentRegistry {
   reactive: ReactiveConfig;
   adjacency: AdjacencyConfig;
   practice: PracticeConfig;
+  homeMap: HomeMapConfig;
+  objects: ObjectsConfig;
 }
 
 export const content: ContentRegistry = {
@@ -40,7 +48,17 @@ export const content: ContentRegistry = {
   reactive: ReactiveSchema.parse(rawReactive),
   adjacency: AdjacencySchema.parse(rawAdjacency),
   practice: PracticeSchema.parse(rawPractice),
+  homeMap: HomeMapSchema.parse(rawHomeMap),
+  objects: ObjectsSchema.parse(rawObjects),
 };
+
+export function objectForActivity(activityId: string) {
+  const owners = content.objects.objects.filter((o) => o.activities.includes(activityId));
+  if (owners.length !== 1) throw new Error(`activity "${activityId}" must have exactly one object owner, found ${owners.length}`);
+  const owner = owners[0];
+  if (!owner) throw new Error('unreachable');
+  return owner;
+}
 
 export function activityById(id: string) {
   const def = content.activities.activities.find((a) => a.id === id);

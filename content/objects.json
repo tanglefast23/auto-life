@@ -1,0 +1,18 @@
+{
+  "objects": [
+    { "id": "bed",       "room": "bedroom",  "footprint": [[2, 2], [3, 2], [2, 3], [3, 3]], "interactPoint": [4, 2],  "facing": "left",  "activities": ["sleep"],            "upgradeTrack": "bed",      "decorationSlots": 0 },
+    { "id": "toilet",    "room": "bathroom", "footprint": [[16, 1]],                        "interactPoint": [16, 2], "facing": "up",    "activities": ["toilet"],           "upgradeTrack": "toilet",   "decorationSlots": 0 },
+    { "id": "sink",      "room": "bathroom", "footprint": [[18, 1]],                        "interactPoint": [18, 2], "facing": "up",    "activities": ["brush", "quickwash"], "upgradeTrack": "toilet",  "decorationSlots": 0 },
+    { "id": "shower",    "room": "bathroom", "footprint": [[21, 1], [22, 1]],               "interactPoint": [21, 2], "facing": "up",    "activities": ["shower"],           "upgradeTrack": "shower",   "decorationSlots": 0 },
+    { "id": "fridge",    "room": "kitchen",  "footprint": [[16, 8]],                        "interactPoint": [16, 9], "facing": "up",    "activities": ["snack"],            "upgradeTrack": "kitchen",  "decorationSlots": 0 },
+    { "id": "microwave", "room": "kitchen",  "footprint": [[18, 8]],                        "interactPoint": [18, 9], "facing": "up",    "activities": ["meal"],             "upgradeTrack": "kitchen",  "decorationSlots": 0 },
+    { "id": "counter",   "room": "kitchen",  "footprint": [[20, 8], [21, 8]],               "interactPoint": [20, 9], "facing": "up",    "activities": [],                   "upgradeTrack": "kitchen",  "decorationSlots": 2 },
+    { "id": "couch",     "room": "living",   "footprint": [[2, 8], [3, 8], [4, 8]],         "interactPoint": [3, 9],  "facing": "up",    "activities": ["nap", "idle"],      "upgradeTrack": null,       "decorationSlots": 0 },
+    { "id": "tv",        "room": "living",   "footprint": [[2, 12]],                        "interactPoint": [2, 11], "facing": "down",  "activities": [],                   "upgradeTrack": null,       "decorationSlots": 1 },
+    { "id": "bench",     "room": "living",   "footprint": [[8, 10]],                        "interactPoint": [8, 11], "facing": "up",    "activities": ["weights"],          "upgradeTrack": "gym",      "decorationSlots": 0 },
+    { "id": "treadmill", "room": "living",   "footprint": [[9, 12]],                        "interactPoint": [8, 12], "facing": "right", "activities": ["treadmill"],        "upgradeTrack": "gym",      "decorationSlots": 0 },
+    { "id": "rug",       "room": "living",   "footprint": [[5, 11]],                        "interactPoint": [5, 11], "facing": "down",  "activities": ["stretch"],          "upgradeTrack": null,       "decorationSlots": 0, "blocksMovement": false },
+    { "id": "guitar",    "room": "living",   "footprint": [[6, 8]],                         "interactPoint": [6, 9],  "facing": "up",    "activities": ["practice"],         "upgradeTrack": null,       "decorationSlots": 0 },
+    { "id": "wardrobe",  "room": "bedroom",  "footprint": [[8, 2]],                         "interactPoint": [8, 3],  "facing": "up",    "activities": [],                   "upgradeTrack": "wardrobe", "decorationSlots": 1 }
+  ]
+}

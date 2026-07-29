@@ -283,3 +283,44 @@ export const PracticeSchema = z
     'curves must cover maxCountedSessionsPerDay',
   );
 export type PracticeConfig = z.infer<typeof PracticeSchema>;
+
+// ---------- home map + objects (SPEC §10) ----------
+
+const Tile = z.tuple([z.number().int().min(0).max(23), z.number().int().min(0).max(13)]);
+
+export const HomeMapSchema = z.strictObject({
+  width: z.literal(24),
+  height: z.literal(14),
+  rooms: z.record(z.string(), z.string().length(1)),
+  walls: z.literal('#'),
+  grid: z.array(z.string().length(24)).length(14),
+});
+export type HomeMapConfig = z.infer<typeof HomeMapSchema>;
+
+export const ObjectsSchema = z
+  .strictObject({
+    objects: z
+      .array(
+        z.strictObject({
+          id: z.string().min(1),
+          room: z.string().min(1),
+          footprint: z.array(Tile).min(1),
+          interactPoint: Tile,
+          facing: z.enum(['up', 'down', 'left', 'right']),
+          activities: z.array(z.string()),
+          upgradeTrack: z.string().nullable(),
+          decorationSlots: z.number().int().min(0).max(4),
+          blocksMovement: z.boolean().optional(), // default true; walk-on objects (rug) opt out
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    const seen = new Set<string>();
+    for (const o of doc.objects) {
+      if (seen.has(o.id)) ctx.addIssue({ code: 'custom', message: `duplicate object id "${o.id}"` });
+      seen.add(o.id);
+    }
+  });
+export type ObjectsConfig = z.infer<typeof ObjectsSchema>;
+export type ObjectDef = ObjectsConfig['objects'][number];
