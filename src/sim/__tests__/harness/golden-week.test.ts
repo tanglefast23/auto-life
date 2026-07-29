@@ -45,7 +45,9 @@ function runGoldenWeek() {
         day = freshDay();
       }
     }
-    if (s.current?.type === 'travel') day.travelMinutes += 1;
+    // snapshot.processed sees the arrival tick and one-tick journeys; post-step
+    // current dropped one tick per journey (audit round 4: 24 recorded vs 32 real).
+    if (r.snapshot.processed === 'travel') day.travelMinutes += 1;
     for (const bar of ['energy', 'nutrition', 'movement', 'hygiene'] as const) {
       const v = toDisplay(s.bars[bar]);
       if (v < (day.minPerBar[bar] ?? 100)) day.minPerBar[bar] = round2(v);
@@ -61,7 +63,7 @@ function runGoldenWeek() {
 
 test('golden week: digest matches the recorded replay and the pinned ENGINE_VERSION', () => {
   const golden = runGoldenWeek();
-  expect(golden.engineVersion).toBe(4);
+  expect(golden.engineVersion).toBe(5);
   expect(golden.firstWakeOrder).toEqual(['toilet', 'brush', 'shower', 'meal']); // §7.1 Day-1 order
   expect(golden).toMatchSnapshot();
 });

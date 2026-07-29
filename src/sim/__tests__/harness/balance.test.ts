@@ -27,7 +27,7 @@ test('fairness: unattended week holds every band', () => {
   for (let t = 0; t < 7 * 1440; t++) {
     const r = step(s, [], content);
     s = r.next;
-    if (s.current?.type === 'travel') travelToday += 1;
+    if (r.snapshot.processed === 'travel') travelToday += 1; // arrival-inclusive (audit round 4)
     const n = toDisplay(s.bars.nutrition);
     if (n < nutritionMin) {
       nutritionMin = n;

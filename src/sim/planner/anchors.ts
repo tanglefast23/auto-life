@@ -38,12 +38,20 @@ export interface AnchorDecision {
   enqueue: AnchorDef[];
 }
 
-/** Which anchors should enqueue their blocks at this minute. */
+/**
+ * Which anchors should enqueue their blocks at this minute. §7.1: an anchor FIRES
+ * AT ITS TARGET, not at window-open (audit round 4 traced a whole day running an
+ * hour early with targetAt as dead data). open→target is early tolerance the
+ * planner never uses; target→close is the late tolerance a busy queue consumes;
+ * missed at close (Q3).
+ */
 export function anchorsToEnqueue(cfg: AnchorsConfig, ctx: AnchorContext): AnchorDecision {
   const enqueue: AnchorDef[] = [];
+  const offset = minuteOfDay(ctx.absoluteMinute) - ctx.wakeTarget;
   for (const anchor of cfg.anchors) {
     if (alreadyConsumedToday(anchor, ctx)) continue;
     if (windowState(anchor, ctx) !== 'open') continue;
+    if (offset < anchor.targetAt) continue;
     if (!gatePasses(anchor, ctx)) continue;
     enqueue.push(anchor);
   }

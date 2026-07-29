@@ -41,6 +41,13 @@ export interface SimSnapshot {
   bars: Record<BarId, number>;
   queueIds: string[];
   currentLabel: string;
+  /**
+   * What stage 4 actually PROCESSED this tick — unlike currentLabel (post-step
+   * state), this sees the arrival tick of a journey and the whole of a one-tick
+   * journey (audit round 4: post-step counting dropped one travel tick per
+   * journey, 24 recorded vs 32 real). Harnesses and the P3 renderer key on it.
+   */
+  processed: 'travel' | 'activity' | 'sleep' | 'idle';
   practicePoints: number;
 }
 
@@ -64,8 +71,47 @@ function currentActivityId(s: SimState): string | null {
 
 /** The card id currently being executed or traveled toward. */
 function currentCardId(s: SimState): string | null {
-  if (!s.current) return null;
-  return s.current.type === 'sleep' ? s.current.cardId : s.current.cardId;
+  return s.current?.cardId ?? null;
+}
+
+/**
+ * Q4 consumption is MONOTONIC (audit round 4): a prior-day block starting, being
+ * deleted, or retiring late must never move the marker backward — that would
+ * resurrect an already-consumed newer day and duplicate the anchor.
+ */
+function consumeAnchor(s: SimState, anchorId: string, day: number): void {
+  const prev = s.anchorsConsumedOnDay[anchorId];
+  s.anchorsConsumedOnDay[anchorId] = prev === undefined ? day : Math.max(prev, day);
+}
+
+/**
+ * §6.7 stop semantics shared by the stopCurrent command and removeCard aimed at
+ * the RUNNING card (audit round 4: removing a running activity must stop it, not
+ * let it continue invisibly with its queue entry gone).
+ */
+function stopRunningUnit(s: SimState, now: number): void {
+  if (s.current === null) return;
+  const stoppedId = currentCardId(s);
+  const stoppedCard = s.queue.find((c) => c.id === stoppedId);
+  // §7.4: stop suppresses the TYPE for 1h only when the stopped card is AUTO —
+  // stopping your own pinned card suppresses nothing; travel-toward-AUTO counts.
+  if (stoppedCard?.owner === 'AUTO') {
+    s.suppression[stoppedCard.activityId] = now + STOP_SUPPRESSION_MIN;
+  }
+  // §6.7 lifecycle: stopping early cancels bonuses granted at THIS start.
+  if (s.current.type === 'activity' && s.current.dto.grantedModifierSources !== undefined) {
+    const granted = s.current.dto.grantedModifierSources;
+    s.decayModifiers = s.decayModifiers.filter((m) => !granted.includes(m.source));
+  }
+  if (s.current.type === 'sleep' && s.current.armedMinty === true) {
+    s.practice.mintyArmed = false;
+  }
+  // §6.7: a stopped practice never paid out — refund the day's minty.
+  if (s.current.type === 'activity' && s.current.dto.consumedMinty === true) {
+    s.practice.mintyPaidToday = false;
+  }
+  if (stoppedId !== null) s.queue = s.queue.filter((c) => c.id !== stoppedId);
+  s.current = null;
 }
 
 /** One game-minute. `state.clock.absoluteMinute` is the minute ABOUT TO RUN. */
@@ -94,12 +140,18 @@ export function step(
         s.queue = objectClick(s.queue, cmd.activityId, `c${s.nextCardSeq++}`, now);
       }
     } else if (cmd.type === 'removeCard') {
+      // Removing the RUNNING card means stopping it (audit round 4) — otherwise
+      // the activity continues invisibly with its queue entry gone.
+      if (cmd.cardId === currentCardId(s) && s.current !== null && s.current.type !== 'travel') {
+        stopRunningUnit(s, now);
+        continue;
+      }
       const card = s.queue.find((c) => c.id === cmd.cardId);
       // Q4: deleting a block card consumes the anchor for the BLOCK'S day, not
       // today's — a stale bedtime deleted after midnight must not eat tonight's.
       if (card?.blockId) {
         const [anchorId = '', blockDay] = card.blockId.split('#');
-        s.anchorsConsumedOnDay[anchorId] = blockDay !== undefined ? Number(blockDay) : today;
+        consumeAnchor(s, anchorId, blockDay !== undefined ? Number(blockDay) : today);
       }
       const r = removeCard(s.queue, cmd.cardId, now, s.suppression);
       s.queue = r.queue;
@@ -110,30 +162,7 @@ export function step(
     } else if (cmd.type === 'moveCard') {
       s.queue = moveCard(s.queue, cmd.cardId, cmd.toIndex);
     } else if (cmd.type === 'stopCurrent' && s.current) {
-      const stoppedId = currentCardId(s);
-      const stoppedCard = s.queue.find((c) => c.id === stoppedId);
-      // §7.4: stop suppresses the TYPE for 1h only when the stopped card is AUTO —
-      // stopping your own pinned card suppresses nothing; travel-toward-AUTO counts.
-      if (stoppedCard?.owner === 'AUTO') {
-        s.suppression[stoppedCard.activityId] = now + STOP_SUPPRESSION_MIN;
-      }
-      // §6.7 lifecycle: stopping early cancels bonuses granted at THIS start —
-      // the it-sticks modifier a stopped meal banked, the minty arming a stopped
-      // sleep created. Bonuses from other instances are untouched.
-      if (s.current.type === 'activity' && s.current.dto.grantedModifierSources !== undefined) {
-        const granted = s.current.dto.grantedModifierSources;
-        s.decayModifiers = s.decayModifiers.filter((m) => !granted.includes(m.source));
-      }
-      if (s.current.type === 'sleep' && s.current.armedMinty === true) {
-        s.practice.mintyArmed = false;
-      }
-      // §6.7: a stopped practice never paid out — refund the day's minty. The
-      // arming (if still before the morning check) survives for a retry.
-      if (s.current.type === 'activity' && s.current.dto.consumedMinty === true) {
-        s.practice.mintyPaidToday = false;
-      }
-      if (stoppedId !== null) s.queue = s.queue.filter((c) => c.id !== stoppedId);
-      s.current = null;
+      stopRunningUnit(s, now);
     }
   }
 
@@ -252,6 +281,7 @@ export function step(
   }
 
   // ---- stage 4: collect named signed deltas ----
+  const processed: SimSnapshot['processed'] = s.current === null ? 'idle' : s.current.type;
   const contributions: BarContribution[] = [];
   let mode: BodyMode = 'awake';
   if (s.current?.type === 'sleep') mode = 'asleep';
@@ -312,7 +342,9 @@ export function step(
     const offset = minuteOfDay(now + 1) === wakeTarget;
     const energyDisplay = toDisplay(s.bars.energy);
     const o = minuteOfDay(now + 1) - wakeTarget;
-    const night = o >= 930 || o < 0; // bedtime opens at wake+930 (22:30 baseline)
+    // §7.1 EXACT continue clause: "between 23:00 and 07:00" = wake+960 to wake
+    // (audit round 4: the engine had 22:30 — the bedtime WINDOW, not the rule).
+    const night = o >= 960 || o < 0;
     if (offset) {
       endSleep(s, content, emit);
     } else if (energyDisplay >= 80 && !night) {
@@ -327,6 +359,9 @@ export function step(
     s.napEffectiveUsesToday = 0;
     s.practice.sessionsCountedToday = 0;
     s.practice.mintyPaidToday = false;
+    // §8: BLOCK status resets at wake too (audit round 4) — an all-night practice
+    // chain must not carry the consecutive-session curve into the new day.
+    s.practice.prevCompletionWasPractice = false;
     // Audit round 3: stale prior-day blocks also retire here — sleep-end alone
     // missed the all-nighter path (no endSleep ever fires).
     retireStaleBlocks(s);
@@ -354,6 +389,7 @@ export function step(
     },
     queueIds: s.queue.map((c) => c.id),
     currentLabel: s.current === null ? 'idle' : s.current.type === 'activity' ? s.current.dto.activityId : s.current.type,
+    processed,
     practicePoints: s.practice.points100 / 100,
   };
   return { next: s, events, snapshot };
@@ -385,11 +421,15 @@ function retireStaleBlocks(s: SimState): void {
     const [anchorId = '', blockDay] = c.blockId.split('#');
     if (blockDay !== undefined && Number(blockDay) < today) {
       stale.add(c.blockId);
-      s.anchorsConsumedOnDay[anchorId] = Number(blockDay);
+      consumeAnchor(s, anchorId, Number(blockDay));
     }
   }
   if (stale.size > 0) {
-    s.queue = s.queue.filter((c) => !(c.blockId !== undefined && stale.has(c.blockId) && c.id !== runningId));
+    // AUTO members only (audit round 4): a player-PINNED sibling — e.g. a moved,
+    // detached block card — is the player's and is NEVER removed by the planner.
+    s.queue = s.queue.filter(
+      (c) => !(c.owner === 'AUTO' && c.blockId !== undefined && stale.has(c.blockId) && c.id !== runningId),
+    );
   }
 }
 
@@ -427,7 +467,7 @@ function beginCard(
   // never eat the NEW day's anchor (round-2 phantom-bedtime finding).
   if (card.blockId) {
     const [anchorId = '', blockDay] = card.blockId.split('#');
-    s.anchorsConsumedOnDay[anchorId] = blockDay !== undefined ? Number(blockDay) : dayNumber(now);
+    consumeAnchor(s, anchorId, blockDay !== undefined ? Number(blockDay) : dayNumber(now));
   }
   if (def.kind === 'sleepWindow') {
     // Arming pairs (§6.7): any authored pair paying at the first pre-morning-check

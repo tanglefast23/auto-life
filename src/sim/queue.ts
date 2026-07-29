@@ -19,10 +19,16 @@ export type QueueCard = z.infer<typeof QueueCardSchema>;
 
 export const PLAYER_CARD_CAP = 10;
 
+/**
+ * §7.4 cap row, made consistent (audit round 4): `source` is ORIGINAL PROVENANCE
+ * and never rewritten; `owner` is current control. The cap counts only cards the
+ * player INSERTED (source 'player'). Promoting or moving an existing anchor or
+ * reactive card pins it (owner) but keeps its provenance — those cards live
+ * outside the cap, exactly as anchor blocks and urgent cards always have.
+ */
 export const playerCardCount = (queue: readonly QueueCard[]): number =>
-  queue.filter((c) => c.owner === 'PINNED' && c.source === 'player').length;
+  queue.filter((c) => c.source === 'player').length;
 
-/** §7.4 cap row: the PLAYER may hold 10; anchor blocks and urgent cards live outside the cap. */
 export function canPlayerInsert(queue: readonly QueueCard[]): boolean {
   return playerCardCount(queue) < PLAYER_CARD_CAP;
 }
@@ -80,7 +86,9 @@ export function objectClick(
   const existing = queue.find((c) => c.activityId === activityId);
   if (existing) {
     const rest = queue.filter((c) => c.id !== existing.id);
-    const promoted: QueueCard = { ...existing, owner: 'PINNED', source: 'player' };
+    // Provenance is never rewritten: promotion pins the card but a promoted
+    // anchor/reactive stays outside the player cap (audit round 4).
+    const promoted: QueueCard = { ...existing, owner: 'PINNED' };
     const firstAuto = rest.findIndex((c) => c.owner === 'AUTO');
     const at = firstAuto === -1 ? rest.length : firstAuto;
     return [...rest.slice(0, at), promoted, ...rest.slice(at)];

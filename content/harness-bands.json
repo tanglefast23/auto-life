@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-07-30, ENGINE_VERSION 3, travel-inclusive unattended run, seed 1234 (Q6 record-before-assert; unattended digest byte-identical to v2 — v3 changes bite only under player pressure; measured: mc E90/N77.4/M81.1/H95.4, day-2 M74.98, recovery 77.27 at mc 540, travel 24-27)",
+  "recordedAt": "2026-07-30, ENGINE_VERSION 5 (P2.1), arrival-inclusive travel counting, seed 1234 (Q6 record-before-assert; anchors now fire at target — lunch 13:00 / workout 17:30 / dinner 19:00 / bedtime 22:30 content target; measured: mc E90/N81.53/M83.22/H95.4, day-2 M74.98, recovery 79.77 at mc 540, travel 35 then 32/day, nutrition min 51.7)",
   "morningCheck": { "floor": 65, "fromDay": 2 },
   "urgentMax": 0,
   "anchorsMissedMax": 0,

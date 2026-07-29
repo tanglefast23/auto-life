@@ -110,7 +110,8 @@ test('stopping a sleep that armed minty disarms it; a completed arming is untouc
   const s = fresh();
   consumeAnchors(s);
   s.clock.absoluteMinute = 420 + 940; // 22:40, inside the bedtime window
-  s.bars = healthyBars();
+  // E below 80: pre-23:00 a sleep at E≥80 would legitimately end the same tick (§7.1).
+  s.bars = { energy: toFixed(60), nutrition: toFixed(80), movement: toFixed(80), hygiene: toFixed(80) };
   s.position = at('sleep');
   s.lastCompletion = { activityId: 'brush', isWorkout: false, atMinute: s.clock.absoluteMinute - 5 };
   s.queue = [card({ id: 'sl', activityId: 'sleep', source: 'anchor', blockId: `bedtime#${dayNumber(s.clock.absoluteMinute)}` })];

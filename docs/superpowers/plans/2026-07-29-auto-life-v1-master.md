@@ -28,9 +28,9 @@ This file does **not** lock speculative filenames or write placeholder P2–P6 c
 
 | Phase | Detailed plan | Status / timing |
 |---|---|---|
-| P0 platform + P1 sim arithmetic | `2026-07-29-p0-p1-scaffold-sim-core.md` | **detailed; execute P0 gate before P1** |
-| P2 headless game loop | `2026-07-29-p2-headless-game-loop.md` | **early draft only; must be re-derived/audited after P1 exits before execution** |
-| A0 art-risk spike | authored after P2; must pass before the P3 plan is approved | pending |
+| P0 platform + P1 sim arithmetic | `2026-07-29-p0-p1-scaffold-sim-core.md` | **COMPLETED** — evidence/P0.md, evidence/P1.md |
+| P2 headless game loop | `2026-07-29-p2-headless-game-loop.md` | **COMPLETED** (incl. P2.1 dual-audit stabilization, ENGINE_VERSION 5) — evidence/p2.md |
+| A0 art-risk spike | authored after P2; must pass before the P3 plan is approved | **in progress (next)** |
 | P3 placeholder world + HUD | authored only after P2 and A0 exit | pending |
 | P4 queue UI + minimum first-session slice | authored only after P3 exits | pending |
 | P4.5 external playtest protocol | authored and frozen no later than P4 start; run after P4 exits | pending |
