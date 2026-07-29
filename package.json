@@ -30,7 +30,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "validate:content": "tsx scripts/validate-content.ts",
+    "check": "npm run validate:content && npm run typecheck && npm test"
   },
   "private": true
 }

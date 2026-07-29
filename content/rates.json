@@ -1,0 +1,21 @@
+{
+  "rates": {
+    "energy":    { "awake": 5.0, "asleep": 0 },
+    "nutrition": { "awake": 4.0, "asleep": 4.0 },
+    "hygiene":   { "awake": 3.0, "asleep": 1.0 },
+    "movement":  { "awake": 2.0, "asleep": 2.0 }
+  },
+  "sleepRestorePerHour": 10.0,
+  "weights": { "energy": 1, "nutrition": 1, "movement": 1, "hygiene": 1 },
+  "wellFed": { "threshold": 70, "outputBonus": 0.10 },
+  "displayBands": {
+    "default": { "tick": 70, "alert": 40 },
+    "energy": { "tick": 30, "alert": 15 }
+  },
+  "urgentThreshold": 15,
+  "chronotype": {
+    "baseline": { "wake": 420, "bed": 1380 },
+    "early": { "wake": 390, "bed": 1350 },
+    "owl": { "wake": 450, "bed": 1410 }
+  }
+}
