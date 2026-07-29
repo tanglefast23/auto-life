@@ -92,6 +92,22 @@ export function objectClick(
   return [...queue.slice(0, at), card, ...queue.slice(at)];
 }
 
+/**
+ * §7.4 reorder verb (audit round 3 — the fourth player verb the engine was
+ * missing): moving a card PINS it ("anything the player inserted, moved, or
+ * touched — that card only"), so the sorter durably respects the placement. A
+ * moved block member detaches from its block's unit ordering by ownership;
+ * blockId stays for Q4 consumption. toIndex clamps; unknown ids no-op.
+ */
+export function moveCard(queue: readonly QueueCard[], cardId: string, toIndex: number): QueueCard[] {
+  const card = queue.find((c) => c.id === cardId);
+  if (!card) return [...queue];
+  const rest = queue.filter((c) => c.id !== cardId);
+  const at = Math.max(0, Math.min(Math.trunc(toIndex), rest.length));
+  const moved: QueueCard = card.owner === 'AUTO' ? { ...card, owner: 'PINNED' } : card;
+  return [...rest.slice(0, at), moved, ...rest.slice(at)];
+}
+
 /** Planner dedup guard: max one AUTO card per activity type (player duplicates are free). */
 export function hasAutoCardFor(queue: readonly QueueCard[], activityId: string): boolean {
   return queue.some((c) => c.owner === 'AUTO' && c.activityId === activityId);

@@ -19,6 +19,8 @@ export interface ActiveTimedActivity {
   suppressPassiveEnergy: boolean;
   /** Decay-modifier sources granted at THIS start — §6.7 stop-cancels-bonus removes exactly these. */
   grantedModifierSources?: string[];
+  /** Practice-only: THIS start consumed the day's minty bonus — §6.7 stop refunds it. */
+  consumedMinty?: boolean;
   sampled: {
     mSpeed: number;
     wellFed: boolean;
@@ -167,6 +169,7 @@ export const ActiveTimedActivitySchema = z
     ),
     suppressPassiveEnergy: z.boolean(),
     grantedModifierSources: z.array(z.string().min(1)).optional(),
+    consumedMinty: z.boolean().optional(),
     sampled: z.strictObject({
       mSpeed: z.number().min(0.5).max(1.5),
       wellFed: z.boolean(),

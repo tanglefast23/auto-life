@@ -25,6 +25,8 @@ Round 3 audited the *implementation plans*, not the design. One design defect su
 
 **General rule added to §6.7:** before authoring any bonus, check the target quantity's value at the moment the bonus applies. If the design already guarantees it is at maximum, the bonus is decoration.
 
+**Round-4 rulings (external audit, 2026-07-30):** **Q7 — pins vs the wake block:** evening PINNED cards may defer (and thereby miss) tomorrow's wake block — this is the designed pins-first outcome, not a bug: §7.4 pins are never crossed, the reactive net owns recovery, and only bedtime carries the never-miss guarantee. The P4 queue UI MUST show the §7.5 ⚠ conflict warning on any pin that collides with the next wake window, and the recap must name the missed routine. **Reorder verb:** the engine's `moveCard` command implements §7.4's reorder; moving a card PINS it ("inserted, moved, or touched — that card only"), and moving an anchor-block member detaches that card from the block's unit ordering (blockId is retained for once-per-day consumption). The §6.9 morning decision is played with exactly this verb.
+
 **Round-3 rulings (orchestration, 2026-07-29) — the P2 draft's six blocking questions, all recommendations accepted:** Q1 Practice scoring/curves/block bonus are P2's, visible integration P4's, levels/progression P5's (master §5 already reflects it) · Q2 each maximal AUTO run sorts independently (§7.4) · Q3 missed anchor = block not started by window close (§7.1) · Q4 an anchor fires at most once per day, deletion included (§7.1) · Q5 single-rest-card rule (§7.2) · Q6 §6.8's traces are pre-travel; P2 records travel-inclusive numbers before asserting (§6.8). Plus: **Practice points are integers ×100** (§8).
 
 ## 0a. Changelog v0.2 → v0.3 (audit round 2)

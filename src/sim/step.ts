@@ -11,19 +11,20 @@ import {
 import { anchorsToEnqueue, isMissed, resolveBlock } from './planner/anchors';
 import { evaluateReactive } from './planner/reactive';
 import { sortReactivesAroundBlocks } from './planner';
-import { autoCleanup, canPlayerInsert, hasAutoCardFor, insertPlayerCard, isSuppressed, objectClick, removeCard, type QueueCard } from './queue';
+import { autoCleanup, canPlayerInsert, hasAutoCardFor, insertPlayerCard, isSuppressed, moveCard, objectClick, removeCard, type QueueCard } from './queue';
 import { isUrgentBarValue } from './planner/priority';
 import { buildWalkGrid, findPath, travelTicks } from './travel';
 import { dayNumber, minuteOfDay, morningCheckMinute, targetsFor } from './clock';
 import { healthDisplay, isWellFedAtStart, mOutAtStart, mSpeedAtStart } from './bars';
 import { toDisplay, toFixed } from './fixed';
-import { activityById, objectForActivity, type ContentRegistry } from './content';
+import { activityByIdIn, objectForActivityIn, type ContentRegistry } from './content';
 import type { SimState } from './state';
 import { type BarId } from './types';
 
 export type Command =
   | { type: 'insertPlayer'; activityId: string }
   | { type: 'removeCard'; cardId: string }
+  | { type: 'moveCard'; cardId: string; toIndex: number }
   | { type: 'stopCurrent' }
   | { type: 'objectClick'; activityId: string };
 
@@ -106,6 +107,8 @@ export function step(
       // Removing the travel target stops the walk — nobody keeps walking to a
       // task that no longer exists.
       if (s.current?.type === 'travel' && s.current.cardId === cmd.cardId) s.current = null;
+    } else if (cmd.type === 'moveCard') {
+      s.queue = moveCard(s.queue, cmd.cardId, cmd.toIndex);
     } else if (cmd.type === 'stopCurrent' && s.current) {
       const stoppedId = currentCardId(s);
       const stoppedCard = s.queue.find((c) => c.id === stoppedId);
@@ -123,6 +126,11 @@ export function step(
       }
       if (s.current.type === 'sleep' && s.current.armedMinty === true) {
         s.practice.mintyArmed = false;
+      }
+      // §6.7: a stopped practice never paid out — refund the day's minty. The
+      // arming (if still before the morning check) survives for a retry.
+      if (s.current.type === 'activity' && s.current.dto.consumedMinty === true) {
+        s.practice.mintyPaidToday = false;
       }
       if (stoppedId !== null) s.queue = s.queue.filter((c) => c.id !== stoppedId);
       s.current = null;
@@ -168,7 +176,7 @@ export function step(
   for (const a of decision.add) {
     if (hasAutoCardFor(s.queue, a.activityId) || a.activityId === runningActivity) continue;
     if (a.activityId === 'nap') {
-      const def = activityById('nap');
+      const def = activityByIdIn(content, 'nap');
       // The planner only books EFFECTIVE naps — a budget-exhausted nap is flavor
       // the player may still pin, never a corrective the sim chains (round-2).
       if (def.kind !== 'timed' || !napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday).effective) continue;
@@ -225,7 +233,7 @@ export function step(
       s.queue = s.queue.filter((c) => c.id !== card.id);
       continue;
     }
-    const object = objectForActivity(card.activityId);
+    const object = objectForActivityIn(content, card.activityId);
     const [ix, iy] = object.interactPoint;
     if (s.position.x !== ix || s.position.y !== iy) {
       const walk = buildWalkGrid(content.homeMap, content.objects);
@@ -319,6 +327,9 @@ export function step(
     s.napEffectiveUsesToday = 0;
     s.practice.sessionsCountedToday = 0;
     s.practice.mintyPaidToday = false;
+    // Audit round 3: stale prior-day blocks also retire here — sleep-end alone
+    // missed the all-nighter path (no endSleep ever fires).
+    retireStaleBlocks(s);
     emit('wakeBoundary', String(dayNumber(s.clock.absoluteMinute)));
     // prune stale anchor consumption records
     const d = dayNumber(s.clock.absoluteMinute);
@@ -348,12 +359,46 @@ export function step(
   return { next: s, events, snapshot };
 }
 
+/** Generic §6.7 pair matcher: first/firstTag × second/secondTag, data-only (the
+ * content schema guarantees exactly one of each side is present). */
+function adjacencyMatches(
+  pair: ContentRegistry['adjacency']['pairs'][number],
+  lastDef: { id: string; tags?: readonly string[] | string[] },
+  secondDef: { id: string; tags?: readonly string[] | string[] },
+): boolean {
+  const firstOk = pair.first !== undefined ? lastDef.id === pair.first : (lastDef.tags?.includes(pair.firstTag!) ?? false);
+  const secondOk = pair.second !== undefined ? secondDef.id === pair.second : (secondDef.tags?.includes(pair.secondTag!) ?? false);
+  return firstOk && secondOk;
+}
+
+/**
+ * Rounds 2–3: unstarted AUTO blocks from PRIOR days are stale — retired (consumed
+ * for their OWN day, never counted missed) at sleep end AND at the wake boundary,
+ * so an all-nighter cannot carry yesterday's bedtime into the new day either.
+ */
+function retireStaleBlocks(s: SimState): void {
+  const today = dayNumber(s.clock.absoluteMinute);
+  const runningId = currentCardId(s);
+  const stale = new Set<string>();
+  for (const c of s.queue) {
+    if (c.owner !== 'AUTO' || c.blockId === undefined || c.id === runningId) continue;
+    const [anchorId = '', blockDay] = c.blockId.split('#');
+    if (blockDay !== undefined && Number(blockDay) < today) {
+      stale.add(c.blockId);
+      s.anchorsConsumedOnDay[anchorId] = Number(blockDay);
+    }
+  }
+  if (stale.size > 0) {
+    s.queue = s.queue.filter((c) => !(c.blockId !== undefined && stale.has(c.blockId) && c.id !== runningId));
+  }
+}
+
 /**
  * Pre-start gates shared by stage-3 selection (before travel) and beginCard
  * (arrival-time backstop): §6.2 nap window/budget, the anchor-meal no-meal clause.
  */
 function cardCanBegin(s: SimState, card: QueueCard, content: ContentRegistry): boolean {
-  const def = activityById(card.activityId);
+  const def = activityByIdIn(content, card.activityId);
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
   if (def.kind === 'timed' && def.effectiveUsesPerDay !== undefined) {
@@ -374,7 +419,7 @@ function beginCard(
   content: ContentRegistry,
   emit: (t: DomainEvent['type'], d: string) => void,
 ): SimState['current'] {
-  const def = activityById(card.activityId);
+  const def = activityByIdIn(content, card.activityId);
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
   // First start of an anchor block consumes the anchor for the BLOCK'S own day
@@ -385,12 +430,18 @@ function beginCard(
     s.anchorsConsumedOnDay[anchorId] = blockDay !== undefined ? Number(blockDay) : dayNumber(now);
   }
   if (def.kind === 'sleepWindow') {
-    // Minty arms if the previous completion was brush with no intervening completion (§6.7).
-    const pair = content.adjacency.pairs.find((p) => p.id === 'minty-fresh')!;
+    // Arming pairs (§6.7): any authored pair paying at the first pre-morning-check
+    // practice arms when its match starts this sleep (v1 content: minty-fresh).
     let armedNow = false;
-    if (s.lastCompletion?.activityId === 'brush' && now - s.lastCompletion.atMinute <= pair.gapMaxMin) {
-      s.practice.mintyArmed = true;
-      armedNow = true;
+    const lastBeforeSleep = s.lastCompletion;
+    if (lastBeforeSleep !== null) {
+      const lastDef = activityByIdIn(content, lastBeforeSleep.activityId);
+      for (const pair of content.adjacency.pairs) {
+        if (pair.effect.kind !== 'scalePoints' || pair.effect.appliesTo !== 'firstPracticeBeforeMorningCheck') continue;
+        if (now - lastBeforeSleep.atMinute > pair.gapMaxMin || !adjacencyMatches(pair, lastDef, def)) continue;
+        s.practice.mintyArmed = true;
+        armedNow = true;
+      }
     }
     emit('slept', 'start');
     return armedNow ? { type: 'sleep', cardId: card.id, armedMinty: true } : { type: 'sleep', cardId: card.id };
@@ -407,22 +458,28 @@ function beginCard(
     const wellFed = isWellFedAtStart(s.bars, content.rates);
     let pointsMultiplier = mOutAtStart(s.bars, content.rates);
     if (wellFed) pointsMultiplier *= 1 + content.rates.wellFed.outputBonus;
-    const freshPair = content.adjacency.pairs.find((x) => x.id === 'fresh-mind')!;
+    // §6.7 pairs paying THIS practice — data-driven (audit round 3: no pair ids in engine).
+    let consumedMinty = false;
     const lastDone = s.lastCompletion;
-    if (
-      lastDone !== null &&
-      lastDone.activityId === freshPair.first &&
-      now - lastDone.atMinute <= freshPair.gapMaxMin &&
-      freshPair.effect.kind === 'scalePoints'
-    ) {
-      pointsMultiplier *= freshPair.effect.factor;
+    if (lastDone !== null) {
+      const lastDef = activityByIdIn(content, lastDone.activityId);
+      for (const pair of content.adjacency.pairs) {
+        if (pair.effect.kind !== 'scalePoints' || pair.effect.appliesTo !== 'thatPractice') continue;
+        if (now - lastDone.atMinute > pair.gapMaxMin || !adjacencyMatches(pair, lastDef, def)) continue;
+        pointsMultiplier *= pair.effect.factor;
+      }
     }
-    const mintyPair = content.adjacency.pairs.find((x) => x.id === 'minty-fresh')!;
     const beforeMorningCheck =
       minuteOfDay(now) >= wakeTarget && minuteOfDay(now) < morningCheckMinute(s.chronotype, content.rates);
-    if (s.practice.mintyArmed && !s.practice.mintyPaidToday && beforeMorningCheck && mintyPair.effect.kind === 'scalePoints') {
-      pointsMultiplier *= mintyPair.effect.factor;
-      s.practice.mintyPaidToday = true; // paid at start — never twice a day
+    if (s.practice.mintyArmed && !s.practice.mintyPaidToday && beforeMorningCheck) {
+      const armedPair = content.adjacency.pairs.find(
+        (p) => p.effect.kind === 'scalePoints' && p.effect.appliesTo === 'firstPracticeBeforeMorningCheck',
+      );
+      if (armedPair !== undefined && armedPair.effect.kind === 'scalePoints') {
+        pointsMultiplier *= armedPair.effect.factor;
+        s.practice.mintyPaidToday = true; // paid at start — refunded only if THIS practice is stopped (§6.7)
+        consumedMinty = true;
+      }
     }
     const focus = content.practice.hygieneFocus;
     if (toDisplay(s.bars.hygiene) < focus.below) pointsMultiplier *= focus.factor; // §6.5 Hygiene focus
@@ -435,6 +492,7 @@ function beginCard(
       suppressPassiveEnergy: false,
       sampled: { mSpeed: mSpeedAtStart(s.bars), wellFed, effectiveUse: true, pointsMultiplier },
     };
+    if (consumedMinty) dto.consumedMinty = true;
     return { type: 'activity', cardId: card.id, dto };
   }
   // timed
@@ -451,28 +509,32 @@ function beginCard(
     if (effectiveUse) s.napEffectiveUsesToday += 1;
   }
   const dto = startTimedActivity(def, s.bars, content.rates, { effectiveUse });
-  // Adjacency at start (§6.7: first-END to second-START, data-driven, lastCompletion = intervener rule).
+  // Adjacency at start (§6.7: first-END to second-START; lastCompletion = intervener
+  // rule). DATA-driven (audit round 3): any authored pair applies with zero engine
+  // knowledge of its id — the engine dispatches on effect.kind alone.
   const last = s.lastCompletion;
   if (last) {
+    const lastDef = activityByIdIn(content, last.activityId);
     const gap = now - last.atMinute;
-    const warm = content.adjacency.pairs.find((x) => x.id === 'warmed-up')!;
-    if (def.id === warm.second && last.isWorkout && gap <= warm.gapMaxMin && warm.effect.kind === 'halveDuration') {
-      dto.durationTicks = Math.max(1, Math.ceil(dto.durationTicks / 2));
-      if (dto.fillStartTick >= dto.durationTicks) dto.fillStartTick = dto.durationTicks - 1;
-    }
-    const cramp = content.adjacency.pairs.find((x) => x.id === 'cramp')!;
-    if ((def.tags?.includes('workout') ?? false) && last.activityId === cramp.first && gap <= cramp.gapMaxMin && cramp.effect.kind === 'barDelta') {
-      const deltas: Partial<Record<BarId, number>> = {};
-      for (const [bar, v] of Object.entries(cramp.effect.deltas)) deltas[bar as BarId] = toFixed(v as number);
-      s.pendingInstantDeltas.push({ source: 'adjacency:cramp', deltas });
-    }
-    const sticks = content.adjacency.pairs.find((x) => x.id === 'it-sticks')!;
-    if (def.id === sticks.second && last.isWorkout && gap <= sticks.gapMaxMin && sticks.effect.kind === 'scaleDecay') {
-      // Re-trigger REPLACES the old instance (§6.7: a bonus never stacks with itself).
-      s.decayModifiers = s.decayModifiers.filter((m) => m.source !== 'adjacency:it-sticks');
-      s.decayModifiers.push({ bar: sticks.effect.bar, factor: sticks.effect.factor, untilMinute: now + sticks.effect.durationMin, source: 'adjacency:it-sticks' });
-      // Provenance for §6.7 stop-cancels-bonus: stopping THIS meal revokes the grant.
-      dto.grantedModifierSources = [...(dto.grantedModifierSources ?? []), 'adjacency:it-sticks'];
+    for (const pair of content.adjacency.pairs) {
+      if (gap > pair.gapMaxMin || !adjacencyMatches(pair, lastDef, def)) continue;
+      const eff = pair.effect;
+      if (eff.kind === 'halveDuration') {
+        dto.durationTicks = Math.max(1, Math.ceil(dto.durationTicks / 2));
+        if (dto.fillStartTick >= dto.durationTicks) dto.fillStartTick = dto.durationTicks - 1;
+      } else if (eff.kind === 'barDelta') {
+        const deltas: Partial<Record<BarId, number>> = {};
+        for (const [bar, v] of Object.entries(eff.deltas)) deltas[bar as BarId] = toFixed(v as number);
+        s.pendingInstantDeltas.push({ source: `adjacency:${pair.id}`, deltas });
+      } else if (eff.kind === 'scaleDecay') {
+        // Re-trigger REPLACES the old instance (§6.7: a bonus never stacks with itself).
+        const source = `adjacency:${pair.id}`;
+        s.decayModifiers = s.decayModifiers.filter((m) => m.source !== source);
+        s.decayModifiers.push({ bar: eff.bar, factor: eff.factor, untilMinute: now + eff.durationMin, source });
+        // Provenance for §6.7 stop-cancels-bonus: stopping THIS activity revokes the grant.
+        dto.grantedModifierSources = [...(dto.grantedModifierSources ?? []), source];
+      }
+      // scalePoints pairs pay in the practice/sleep paths — never at a plain timed start.
     }
   }
   return { type: 'activity', cardId: card.id, dto };
@@ -487,7 +549,7 @@ function completeActivity(
   now: number,
   wakeTarget: number,
 ): void {
-  const def = activityById(dto.activityId);
+  const def = activityByIdIn(content, dto.activityId);
   s.queue = s.queue.filter((c) => c.id !== cardId);
   emit('activityCompleted', def.id);
 
@@ -516,23 +578,9 @@ function endSleep(s: SimState, content: ContentRegistry, emit: (t: DomainEvent['
     const id = s.current.cardId;
     s.queue = s.queue.filter((c) => c.id !== id);
   }
-  // The night is resolved: unstarted anchor blocks from PRIOR days are stale — a
-  // bedtime overtaken by urgent sleep must not phantom-run at wake and consume the
-  // new day's anchor (round-2). Consumed for their OWN day; not counted as missed
-  // (the sim slept — the need the block exists for was met).
-  const today = dayNumber(s.clock.absoluteMinute);
-  const staleBlockIds = new Set<string>();
-  for (const c of s.queue) {
-    if (c.owner !== 'AUTO' || c.blockId === undefined) continue;
-    const [anchorId = '', blockDay] = c.blockId.split('#');
-    if (blockDay !== undefined && Number(blockDay) < today) {
-      staleBlockIds.add(c.blockId);
-      s.anchorsConsumedOnDay[anchorId] = Number(blockDay);
-    }
-  }
-  if (staleBlockIds.size > 0) {
-    s.queue = s.queue.filter((c) => !(c.blockId !== undefined && staleBlockIds.has(c.blockId)));
-  }
+  // The night is resolved: retire stale prior-day blocks (a bedtime overtaken by
+  // urgent sleep must not phantom-run at wake — round 2).
+  retireStaleBlocks(s);
   s.lastCompletion = { activityId: 'sleep', isWorkout: false, atMinute: s.clock.absoluteMinute };
   s.practice.prevCompletionWasPractice = false;
   s.current = null;

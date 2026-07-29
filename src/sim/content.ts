@@ -52,16 +52,27 @@ export const content: ContentRegistry = {
   objects: ObjectsSchema.parse(rawObjects),
 };
 
-export function objectForActivity(activityId: string) {
-  const owners = content.objects.objects.filter((o) => o.activities.includes(activityId));
+/** Registry-scoped lookups: the engine resolves ONLY through these — a step()
+ * caller's registry is the single source of truth (audit round 3: the globals
+ * silently shadowed injected content for activities/objects). */
+export function objectForActivityIn(registry: ContentRegistry, activityId: string) {
+  const owners = registry.objects.objects.filter((o) => o.activities.includes(activityId));
   if (owners.length !== 1) throw new Error(`activity "${activityId}" must have exactly one object owner, found ${owners.length}`);
   const owner = owners[0];
   if (!owner) throw new Error('unreachable');
   return owner;
 }
 
-export function activityById(id: string) {
-  const def = content.activities.activities.find((a) => a.id === id);
+export function objectForActivity(activityId: string) {
+  return objectForActivityIn(content, activityId);
+}
+
+export function activityByIdIn(registry: ContentRegistry, id: string) {
+  const def = registry.activities.activities.find((a) => a.id === id);
   if (!def) throw new Error(`unknown activity id "${id}"`);
   return def;
+}
+
+export function activityById(id: string) {
+  return activityByIdIn(content, id);
 }

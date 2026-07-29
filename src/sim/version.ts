@@ -19,4 +19,13 @@
  * cards auto-clean at their own creation threshold (+10); player inserts past the
  * cap are rejected per-command instead of crashing the tick. Golden re-recorded.
  */
-export const ENGINE_VERSION = 3 as const;
+/**
+ * v4 (2026-07-30, external audit round 3): the reorder verb exists (`moveCard`
+ * command — moving PINS the card per §7.4's ownership row; block members detach);
+ * engine resolves activities/objects ONLY through the step() content argument;
+ * adjacency is truly data-driven (generic first/firstTag × second/secondTag
+ * matcher + effect.kind dispatch — no pair ids in engine code); a stopped
+ * practice refunds the minty payment it consumed (§6.7); stale prior-day blocks
+ * also retire at the wake boundary (all-nighter path). Golden re-recorded.
+ */
+export const ENGINE_VERSION = 4 as const;
