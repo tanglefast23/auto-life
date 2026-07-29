@@ -170,7 +170,7 @@ Mirrors **Hero Football Manager** (verified in-repo):
 | Animation | react-native-reanimated v4 + worklets (60 fps interpolation off the JS thread) |
 | UI state | zustand (UI mirrors sim snapshots; sim owns truth) |
 | Validation | zod on all `content/` JSON at build time |
-| Saves | expo-sqlite, versioned JSON snapshots (§15). Relational tables deferred until a feature needs queries [DECIDED] |
+| Saves | `persistence/kv` adapter — web: localStorage, native: expo-sqlite (§15; P0 kill-gate ruling). Versioned JSON snapshots; relational tables deferred until a feature needs queries [DECIDED] |
 | Styling | NativeWind; Silkscreen pixel font (art pass may substitute a friendlier pixel face — design.md owns this) |
 | Audio | expo-audio (§14) |
 
