@@ -1,0 +1,173 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`golden week: digest matches the recorded replay and the pinned ENGINE_VERSION 1`] = `
+{
+  "anchorsMissed": 0,
+  "chronotype": "baseline",
+  "days": [
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.7,
+        "movement": 40.83,
+        "nutrition": 50.47,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.45,
+        "movement": 56,
+        "nutrition": 95.8,
+      },
+      "travelMinutes": 27,
+    },
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.65,
+        "movement": 47.83,
+        "nutrition": 47.53,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.4,
+        "movement": 63,
+        "nutrition": 77.4,
+      },
+      "travelMinutes": 26,
+    },
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.65,
+        "movement": 53.97,
+        "nutrition": 47.53,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.4,
+        "movement": 69.13,
+        "nutrition": 77.4,
+      },
+      "travelMinutes": 26,
+    },
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.65,
+        "movement": 53.97,
+        "nutrition": 47.53,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.4,
+        "movement": 69.13,
+        "nutrition": 77.4,
+      },
+      "travelMinutes": 26,
+    },
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.65,
+        "movement": 53.97,
+        "nutrition": 47.53,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.4,
+        "movement": 69.13,
+        "nutrition": 77.4,
+      },
+      "travelMinutes": 26,
+    },
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.65,
+        "movement": 53.97,
+        "nutrition": 47.53,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.4,
+        "movement": 69.13,
+        "nutrition": 77.4,
+      },
+      "travelMinutes": 26,
+    },
+    {
+      "completions": {
+        "brush": 2,
+        "meal": 3,
+        "shower": 1,
+        "toilet": 1,
+        "weights": 1,
+      },
+      "minPerBar": {
+        "energy": 21,
+        "hygiene": 54.65,
+        "movement": 53.97,
+        "nutrition": 47.53,
+      },
+      "morningCheck": {
+        "energy": 90,
+        "hygiene": 95.4,
+        "movement": 69.13,
+        "nutrition": 77.4,
+      },
+      "travelMinutes": 26,
+    },
+  ],
+  "engineVersion": 1,
+  "firstWakeOrder": [
+    "toilet",
+    "brush",
+    "shower",
+    "meal",
+  ],
+  "seed": 1234,
+  "urgentCount": 0,
+}
+`;

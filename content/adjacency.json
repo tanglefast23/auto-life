@@ -6,7 +6,7 @@
       "effect": { "kind": "scaleDecay", "bar": "movement", "factor": 0.5, "durationMin": 720 } },
     { "id": "cramp",       "first": "meal",       "secondTag": "workout", "gapMaxMin": 30,
       "effect": { "kind": "barDelta", "deltas": { "movement": -10 } } },
-    { "id": "minty-fresh", "first": "brush",      "second": "sleep",    "gapMaxMin": 0,
+    { "id": "minty-fresh", "first": "brush",      "second": "sleep",    "gapMaxMin": 15,
       "effect": { "kind": "scalePoints", "factor": 1.15, "appliesTo": "firstPracticeBeforeMorningCheck" } },
     { "id": "fresh-mind",  "first": "shower",     "second": "practice", "gapMaxMin": 60,
       "effect": { "kind": "scalePoints", "factor": 1.2, "appliesTo": "thatPractice" } }

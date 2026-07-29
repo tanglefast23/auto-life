@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-07-30, travel-inclusive unattended run, seed 1234 (Q6 record-before-assert)",
+  "morningCheck": { "floor": 65, "fromDay": 3, "day2MovementFloor": 60 },
+  "urgentMax": 0,
+  "anchorsMissedMax": 0,
+  "nutritionMinBand": [47, 53],
+  "dinnerCapWasteMax": 12,
+  "travelMinutesPerDayBand": [20, 50],
+  "neglect": { "movementBelow": 20, "withinDays": 3 },
+  "recovery": { "healthFloorAtDay3MorningCheck": 75 }
+}
