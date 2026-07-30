@@ -114,19 +114,37 @@ export class GameLoop {
   }
 
   setSpeed(speed: Speed): void {
-    if (speed === this.speedValue) return; // idempotent: see below
-    const from = this.effectiveSpeed;
+    if (speed === this.speedValue) return; // idempotent: mashing a button must not stall the clock
+    this.retimeTo(speed === 0 ? 0 : speed);
     this.speedValue = speed;
-    // Carry the partial tick as NORMALISED progress, rescaled to the new rate. Zeroing
-    // it (the first version) had two faults found in adversarial pass 2: pausing at
-    // 499 ms rewound interpolation to the start of the tick, and because the UI calls
-    // setSpeed on every press, repeatedly tapping the ALREADY-ACTIVE speed reset the
-    // accumulator forever and the clock never advanced.
-    const fromPer = msPerTick(from);
-    const toPer = msPerTick(this.effectiveSpeed);
-    if (Number.isFinite(fromPer) && Number.isFinite(toPer) && fromPer > 0) {
-      this.accumulatorMs = (this.accumulatorMs / fromPer) * toPer;
-    }
+    this.rebuildAccumulator();
+  }
+
+  /**
+   * Partial-tick progress is carried as NORMALISED alpha across every rate change,
+   * including pause.
+   *
+   * Three faults lived here across two adversarial passes:
+   *  - pass 2: `setSpeed` zeroed the accumulator, so pausing at 499 ms rewound
+   *    interpolation, and (because the UI calls setSpeed on every press) mashing the
+   *    already-active speed reset progress forever and the clock never advanced;
+   *  - pass 4 (BLOCKER): rescaling used `msPerTick(effectiveSpeed)`, which is Infinity
+   *    while paused, so the rescale silently no-opped and the RAW millisecond count
+   *    survived. 400 ms banked at 1×, then Pause, then 4× left 400 ms against a 125 ms
+   *    tick — the next `advance(0)` ran **three ticks the player never saw**, and alpha
+   *    jumped 0.8 → 0 → 1.
+   *
+   * Freezing alpha on the way out and rebuilding milliseconds from it on the way in
+   * makes the carried quantity rate-independent, which is the only form that survives a
+   * pause.
+   */
+  private retimeTo(_next: Speed): void {
+    this.frozenAlpha = this.alpha;
+  }
+
+  private rebuildAccumulator(): void {
+    const per = msPerTick(this.effectiveSpeed);
+    this.accumulatorMs = Number.isFinite(per) ? this.frozenAlpha * per : 0;
   }
 
   /** Progress through the current tick, 0..1 — the renderer's interpolation alpha. */
@@ -142,10 +160,11 @@ export class GameLoop {
    */
   setSystemPaused(paused: boolean): void {
     if (paused === this.pausedBySystem) return;
-    // Freeze the interpolation alpha where it stood, so a pause holds the frame instead
-    // of snapping the sim back to the start of its tick.
-    if (paused) this.frozenAlpha = this.alpha;
+    // Same carry as setSpeed: freeze normalised progress, then rebuild milliseconds at
+    // whatever rate is in effect afterwards.
+    this.retimeTo(this.speedValue);
     this.pausedBySystem = paused;
+    this.rebuildAccumulator();
   }
 
   /** Queue a command for the next minute boundary (step() applies commands in stage 1). */

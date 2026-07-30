@@ -94,7 +94,16 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
           <Text style={styles.healthLabel}>HEALTH</Text>
           <Text style={styles.healthValue}>{Math.round(health)}</Text>
         </View>
-        <Bar value={health} color={INK} width={168} height={10} band="normal" />
+        {/* Health uses the DEFAULT bands like any other bar. It was pinned to "normal",
+            so a Day-1 Health of ~60 never showed the 40–69 warning (pass 4). */}
+        <Bar
+          value={health}
+          color={INK}
+          width={168}
+          height={10}
+          band={bandFor('nutrition', health, content.rates).band}
+          pulseOpacity={pulse}
+        />
 
         {BAR_ORDER.map((bar) => {
           const value = snapshot?.bars[bar] ?? 0;

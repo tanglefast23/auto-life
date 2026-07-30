@@ -64,14 +64,15 @@ function deriveFacing(s: SimState, content: ContentRegistry, travel: TravelView 
   const cur = s.current;
 
   if (travel !== null && travel.path.length > 0) {
-    // Derived from the segment the renderer is interpolating, so the sprite never
-    // faces one way while its drawn position moves another (pass-2 finding).
-    const idx = Math.min(
-      travel.path.length - 1,
-      Math.floor((travel.path.length * travel.elapsedTicks) / Math.max(1, travel.totalTicks)),
-    );
+    // EXACTLY the progress maths `interpolateTravel` uses — (path.length - 1), not
+    // path.length. Pass 2 moved facing onto the drawn segment but left a different
+    // formula behind, so pass 4 found the sprite facing down while sliding left through
+    // a multi-corner journey. One formula, one source of truth.
+    const span = travel.path.length - 1;
+    const t = span <= 0 ? 0 : (Math.min(travel.totalTicks, travel.elapsedTicks) / Math.max(1, travel.totalTicks)) * span;
+    const idx = Math.min(span, Math.floor(t));
     const here = travel.path[idx] ?? s.position;
-    const next = travel.path[Math.min(travel.path.length - 1, idx + 1)] ?? here;
+    const next = travel.path[Math.min(span, idx + 1)] ?? here;
     const dx = next.x - here.x;
     const dy = next.y - here.y;
     if (dx !== 0 || dy !== 0) {
@@ -85,13 +86,35 @@ function deriveFacing(s: SimState, content: ContentRegistry, travel: TravelView 
     return 'down';
   }
 
-  if (cur === null) return 'down';
-  if (cur.type === 'travel') return 'down';
-  const activityId = cur.type === 'sleep' ? 'sleep' : cur.dto.activityId;
-  return objectForActivityIn(content, activityId).facing;
+  if (cur !== null && cur.type !== 'travel') {
+    const activityId = cur.type === 'sleep' ? 'sleep' : cur.dto.activityId;
+    return objectForActivityIn(content, activityId).facing;
+  }
+  // Idle: hold the facing of the last thing done. The RenderView contract already
+  // promised this ("holds last value when still") while the code returned 'down'
+  // unconditionally — so finishing the toilet facing up snapped the sprite 180° during
+  // every one-tick gap between activities (adversarial pass 4: code vs its own comment).
+  // `lastCompletion` is existing sim state, so this needs nothing new stored.
+  if (s.lastCompletion !== null) {
+    try {
+      return objectForActivityIn(content, s.lastCompletion.activityId).facing;
+    } catch {
+      return 'down'; // an activity with no single object owner: fall through
+    }
+  }
+  return 'down';
 }
 
-function deriveProgress(s: SimState): number | null {
+/**
+ * `processedProgress` is the fraction the tick actually ADVANCED, supplied by `step()`.
+ *
+ * Reading only post-step `current` meant the ring could never reach 1: on the completion
+ * tick `current` is already null, so a three-tick activity published
+ * `0 → 0.33 → 0.67 → null` and the ring vanished at 67% instead of closing (adversarial
+ * pass 4). Same class of bug as the travel view, same fix.
+ */
+function deriveProgress(s: SimState, processedProgress: number | null): number | null {
+  if (processedProgress !== null) return Math.min(1, Math.max(0, processedProgress));
   const cur = s.current;
   if (cur === null || cur.type !== 'activity') return null;
   const { elapsedTicks, durationTicks } = cur.dto;
@@ -131,6 +154,7 @@ export function deriveRenderView(
   s: SimState,
   content: ContentRegistry,
   processedTravel: TravelView | null = null,
+  processedProgress: number | null = null,
 ): RenderView {
   const cur = s.current;
   const live =
@@ -146,7 +170,7 @@ export function deriveRenderView(
     // compile-time promise only — pass 2 proved that touching
     // `snapshot.render.travel.path[0]` mutated the live GameLoop state. Copy the path.
     travel: travel === null ? null : { path: travel.path.map((pt) => ({ x: pt.x, y: pt.y })), elapsedTicks: travel.elapsedTicks, totalTicks: travel.totalTicks },
-    activityProgress: deriveProgress(s),
+    activityProgress: deriveProgress(s, processedProgress),
     mSpeed: mSpeedAtStart(s.bars),
   };
 }

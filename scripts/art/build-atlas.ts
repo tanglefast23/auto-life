@@ -40,7 +40,10 @@ const ROOM_FILL: Record<string, { base: string; edge: string }> = {
   kitchen: { base: GREY.light, edge: GREY.base },
   hall: { base: WOOD.base, edge: WOOD.shadow },
 };
-const WALL_FILL = { base: WOOD.shadow, edge: INK };
+// design.md §3 Track B: world outlines are the fill ramp's SHADOW, never Ink — Ink
+// outlines are the UI track. Pass 4 caught wall/tv/bench using Ink while the
+// palette-membership validator still reported green (it checks colours, not roles).
+const WALL_FILL = { base: WOOD.shadow, edge: WOOD.shadow };
 
 /** Placeholder object fills, by object id. Ramp choice follows design.md §2's "owns" column. */
 const OBJECT_FILL: Record<string, { base: string; edge: string }> = {
@@ -52,8 +55,8 @@ const OBJECT_FILL: Record<string, { base: string; edge: string }> = {
   microwave: { base: GREY.base, edge: GREY.shadow },
   counter: { base: WOOD.base, edge: WOOD.shadow },
   couch: { base: TERRACOTTA.base, edge: TERRACOTTA.shadow },
-  tv: { base: GREY.shadow, edge: INK },
-  bench: { base: GREY.shadow, edge: INK },
+  tv: { base: GREY.shadow, edge: GREY.shadow },
+  bench: { base: GREY.shadow, edge: GREY.shadow },
   treadmill: { base: GREY.base, edge: GREY.shadow },
   rug: { base: TERRACOTTA.light, edge: TERRACOTTA.base },
   guitar: { base: WOOD.light, edge: WOOD.shadow },

@@ -290,6 +290,7 @@ export function step(
   // ---- stage 4: collect named signed deltas ----
   const processed: SimSnapshot['processed'] = s.current === null ? 'idle' : s.current.type;
   let processedTravel: TravelView | null = null;
+  let processedProgress: number | null = null;
   const contributions: BarContribution[] = [];
   let mode: BodyMode = 'awake';
   if (s.current?.type === 'sleep') mode = 'asleep';
@@ -332,6 +333,10 @@ export function step(
     }
   } else if (s.current?.type === 'activity') {
     const r = progressTimedActivity(s.current.dto);
+    // Publish the fraction this tick reached, INCLUDING 1 on the completion tick — after
+    // which `current` is null and post-step reading can only ever yield null (pass 4).
+    const dur = s.current.dto.durationTicks;
+    processedProgress = dur > 0 ? Math.min(1, (s.current.dto.elapsedTicks + 1) / dur) : null;
     contributions.push(r.contribution);
     if (r.completed) {
       completeActivity(s, s.current.cardId, s.current.dto, content, emit, now, wakeTarget);
@@ -389,7 +394,7 @@ export function step(
     s.practice.mintyArmed = false;
   }
 
-  return { next: s, events, snapshot: buildSnapshot(s, content, processed, processedTravel) };
+  return { next: s, events, snapshot: buildSnapshot(s, content, processed, processedTravel, processedProgress) };
 }
 
 /**
@@ -405,8 +410,9 @@ export function buildSnapshot(
   content: ContentRegistry,
   processed: SimSnapshot['processed'] = 'idle',
   processedTravel: TravelView | null = null,
+  processedProgress: number | null = null,
 ): SimSnapshot {
-  return {
+  const snap: SimSnapshot = {
     minuteOfDay: minuteOfDay(s.clock.absoluteMinute),
     day: dayNumber(s.clock.absoluteMinute),
     health: healthDisplay(s.bars, content.rates),
@@ -420,8 +426,27 @@ export function buildSnapshot(
     currentLabel: s.current === null ? 'idle' : s.current.type === 'activity' ? s.current.dto.activityId : s.current.type,
     processed,
     practicePoints: s.practice.points100 / 100,
-    render: deriveRenderView(s, content, processedTravel),
+    render: deriveRenderView(s, content, processedTravel, processedProgress),
   };
+  // The snapshot is the published read-model, so make it genuinely immutable rather than
+  // only `readonly` in the type system. Pass 4 showed `snapshot.bars.energy = -999` stuck
+  // and corrupted every HUD consumer until the next tick. Freezing is O(small) — the
+  // shape is fixed and shallow.
+  return deepFreezeSnapshot(snap);
+}
+
+/** Freeze the snapshot's own objects/arrays. Not a general deep-freeze: the shape is known. */
+function deepFreezeSnapshot(snap: SimSnapshot): SimSnapshot {
+  Object.freeze(snap.bars);
+  Object.freeze(snap.queueIds);
+  Object.freeze(snap.render.position);
+  if (snap.render.travel !== null) {
+    snap.render.travel.path.forEach((p) => Object.freeze(p));
+    Object.freeze(snap.render.travel.path);
+    Object.freeze(snap.render.travel);
+  }
+  Object.freeze(snap.render);
+  return Object.freeze(snap);
 }
 
 /** Generic §6.7 pair matcher: first/firstTag × second/secondTag, data-only (the

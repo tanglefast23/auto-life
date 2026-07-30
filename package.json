@@ -43,7 +43,8 @@
     "export:web": "expo export --platform web && cp serve.json dist/serve.json",
     "serve:dist": "serve dist --listen 4173",
     "harness": "jest --runInBand --runTestsByPath src/sim/__tests__/harness/golden-week.test.ts src/sim/__tests__/harness/balance.test.ts",
-    "verify": "npm run validate:content && npm run typecheck && npm test && npm run export:web"
+    "verify": "npm run validate:content && npm run art:check && npm run typecheck && npm test && npm run export:web",
+    "art:check": "npm run art:atlas && git diff --exit-code --stat -- assets/generated"
   },
   "private": true
 }

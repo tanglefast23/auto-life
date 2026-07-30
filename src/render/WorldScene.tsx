@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   Atlas,
   FilterMode,
@@ -42,6 +42,14 @@ const index = atlasIndexJson as AtlasIndex;
  * Skia repaints without touching the React tree. The first version bumped React state
  * every frame — roughly 43,200 reconciliations per 1× day, and it kept going while
  * paused (adversarial pass 2).
+ *
+ * Scope of that claim, stated precisely because an earlier version of this comment
+ * overclaimed (pass 4): the **paint** is off the JS thread, and React is not involved
+ * per frame. The per-frame *maths* still runs in a JS `requestAnimationFrame` callback,
+ * so a JS stall stutters movement. Moving the maths into a Reanimated frame worklet is
+ * a real improvement and is deliberately not attempted here — it would put
+ * `buildCharacterQuad` and the interpolator on the UI thread, which is P6's performance
+ * pass, not a placeholder-art phase's job.
  *
  * `sampling` is pinned to nearest-neighbour with no mipmaps. Skia's default is linear,
  * which blurs every pixel edge the moment the §11.5 scale is not 1 — design.md §13
@@ -115,29 +123,39 @@ export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldScene
     val.setXYWH(r[0]!, r[1]!, r[2]!, r[3]!);
   });
 
-  // One RAF. It writes shared values only — no setState, so React never re-renders here.
+  // ONE RAF for the component's lifetime.
+  //
+  // The first version listed `view` in its deps. `view` is a fresh object every tick, so
+  // the effect tore down and remounted 2–8 times a second, resetting `phase` and the
+  // frame timestamp each time — the walk cycle never actually ran, it just restarted
+  // (adversarial pass 4). The watched-day test could not catch this: it never mounts
+  // React. Latest inputs are read through a ref instead.
+  const latest = useRef({ view, alphaRef, effectiveSpeed });
+  latest.current = { view, alphaRef, effectiveSpeed };
+
   useEffect(() => {
     let raf = 0;
     let phase = 0;
     let last: number | null = null;
     const frame = (now: number) => {
+      const { view: v, alphaRef: getAlpha, effectiveSpeed: speed } = latest.current;
       const delta = last === null ? 0 : now - last;
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
-      phase = advancePhase(phase, delta * effectiveSpeed, view.mSpeed);
-      const quad = buildCharacterQuad(view, alphaRef(), phase);
+      phase = advancePhase(phase, delta * speed, v.mSpeed);
+      const quad = buildCharacterQuad(v, getAlpha(), phase);
       charX.value = quad.x;
       charY.value = quad.y;
       charSprite.value = CHAR_INDEX_OF[quad.sprite] ?? 0;
       // §11.1: progress ring over the sim. Centred above the head.
-      ringProgress.value = view.activityProgress ?? 0;
+      ringProgress.value = v.activityProgress ?? 0;
       ringX.value = quad.x + CHAR_W / 2;
       ringY.value = quad.y - 6;
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [view, alphaRef, effectiveSpeed, charX, charY, charSprite, ringProgress, ringX, ringY]);
+  }, [charX, charY, charSprite, ringProgress, ringX, ringY]);
 
   if (image === null) return null;
   return (
