@@ -31,8 +31,8 @@ This file does **not** lock speculative filenames or write placeholder P2–P6 c
 | P0 platform + P1 sim arithmetic | `2026-07-29-p0-p1-scaffold-sim-core.md` | **COMPLETED** — evidence/P0.md, evidence/P1.md |
 | P2 headless game loop | `2026-07-29-p2-headless-game-loop.md` | **COMPLETED** (incl. P2.1 dual-audit stabilization, ENGINE_VERSION 5) — evidence/p2.md |
 | A0 art-risk spike | authored after P2; must pass before the P3 plan is approved | **COMPLETED** — layer/anchor/offset strategy accepted with 3 documented simplifications; evidence/A0.md |
-| P3 placeholder world + HUD | authored only after P2 and A0 exit | **in progress (next)** |
-| P4 queue UI + minimum first-session slice | authored only after P3 exits | pending |
+| P3 placeholder world + HUD | `2026-07-30-p3-placeholder-world-hud.md` | **COMPLETED** — 4 adversarial loops (self / codex 5.6-sol max / self / codex 5.6-sol max); evidence/P3.md |
+| P4 queue UI + minimum first-session slice | authored only after P3 exits | **next** |
 | P4.5 external playtest protocol | authored and frozen no later than P4 start; run after P4 exits | pending |
 | P5 remaining v1 game/content/settings/saves | authored only after P4.5 passes | blocked by fun gate |
 | P6 final art/audio/juice/performance | authored only after P5 exits | pending |
