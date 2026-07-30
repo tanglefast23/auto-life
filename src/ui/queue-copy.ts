@@ -14,6 +14,8 @@ const QueueStringsSchema = z.strictObject({
   why: z.strictObject({
     reactiveTrigger: z.string().min(1),
     anchorWindow: z.string().min(1),
+    routineNeed: z.string().min(1),
+    routineFree: z.string().min(1),
     wrinklePackage: z.string().min(1),
     wrinkleFallback: z.string().min(1),
   }),
@@ -89,6 +91,14 @@ export function whyLine(reason: QueueReason | null): string | null {
       anchor: blockLabel(reason.anchorId),
       time: formatTimeOfDay(reason.targetMinute),
     });
+  }
+  if (reason.kind === 'routinePlan') {
+    return reason.bar === null
+      ? queueStrings.why.routineFree
+      : fill(queueStrings.why.routineNeed, {
+          bar: titleCase(reason.bar),
+          threshold: reason.threshold,
+        });
   }
   return reason.wrinkleId === 'package-delivery'
     ? queueStrings.why.wrinklePackage

@@ -17,6 +17,29 @@ same questions himself as a diagnostic, then recruit at least three fresh friend
 for the counted sessions. The six pass conditions remain unchanged; this changes
 timing, not the standard.
 
+**Joe amendment — 2026-07-31 (supersedes the placement above):** the external
+playtest moves again, to **after P6**, and runs on the final-art build. Build
+order is now P0 → P1 → P2 → P3 → P4 → P5 → P6 → **P4.5 external playtest, the
+sole fun gate**.
+
+*Reason.* Joe could not identify objects in the frozen P5 build — every one of
+the fifteen is a flat coloured rectangle. §6's failure loop can only change "the
+smallest implicated P2–P5 behaviour", and art is P6-owned, so a comprehension
+failure caused by placeholders has **no legal remedy inside the loop**: the
+protocol would record a failure it cannot act on and spend three irreplaceable
+fresh testers doing it.
+
+*What this costs, recorded rather than glossed.* The original placement existed
+so a design failure would surface before the expensive polish phase. A failure
+now lands on a finished P6. Two things bound the damage, and both are structural
+rather than hopeful: P6 holds `ENGINE_VERSION` at 8 with byte-identical goldens,
+so a mechanics retune happens in `sim/`/`game/`/`content/` — domains P6 never
+touches — and P6's own Gate A puts an observable legibility checkpoint before
+audio, juice, and performance are spent.
+
+*The six pass conditions remain unchanged.* This changes timing and the failure
+loop's remedy scope (§6), not the standard.
+
 ---
 
 ## 1. What this master locks
@@ -41,8 +64,8 @@ This file does **not** lock speculative filenames or write placeholder P2–P6 c
 | P3 placeholder world + HUD | `2026-07-30-p3-placeholder-world-hud.md` | **COMPLETED** — 4 adversarial loops (self / codex 5.6-sol max / self / codex 5.6-sol max); evidence/P3.md |
 | P4 queue UI + minimum first-session slice | `2026-07-30-p4-queue-ui-first-session.md` | **COMPLETED 2026-07-30** — T0–T12, post-phase audit fix, evidence/P4.md |
 | P5 remaining v1 game/content/settings/saves | `2026-07-30-p5-v1-systems-settings-saves.md` | **COMPLETE 2026-07-30; local verify and post-P5 freeze green, evidence/P5.md** |
-| P4.5 external playtest protocol | `2026-07-30-p4.5-external-playtest-protocol.md` | Criteria **FROZEN 2026-07-30 by Joe**; Joe diagnostic and three fresh-friend sessions are now the next gate |
-| P6 final art/audio/juice/performance | authored only after P5 exits and P4.5 passes | blocked by the deferred fun gate |
+| P6 final art/audio/juice/performance | `2026-07-30-p6-final-art-audio-juice-performance.md` | **IN PROGRESS** — opened 2026-07-31 under the amendment above; runs before the playtest |
+| P4.5 external playtest protocol | `2026-07-30-p4.5-external-playtest-protocol.md` | Criteria **FROZEN 2026-07-30 by Joe**, unchanged; **runs after P6** on the final-art build (2026-07-31 amendment). Joe diagnostic, then three fresh-friend sessions. v1 does not ship until it passes. |
 
 Writing detailed P2–P6 plans just in time is deliberate. A phase-index row alone is not the no-skip safeguard; the Definition of Ready and traceability rules below are.
 
@@ -142,8 +165,28 @@ This makes the Day-1 07:00 wake window observable on the first step. Leaf system
 | **P3** | Placeholder home scene, rendering/interpolation, visible travel/actions, HUD/clock/speeds, pause/background behavior, desktop scaling baseline | A complete placeholder day is watchable at 1×/2×/4×; sim result is speed-independent; desktop frame/scaling evidence recorded |
 | **P4** | Full §7.4 queue interaction surface, forecasts/why-lines needed for comprehension, keyboard/mouse/touch-capable-web parity, **player-visible Practice integration using P2's math**, **§11.4 sleep-skip** (assigned 2026-07-30 — see below), plus the minimum first-session slice below | Every interaction passes; scripted queue replay added; a recorded P4 baseline contains the complete minimum slice |
 | **P5** | Remaining goals 3–7, full wrinkle shapes/variants and storylets, **§7.4 blocked-object deferral, Quick-wash rerouting, and visitor behaviour beyond P4's Day-1 package** (ruled 2026-07-30 at P4 T0 — retaining them in P4 needed engine work outside its Q1/Q6/Q7 allowance), Practice levels/Prepared-Performer progression around the already-playable core, intentions, identity/preferences, journal, remaining recap, settings/autonomy, three-layer persistence, rotating saves/migrations, Day-8 letter | Mid-activity kill/resume; goals completable; scripted-player replay extended with Practice pacing, wrinkle exposure, Goal 6, suppression, and undo; authored-string gate current |
-| **P4.5** | After P5: Joe diagnostic self-test, then external test of comprehension **and enjoyment** using the unchanged frozen criteria below | Pass record from at least 3 fresh external testers; otherwise P6 remains closed |
-| **P6** | Final art per `design.md`, animation/juice, audio/music, desktop performance and ship pass | No placeholders; desktop-web DoD and re-run playtest criteria pass |
+| **P6** | Final art per `design.md`, animation/juice, audio/music, desktop performance and ship pass. **Also owns SPEC §11.1's world bubbles** (assigned 2026-07-31 — see below) | No placeholders (mechanically gated); desktop-web DoD; **P4.5 passes on the frozen post-P6 build** |
+| **P4.5** | After **P6** (2026-07-31 amendment): Joe diagnostic self-test, then external test of comprehension **and enjoyment** using the unchanged frozen criteria below, on final art | Pass record from at least 3 fresh external testers; otherwise v1 does not ship and §6's failure loop runs |
+
+### §11.1 world bubbles — owner assigned to P6 (2026-07-31)
+
+§11.1's world line reads: *"thought bubbles (need <40, preferences, hints), progress ring
+over the sim, ⚠ forecast pulses."* Audited against the tree, the ring shipped in P3 and
+forecast warnings shipped on P4's queue cards — but **the need and hint bubbles exist
+nowhere and were in no phase's owned list**, and P5's preference bubble is a panel element
+rather than a bubble over the sim. Same class of hole as §11.4's sleep-skip below: each
+plan assumed a neighbour had it.
+
+**Why P6:** there is no later phase, so an unowned v1 clause either lands here or silently
+becomes a cut nobody decided. It is also correct on the merits — `design.md` §8 already
+specifies the recipe and §9 the icons, and P6 is the phase that draws both. A bubble over
+the sim's head is how a player learns *why* she walked to the shower without opening a
+panel, which is the same comprehension problem the 2026-07-31 order amendment is about.
+
+**Scope, bounded:** one bubble at a time, anchored to the character's head anchor, derived
+only from state the engine already publishes (the `bandFor()` bands, P5's preference
+reaction, P4's forecast warnings). No new domain state, no new event. Because bubbles are
+*information*, they ship in P6's Milestone A and are part of Gate A — not with the juice.
 
 ### §11.4 sleep-skip — owner assigned to P4 (2026-07-30)
 
@@ -190,12 +233,17 @@ The detailed protocol is written and approved by P4 start, before results can in
 5. Every tester notices at least one lasting change or reward by the first recap.
 6. At least 2 of 3 choose to play the offered extra day and can say what they want to try or see.
 
-**Failure loop**
+**Failure loop** *(remedy scope rewritten 2026-07-31 for the post-P6 placement)*
 
 - Classify each failure as discoverability, comprehension, agency, consequence visibility, pacing, or desire-to-continue.
-- P6 stays closed.
-- Change the smallest implicated P2–P5 behavior, record the change, freeze a new build, and rerun the unchanged protocol with fresh testers.
+- Then classify the **layer** it implicates, because the two have different remedies and mixing them is how a failed playtest gets the wrong fix:
+  - **Mechanics** (rules, pacing, planner, balance, forecasts) → change the smallest implicated **P2–P5** behaviour. This may require an `ENGINE_VERSION` bump and re-pinned goldens under §7; that is expected, not a violation.
+  - **Presentation** (legibility, art, audio, motion, copy placement) → change the smallest implicated **P6** behaviour. If objects, poses, or bubbles are implicated, **re-run P6's Gate A before re-freezing** — Gate A is the cheap check that exists for exactly this class.
+  - **Both** → fix mechanics first, re-run Gate A, then re-freeze once.
+- Record the change, freeze a new build, and rerun the unchanged protocol with **fresh** testers. A tester who has seen any earlier build is spent.
 - Criteria cannot be weakened, waived, or moved without Joe's explicit decision.
+
+*(The pre-2026-07-31 line "P6 stays closed" is retired: P6 now runs before the gate, so there is nothing left to hold closed. What replaces it is that **v1 does not ship** until the protocol passes — the gate's authority is unchanged, only its position moved.)*
 
 ## 7. Staged replay and harness ownership
 
@@ -220,6 +268,7 @@ Each extension uses the same deterministic replay format. Any behavior-changing 
 6. **Traceability:** every owned normative SPEC clause maps to a test or observed gate. Claims such as “§6 covered” require the table.
 7. **Placeholder-first art:** P0–P5 cannot depend on final sprites. A0 is the only early art exception.
 8. **Current docs:** re-check official library guidance when a phase first uses or upgrades an external package.
+8a. **Inherited failure modes:** [docs/lessons-from-hero-football-manager.md](../../lessons-from-hero-football-manager.md) is binding (SPEC §16.0). Auto Life shares HFM's stack and art direction, so it inherits HFM's mistakes by default. A phase touching rendering, artwork, typography, audio, or interaction feel names the rules it honours and how. Load-bearing ones: scan every use site rather than keeping a list; RN does not inherit `fontFamily` through a `View`; one completed action owns exactly one sound; design the audio lifecycle on day one; inspect worst cases, not averages, with a test that does not share the transform's assumption; profile before redesigning.
 9. **Evidence:** phase exit records exact commands/results, manual device/browser observations, unresolved risks, and any accepted deferral. A local export is not a deployment, and a local check is not CI.
 10. **Authored prose:** before the first authored-string batch, verify the exact `humanizer` skill is available. Every changed batch receives that pass, then the deterministic `writing.md` checklist; reviewed file hashes/IDs and rewrites are recorded. A drafting/editing fallback may help rewrite, but does not satisfy the mandatory humanizer pass.
 

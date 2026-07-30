@@ -75,13 +75,11 @@ test('a running reactive meal is never evicted or shadow-duplicated as nutrition
 
 // ---- BLOCKER 3 + majors: adjacency start-measured, data-driven ----
 
-test('it-sticks fires in the unattended day (workout end → dinner START gap ≤60) and replaces itself', () => {
+test('routine Stretch can satisfy Movement without falsely granting it-sticks', () => {
   const { state } = run(fresh(), 1440);
-  // After the fix the modifier exists during the evening of any workout day:
   const s2 = run(fresh(), 420 + 700).state; // ~18:40, post-dinner-start
   const active = s2.decayModifiers.filter((m) => m.source === 'adjacency:it-sticks');
-  expect(active.length).toBeLessThanOrEqual(1); // never stacked
-  expect(active.length).toBe(1);
+  expect(active).toEqual([]);
   expect(state.events.urgentCount).toBe(0);
 });
 
@@ -183,10 +181,30 @@ test('stop suppression keys on card ownership: stopping a PINNED card suppresses
 
 test('a player nap card outside the window is dropped, never started', () => {
   const lateNight = 420 + 900; // 22:00 — outside the nap window (ends wake+780 = 20:00)
-  const cmds: Record<number, Command[]> = { [lateNight]: [{ type: 'insertPlayer', activityId: 'nap' }] };
-  const { state, events } = run(fresh(), 1000, cmds);
-  expect(events.filter((e) => e.type === 'activityCompleted' && e.detail === 'nap')).toEqual([]);
-  expect(state.queue.find((c) => c.activityId === 'nap')).toBeUndefined();
+  const s = fresh();
+  s.clock.absoluteMinute = lateNight;
+  s.bars = {
+    energy: toFixed(80),
+    nutrition: toFixed(100),
+    movement: toFixed(100),
+    hygiene: toFixed(100),
+  };
+  const result = step(
+    s,
+    [{ type: 'insertPlayer', activityId: 'nap' }],
+    content,
+  );
+  const outcome = result.outcomes[0];
+  expect(outcome).toMatchObject({
+    type: 'insertPlayer',
+    status: 'accepted',
+  });
+  const cardId =
+    outcome?.type === 'insertPlayer' && outcome.status === 'accepted'
+      ? outcome.cardId
+      : 'missing';
+  expect(result.next.current?.cardId).not.toBe(cardId);
+  expect(result.next.queue.some((c) => c.id === cardId)).toBe(false);
 });
 
 // ---- §7.3 exact components + tie-break ----

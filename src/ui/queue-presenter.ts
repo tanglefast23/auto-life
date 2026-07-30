@@ -20,43 +20,18 @@ export interface QueueVisualRow {
   cardIds: string[];
 }
 
-/**
- * UI-only block grouping from P4 Q3.
- *
- * The running card is removed first. Then, and only then, maximal contiguous AUTO
- * members sharing one block id collapse into a visual block. A PINNED member keeps
- * its block id in engine state but deliberately splits the visual block.
- */
+/** Every upcoming action gets its own row; the current card is shown separately. */
 export function groupQueueForStrip(
   queue: readonly PublishedQueueCard[],
   currentCardId: string | null,
 ): QueueStripItem[] {
-  const upcoming = queue.filter((card) => card.id !== currentCardId);
-  const items: QueueStripItem[] = [];
-
-  for (let i = 0; i < upcoming.length; i++) {
-    const first = upcoming[i]!;
-    if (first.owner !== 'AUTO' || first.blockId === undefined) {
-      items.push({ kind: 'card', key: `card:${first.id}`, card: first });
-      continue;
-    }
-
-    const cards = [first];
-    while (i + 1 < upcoming.length) {
-      const next = upcoming[i + 1]!;
-      if (next.owner !== 'AUTO' || next.blockId !== first.blockId) break;
-      cards.push(next);
-      i += 1;
-    }
-    items.push({
-      kind: 'block',
-      key: `block:${first.blockId}:${first.id}`,
-      blockId: first.blockId,
-      cards,
-    });
-  }
-
-  return items;
+  return queue
+    .filter((card) => card.id !== currentCardId)
+    .map((card) => ({
+      kind: 'card',
+      key: `card:${card.id}`,
+      card,
+    }));
 }
 
 /** One visible rail row. Collapsed blocks remain one indivisible movement unit. */
@@ -130,6 +105,7 @@ const ACTIVITY_COPY: Record<string, { label: string; glyph: string }> = {
   brush: { label: 'Brush teeth', glyph: '✦' },
   toilet: { label: 'Use toilet', glyph: 'T' },
   package: { label: 'Pick up package', glyph: '▤' },
+  read: { label: 'Read a book', glyph: 'B' },
   practice: { label: 'Practice', glyph: '♪' },
   idle: { label: 'Sit', glyph: '·' },
 };

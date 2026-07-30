@@ -2,6 +2,8 @@
   "why": {
     "reactiveTrigger": "Added: {bar} drops past {threshold} around {time}.",
     "anchorWindow": "Added: {anchor} starts around {time}.",
+    "routineNeed": "Added: {bar} is below {threshold}.",
+    "routineFree": "Added: Needs covered. Time to read.",
     "wrinklePackage": "Added: A package is waiting at the door.",
     "wrinkleFallback": "Added: Today's wrinkle put this in the queue."
   },

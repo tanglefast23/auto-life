@@ -690,6 +690,16 @@ const LegacyFixtureSchema = z.looseObject({
   game: z.unknown(),
 });
 
+const EngineV8CareerSchema = z.looseObject({
+  schemaVersion: z.literal(1),
+  engineVersion: z.literal(8),
+  payload: z.looseObject({
+    sim: z.looseObject({
+      engineVersion: z.literal(8),
+    }),
+  }),
+});
+
 /**
  * Relocates the untouched five PRNG records from legacy SimState into the P5
  * career envelope. No stream is replayed and no draw count is inferred.
@@ -719,6 +729,33 @@ export function migrateLegacyCareerFixture(
     game: restoreSession(legacy.game),
     prng,
     careerId: `synthetic-v${legacy.sourceEngineVersion}`,
+  });
+  validateCareerContentRefs(career, content);
+  return career;
+}
+
+/**
+ * Accepts only explicitly known older formats. Unknown future engine versions
+ * still fail closed and remain available through the recovery UI.
+ */
+export function migrateKnownCareer(
+  raw: unknown,
+  content: ContentRegistry,
+): StoredCareer {
+  const engineV8 = EngineV8CareerSchema.safeParse(raw);
+  if (!engineV8.success) {
+    return migrateLegacyCareerFixture(raw, content);
+  }
+  const career = restoreCareerState({
+    ...engineV8.data,
+    engineVersion: ENGINE_VERSION,
+    payload: {
+      ...engineV8.data.payload,
+      sim: {
+        ...engineV8.data.payload.sim,
+        engineVersion: ENGINE_VERSION,
+      },
+    },
   });
   validateCareerContentRefs(career, content);
   return career;

@@ -48,5 +48,5 @@ test('fillDelta rejects invalid inputs', () => {
 });
 
 test('engine version is pinned (bumped to 7 by post-P4 audit stabilization)', () => {
-  expect(ENGINE_VERSION).toBe(8);
+  expect(ENGINE_VERSION).toBe(9);
 });

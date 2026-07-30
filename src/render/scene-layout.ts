@@ -1,4 +1,5 @@
 import type { HomeMapConfig, ObjectsConfig } from '../sim/content-schemas';
+import type { Lighting } from './lighting';
 import type { Facing, Pose, RenderView } from '../sim/render-view';
 import { interpolateTravel } from '../sim/render-view';
 
@@ -28,6 +29,10 @@ export interface AtlasIndex {
   height: number;
   tile: number;
   sprites: Record<string, SpriteRect>;
+  /** Frame count per pose key, emitted by the builder so the renderer never guesses. */
+  poses: Record<string, number>;
+  /** Appearance ids with baked character frames. */
+  appearances: string[];
 }
 
 /** One draw: a named atlas sprite at a logical-pixel destination. */
@@ -48,7 +53,7 @@ export function lookup(index: AtlasIndex, name: string): SpriteRect {
  * Floor and wall tiles, row-major. Glyph → sprite comes from `home-map.json`'s own
  * `rooms` map, so adding a room is a content edit and never a renderer edit.
  */
-export function buildTileQuads(map: HomeMapConfig): Quad[] {
+export function buildTileQuads(map: HomeMapConfig, lighting: Lighting = 'day'): Quad[] {
   const glyphToRoom = new Map<string, string>();
   for (const [room, glyph] of Object.entries(map.rooms)) glyphToRoom.set(glyph, room);
 
@@ -59,9 +64,21 @@ export function buildTileQuads(map: HomeMapConfig): Quad[] {
     for (let x = 0; x < row.length; x++) {
       const glyph = row[x]!;
       const room = glyphToRoom.get(glyph);
-      const sprite = glyph === map.walls ? 'tile.wall' : room !== undefined ? `tile.${room}` : null;
+      const sprite =
+        glyph === map.walls
+          ? `tile.wall.${lighting}`
+          : room !== undefined
+            ? `tile.${room}.${lighting}`
+            : null;
       if (sprite === null) throw new Error(`home-map glyph "${glyph}" at (${x},${y}) maps to no room or wall`);
       quads.push({ sprite, x: x * TILE, y: y * TILE });
+    }
+  }
+  // Lamp pools sit above the floor and below everything else. design.md §7 makes them
+  // part of the evening tile set, so they are quads rather than a light pass.
+  if (lighting === 'evening') {
+    for (const [x, y] of map.lamps) {
+      quads.push({ sprite: 'tile.lamp.evening', x: x * TILE, y: y * TILE });
     }
   }
   return quads;
@@ -90,12 +107,21 @@ export function buildObjectQuads(objects: ObjectsConfig): Quad[] {
     .map(({ sprite, x, y }) => ({ sprite, x, y }));
 }
 
-/** Static scene = tiles then objects. Built once per run. */
-export function buildStaticQuads(map: HomeMapConfig, objects: ObjectsConfig): Quad[] {
-  return [...buildTileQuads(map), ...buildObjectQuads(objects)];
+/**
+ * Static scene = tiles then objects, for one lighting state.
+ *
+ * Built once per lighting state rather than once per run: there are exactly two, so the
+ * renderer memoizes both and swaps, which keeps the 350-quad buffer stable within a state.
+ */
+export function buildStaticQuads(
+  map: HomeMapConfig,
+  objects: ObjectsConfig,
+  lighting: Lighting = 'day',
+): Quad[] {
+  return [...buildTileQuads(map, lighting), ...buildObjectQuads(objects)];
 }
 
-const DECORATION_PLACEMENTS: Readonly<
+export const DECORATION_PLACEMENTS: Readonly<
   Record<string, Quad>
 > = {
   // Package choices sit in the counter's two authored decoration slots.
@@ -111,23 +137,22 @@ const DECORATION_PLACEMENTS: Readonly<
   },
   // Goal 2's plant sits on the wardrobe, so it remains distinct from either package choice.
   'bedroom-plant': {
-    sprite: 'decoration.leafy-plant',
+    sprite: 'decoration.trailing-vine',
     x: 8 * TILE + 8,
     y: 2 * TILE - 20,
   },
-  // Goal rewards use existing atlas art until P6 authors their final sprites.
   'wrinkle-keepsake': {
-    sprite: 'decoration.sunny-vase',
+    sprite: 'decoration.keepsake-box',
     x: 2 * TILE + 8,
     y: 9 * TILE - 20,
   },
   'wrinkle-print': {
-    sprite: 'decoration.leafy-plant',
+    sprite: 'decoration.framed-print',
     x: 3 * TILE + 8,
     y: 9 * TILE - 20,
   },
   'practice-poster': {
-    sprite: 'decoration.sunny-vase',
+    sprite: 'decoration.practice-poster',
     x: 10 * TILE + 8,
     y: 2 * TILE - 20,
   },
@@ -146,14 +171,49 @@ export function buildDecorationQuads(
 /**
  * Which character sprite to draw.
  *
- * `phase` is 0..1 through the current walk cycle. A0 shipped two frames per direction,
- * so the loop is a two-frame alternation; `stand` pins frame 0 and `sleep` borrows the
- * seated frame until P6 authors a real one (design.md §6's v1 bill).
+ * `phase` is 0..1 through the current animation cycle, and the frame count comes from the
+ * **atlas index**, not from a constant here — so adding a frame to a pose is an art change
+ * with no renderer edit, and a pose with no authored frames is a loud throw rather than a
+ * silently reused walk frame. That silent reuse is why a sleeping sim looked like a
+ * sitting one for three phases.
+ *
+ * `stand` still aliases walk frame 0: it is the one reuse that is deliberate, and it is
+ * why the bill is 48 frames rather than 52.
  */
-export function characterSprite(pose: Pose, facing: Facing, phase: number): string {
-  if (pose === 'sit' || pose === 'sleep') return 'char.sit-down';
-  const frame = pose === 'walk' && (phase % 1) >= 0.5 ? 1 : 0;
-  return `char.walk-${facing}-${frame}`;
+export function characterSprite(
+  index: AtlasIndex,
+  paletteId: string,
+  pose: Pose,
+  facing: Facing,
+  phase: number,
+  droop = false,
+  variantId: string | null = null,
+): string {
+  const at = (key: string, frames: number): string => {
+    const wrapped = ((phase % 1) + 1) % 1;
+    return `char.${paletteId}.${key}-${Math.min(frames - 1, Math.floor(wrapped * frames))}`;
+  };
+
+  if (pose === 'stand') {
+    if (droop && index.poses['stand-droop'] !== undefined) return `char.${paletteId}.stand-droop-0`;
+    return `char.${paletteId}.walk-${facing}-0`;
+  }
+
+  // An idle variant is decoration on a pose that already exists, so an unknown one falls
+  // back rather than throwing: a save may carry a variant from a later version, and a
+  // flourish must never take the session down.
+  if (pose === 'idle' && variantId !== null) {
+    const frames = index.poses[`idle-${variantId}`];
+    if (frames !== undefined) return at(`idle-${variantId}`, frames);
+  }
+
+  const key = pose === 'walk' ? `walk-${facing}` : pose;
+  const frames = index.poses[key];
+  if (frames === undefined) throw new Error(`atlas has no frames for pose "${key}"`);
+  if (droop && pose === 'idle' && index.poses['stand-droop'] !== undefined) {
+    return `char.${paletteId}.stand-droop-0`;
+  }
+  return at(key, frames);
 }
 
 /**
@@ -163,10 +223,17 @@ export function characterSprite(pose: Pose, facing: Facing, phase: number): stri
  * interpolated so the sim glides instead of teleporting (SPEC §5). The sprite is 48 px
  * tall on a 32 px tile, so it is lifted by the difference to stand feet-on-tile.
  */
-export function buildCharacterQuad(view: RenderView, alpha: number, phase: number): Quad {
+export function buildCharacterQuad(
+  index: AtlasIndex,
+  paletteId: string,
+  view: RenderView,
+  alpha: number,
+  phase: number,
+  variantId: string | null = null,
+): Quad {
   const tile = view.travel !== null ? interpolateTravel(view.travel, alpha) : view.position;
   return {
-    sprite: characterSprite(view.pose, view.facing, phase),
+    sprite: characterSprite(index, paletteId, view.pose, view.facing, phase, view.droop, variantId),
     x: tile.x * TILE,
     y: tile.y * TILE - CHAR_Y_OFFSET,
   };

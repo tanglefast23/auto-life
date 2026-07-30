@@ -6,6 +6,7 @@ import rawAdjacency from '../../content/adjacency.json';
 import rawPractice from '../../content/practice.json';
 import rawHomeMap from '../../content/home-map.json';
 import rawObjects from '../../content/objects.json';
+import rawAudio from '../../content/audio.json';
 import rawGoals from '../../content/goals.json';
 import rawIntentions from '../../content/intentions.json';
 import rawWrinkles from '../../content/wrinkles.json';
@@ -52,6 +53,8 @@ import {
   type StringCatalog,
   type WrinkleEffect,
   type WrinklesConfig,
+  AudioSchema,
+  type AudioConfig,
 } from './content-schemas';
 
 /**
@@ -68,6 +71,8 @@ export interface ContentRegistry {
   practice: PracticeConfig;
   homeMap: HomeMapConfig;
   objects: ObjectsConfig;
+  /** SPEC §14 cue bank wiring (P6 T8). Presentation only — never read by the planner. */
+  audio: AudioConfig;
   goals: GoalsConfig;
   intentions: IntentionsConfig;
   wrinkles: WrinklesConfig;
@@ -680,6 +685,7 @@ const parsedContent: ContentRegistry = {
   practice: PracticeSchema.parse(rawPractice),
   homeMap: HomeMapSchema.parse(rawHomeMap),
   objects: ObjectsSchema.parse(rawObjects),
+  audio: AudioSchema.parse(rawAudio),
   goals: GoalsSchema.parse(rawGoals),
   intentions: IntentionsSchema.parse(rawIntentions),
   wrinkles: WrinklesSchema.parse(rawWrinkles),

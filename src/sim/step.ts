@@ -11,6 +11,7 @@ import {
 } from './activities';
 import { anchorsToEnqueue, isMissed, resolveBlock } from './planner/anchors';
 import { evaluateReactive } from './planner/reactive';
+import { refillRoutineQueue } from './planner/routine';
 import { sortReactivesAroundBlocks } from './planner';
 import {
   autoCleanup,
@@ -430,6 +431,7 @@ export function step(
   const events: DomainEvent[] = [];
   const outcomes: CommandOutcome[] = [];
   const startedCardIds = new Set<string>();
+  let stoppedCurrentThisTick = false;
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
   const today = dayNumber(now);
@@ -442,6 +444,19 @@ export function step(
   const wakeBoundaryTarget =
     wakeTarget + (wakeModifier?.wakeOffsetMin ?? 0);
   const emit = (type: DomainEvent['type'], detail: string) => events.push({ type, detail, atMinute: now });
+  const refillRoutine = (atMinute: number): void => {
+    if (rules.autonomy !== 'full-routine') return;
+    s.queue = refillRoutineQueue({
+      queue: s.queue,
+      currentCardId: currentCardId(s),
+      bars: s.bars,
+      absoluteMinute: atMinute,
+      wakeTarget,
+      napEffectiveUsesToday: s.napEffectiveUsesToday,
+      content,
+      createCardId: () => `c${s.nextCardSeq++}`,
+    });
+  };
 
   // ---- stage 1: commands at the minute boundary ----
   for (const cmd of commands) {
@@ -519,6 +534,7 @@ export function step(
       // removal (§11.8 / T4). Nobody keeps walking to a removed task.
       if (cmd.cardId === currentCardId(s) && s.current !== null) {
         stopRunningUnit(s, now);
+        stoppedCurrentThisTick = true;
         outcomes.push({ type: 'removeCard', status: 'accepted', cardId: cmd.cardId, effect: 'stopped' });
         continue;
       }
@@ -622,6 +638,7 @@ export function step(
     } else if (cmd.type === 'stopCurrent' && s.current) {
       const cardId = currentCardId(s);
       stopRunningUnit(s, now);
+      stoppedCurrentThisTick = true;
       outcomes.push({ type: 'stopCurrent', status: 'accepted', cardId });
     } else if (cmd.type === 'stopCurrent') {
       outcomes.push({ type: 'stopCurrent', status: 'rejected', reason: 'nothingRunning' });
@@ -898,6 +915,9 @@ export function step(
           : rule.below;
     return toDisplay(s.bars[rule.bar]) > trigger + 10;
   });
+  // Anchors and reactive fixes claim their places first. The routine tail then
+  // fills any empty visible slots without replacing those stronger commitments.
+  refillRoutine(now);
   s.queue = sortReactivesAroundBlocks(
     s.queue,
     s.bars,
@@ -910,7 +930,11 @@ export function step(
   // drop on arrival is a visible absurdity, and a dropped card yields the slot to
   // the next card the same tick instead of idling. beginCard re-checks on arrival —
   // travel time can change the answer, and arrival-time truth wins.
-  while (s.current === null && s.queue.length > 0) {
+  while (
+    !stoppedCurrentThisTick &&
+    s.current === null &&
+    s.queue.length > 0
+  ) {
     let card = s.queue[0]!;
     if (!intrinsicCardCanBegin(s, card, content)) {
       s.queue = s.queue.filter((c) => c.id !== card.id);
@@ -1101,6 +1125,16 @@ export function step(
   if (s.practice.mintyArmed && minuteOfDay(s.clock.absoluteMinute) === morningCheckMinute(s.chronotype, content.rates)) {
     s.practice.mintyArmed = false;
   }
+
+  // A completed top card disappears and the next four move up in this same
+  // published frame; refill the newly opened fifth slot before snapshotting.
+  refillRoutine(s.clock.absoluteMinute);
+  s.queue = sortReactivesAroundBlocks(
+    s.queue,
+    s.bars,
+    content.reactive,
+    rules.routineMemory,
+  );
 
   const finalOutcomes = outcomes.map((outcome): CommandOutcome => {
     if (outcome.type !== 'insertWrinkle' || outcome.status !== 'accepted') return outcome;

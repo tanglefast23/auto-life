@@ -4,6 +4,7 @@ import { toFixed } from '../fixed';
 import { sortReactivesAroundBlocks } from '../planner';
 import { PrngStreams } from '../prng';
 import type { QueueCard } from '../queue';
+import { DEFAULT_SIM_RULES } from '../rules';
 import { newGameState, restoreSimState, type SimState } from '../state';
 import { step } from '../step';
 
@@ -192,6 +193,11 @@ test('invalid or inapplicable commands return typed rejections instead of corrup
       { type: 'stopCurrent' },
     ],
     content,
+    {
+      ...DEFAULT_SIM_RULES,
+      key: 'invalid-commands-without-routine-refill',
+      autonomy: 'reactive-only',
+    },
   );
 
   expect(r.outcomes).toEqual([

@@ -69,9 +69,28 @@ const BarEffectsSchema = z.partialRecord(
   z.number().finite().refine((v) => Math.abs(v) <= 100, 'effect magnitude must be at most 100'),
 );
 
+/**
+ * design.md §6's v1 frame bill, as a type (P6 T4).
+ *
+ * Declared per activity in content rather than switched on in the renderer, so two
+ * renderers cannot disagree about what an activity looks like, and so `validate-content`
+ * can cross-check every declared pose against the frames the atlas actually contains.
+ * That cross-check is what makes "no placeholders" a build failure rather than a promise:
+ * before P6, `sleep` silently reused the seated frame for three phases.
+ *
+ * `walk` is not selectable here — it is derived from travel, never from an activity.
+ */
+export const PoseSchema = z.enum([
+  'stand', 'sleep', 'nap', 'sit', 'eat', 'brush', 'shower',
+  'lift', 'run', 'stretch', 'practice', 'toilet', 'quickwash', 'idle',
+]);
+export type PoseName = z.infer<typeof PoseSchema>;
+
 const ActivityBase = {
   id: z.string().min(1),
   object: z.string().min(1),
+  /** Which authored animation the sim plays while this runs (design.md §6). */
+  pose: PoseSchema,
   /** System-only activities (for example the Day-1 package) never enter player pickers. */
   playerSelectable: z.boolean().optional(),
 };
@@ -294,13 +313,49 @@ export type PracticeConfig = z.infer<typeof PracticeSchema>;
 
 const Tile = z.tuple([z.number().int().min(0).max(23), z.number().int().min(0).max(13)]);
 
-export const HomeMapSchema = z.strictObject({
-  width: z.literal(24),
-  height: z.literal(14),
-  rooms: z.record(z.string(), z.string().length(1)),
-  walls: z.literal('#'),
-  grid: z.array(z.string().length(24)).length(14),
-});
+/** design.md §7 / SPEC §14: floor material drives both the tile texture and the footstep. */
+export const FloorMaterialSchema = z.enum(['wood', 'tile', 'carpet']);
+export type FloorMaterial = z.infer<typeof FloorMaterialSchema>;
+
+export const HomeMapSchema = z
+  .strictObject({
+    width: z.literal(24),
+    height: z.literal(14),
+    rooms: z.record(z.string(), z.string().length(1)),
+    /**
+     * Per-room floor material (P6 T3). Presentation and audio only — the planner and A*
+     * never read it, so it cannot affect a replay.
+     */
+    materials: z.record(z.string(), FloorMaterialSchema),
+    /**
+     * Tiles that carry a lamp. design.md §7 requires evening tiles be "plum-dim **+ gold
+     * pools**"; without authored light sources the evening set would be a uniform dim,
+     * which is a different thing. Presentation only.
+     */
+    lamps: z.array(Tile),
+    walls: z.literal('#'),
+    grid: z.array(z.string().length(24)).length(14),
+  })
+  .superRefine((doc, ctx) => {
+    // A room with no material is a silent-footstep bug at T10 and an untextured floor at
+    // T3. Catch it at the content boundary instead, where the message can be specific.
+    for (const room of Object.keys(doc.rooms)) {
+      if (doc.materials[room] === undefined) {
+        ctx.addIssue({ code: 'custom', message: `room "${room}" has no floor material` });
+      }
+    }
+    for (const room of Object.keys(doc.materials)) {
+      if (doc.rooms[room] === undefined) {
+        ctx.addIssue({ code: 'custom', message: `material declared for unknown room "${room}"` });
+      }
+    }
+    for (const [x, y] of doc.lamps) {
+      const glyph = doc.grid[y]?.[x];
+      if (glyph === undefined || glyph === doc.walls) {
+        ctx.addIssue({ code: 'custom', message: `lamp at (${x},${y}) is not on a floor tile` });
+      }
+    }
+  });
 export type HomeMapConfig = z.infer<typeof HomeMapSchema>;
 
 export const ObjectsSchema = z
@@ -794,3 +849,64 @@ export const StringCatalogSchema = z
     }
   });
 export type StringCatalog = z.infer<typeof StringCatalogSchema>;
+
+// ---------- audio (SPEC §14; P6 T8) ----------
+
+/**
+ * One playable cue: which rendered asset, and how loud it was authored.
+ *
+ * `gain` is the cue's own level, multiplied by the player's channel and master sliders at
+ * playback. HFM's handover is explicit that loudness belongs in the asset when runtime
+ * volume is capped (docs/lessons-from-hero-football-manager.md §3.2), so this is the
+ * per-cue trim, not a second volume control.
+ */
+export const AudioCueSchema = z.strictObject({
+  assetId: z.string().min(1),
+  gain: z.number().min(0).max(1),
+});
+export type AudioCue = z.infer<typeof AudioCueSchema>;
+
+export const AudioSchema = z
+  .strictObject({
+    music: z.strictObject({
+      day: AudioCueSchema,
+      evening: AudioCueSchema,
+      /** Must equal `EVENING_START_MINUTE`; cross-checked in validate-content. */
+      crossfadeMinute: z.number().int().min(0).max(1439),
+      crossfadeMs: z.number().int().positive().max(30_000),
+    }),
+    /** SPEC §14: the Practice riff is level-dependent, L0–L3. */
+    practiceRiffs: z.array(z.strictObject({ level: z.number().int().min(0).max(3), ...AudioCueSchema.shape })).length(4),
+    ambience: z.strictObject({ room: AudioCueSchema, rain: AudioCueSchema }),
+    footsteps: z.record(FloorMaterialSchema, AudioCueSchema),
+    activityLoops: z.record(z.string().min(1), AudioCueSchema),
+    cues: z.strictObject({
+      queueInsert: AudioCueSchema,
+      queueRemove: AudioCueSchema,
+      queueComplete: AudioCueSchema,
+      adjacency: AudioCueSchema,
+      urgency: AudioCueSchema,
+      recap: AudioCueSchema,
+    }),
+  })
+  .superRefine((doc, ctx) => {
+    const levels = doc.practiceRiffs.map((r) => r.level).sort((a, b) => a - b);
+    if (levels.join(',') !== '0,1,2,3') {
+      ctx.addIssue({ code: 'custom', message: 'practiceRiffs must cover levels 0..3 exactly once' });
+    }
+  });
+export type AudioConfig = z.infer<typeof AudioSchema>;
+
+/** Every asset id the bank must contain, flattened. Used by the bill gate and the bus. */
+export function declaredAudioAssetIds(audio: AudioConfig): string[] {
+  return [
+    audio.music.day.assetId,
+    audio.music.evening.assetId,
+    ...audio.practiceRiffs.map((r) => r.assetId),
+    audio.ambience.room.assetId,
+    audio.ambience.rain.assetId,
+    ...Object.values(audio.footsteps).map((c) => c.assetId),
+    ...Object.values(audio.activityLoops).map((c) => c.assetId),
+    ...Object.values(audio.cues).map((c) => c.assetId),
+  ];
+}

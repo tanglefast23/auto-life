@@ -4,6 +4,7 @@ import { forecast } from '../forecast';
 import { toDisplay, toFixed } from '../fixed';
 import { PrngStreams } from '../prng';
 import type { QueueCard } from '../queue';
+import { DEFAULT_SIM_RULES } from '../rules';
 import { newGameState, type SimState } from '../state';
 import { buildSnapshot, step } from '../step';
 
@@ -57,7 +58,11 @@ test('the sim snapshot publishes a frozen intrinsic queue DTO and exact current-
     }),
   ];
 
-  const r = step(s, [], content);
+  const r = step(s, [], content, {
+    ...DEFAULT_SIM_RULES,
+    key: 'read-model-without-routine-refill',
+    autonomy: 'reactive-only',
+  });
 
   expect(r.snapshot.queue).toEqual([
     {

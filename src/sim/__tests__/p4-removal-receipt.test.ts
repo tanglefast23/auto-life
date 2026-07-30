@@ -3,6 +3,7 @@ import { content, objectForActivity } from '../content';
 import { toFixed } from '../fixed';
 import { PrngStreams } from '../prng';
 import { PLAYER_CARD_CAP, playerCardCount, type QueueCard } from '../queue';
+import { DEFAULT_SIM_RULES } from '../rules';
 import { newGameState, restoreSimState, type SimState } from '../state';
 import { step } from '../step';
 
@@ -19,6 +20,11 @@ const card = (over: Partial<QueueCard> & { id: string; activityId: string }): Qu
 
 const player = (id: string, activityId = 'practice', enqueuedTick = 0): QueueCard =>
   card({ id, activityId, owner: 'PINNED', source: 'player', enqueuedTick });
+
+const nonRoutineIds = (state: SimState): string[] =>
+  state.queue
+    .filter((candidate) => candidate.source !== 'routine')
+    .map((candidate) => candidate.id);
 
 const at = (activityId: string): { x: number; y: number } => {
   const [x, y] = objectForActivity(activityId).interactPoint;
@@ -98,7 +104,7 @@ test('undo restores beside a surviving neighbour without discarding intervening 
     [{ type: 'moveCard', cardId: 'moved', toIndex: 2 }],
     content,
   );
-  expect(edited.next.queue.map((c) => c.id)).toEqual([
+  expect(nonRoutineIds(edited.next)).toEqual([
     'running',
     'left',
     'moved',
@@ -110,7 +116,7 @@ test('undo restores beside a surviving neighbour without discarding intervening 
     [{ type: 'undoLastRemove', receiptId }],
     content,
   );
-  expect(undone.next.queue.map((c) => c.id)).toEqual([
+  expect(nonRoutineIds(undone.next)).toEqual([
     'running',
     'left',
     'removed',
@@ -261,12 +267,28 @@ test('wake-boundary generation guard never erases a newer anchor consumption', (
     }),
   ];
 
-  const removed = step(s, [{ type: 'removeCard', cardId: 'stale-wake' }], content);
+  const noRoutineRules = {
+    ...DEFAULT_SIM_RULES,
+    key: 'receipt-generation-without-routine-refill',
+    autonomy: 'essentials-only' as const,
+  };
+  const removed = step(
+    s,
+    [{ type: 'removeCard', cardId: 'stale-wake' }],
+    content,
+    noRoutineRules,
+  );
   const receiptId = removed.next.removalReceipt?.id;
   if (receiptId === undefined) throw new Error('missing receipt');
 
   // At 07:00 the real wake#1 block starts and writes a newer generation.
-  const wakeStarted = step(removed.next, [], content);
+  removed.next.position = at('meal');
+  const wakeStarted = step(
+    removed.next,
+    [],
+    content,
+    noRoutineRules,
+  );
   expect(wakeStarted.next.anchorsConsumedOnDay.wake).toBe(1);
   const generation = wakeStarted.next.anchorMutationGenerations.wake;
 
@@ -274,6 +296,7 @@ test('wake-boundary generation guard never erases a newer anchor consumption', (
     wakeStarted.next,
     [{ type: 'undoLastRemove', receiptId }],
     content,
+    noRoutineRules,
   );
   expect(undone.next.anchorsConsumedOnDay.wake).toBe(1);
   expect(undone.next.anchorMutationGenerations.wake).toBe(generation);
@@ -345,7 +368,7 @@ test('the receipt is single-depth and only its opaque id can restore the card', 
     status: 'accepted',
     cardId: 'second',
   });
-  expect(restored.next.queue.map((c) => c.id)).toEqual([
+  expect(nonRoutineIds(restored.next)).toEqual([
     'running',
     'second',
   ]);

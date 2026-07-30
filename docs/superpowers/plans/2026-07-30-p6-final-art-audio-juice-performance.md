@@ -113,6 +113,88 @@ clause silently deferred, so each maps to a task in §3.
 
 ---
 
+## 0a. Audit response (2026-07-31)
+
+Two independent audits reviewed this plan; the second ran six persona reviewers. Every
+claim below was **verified against the tree or the binding document before being
+accepted** — several were, a few were narrowed, none were taken on faith. Where both
+audits agreed, the finding is marked ⚑ and was treated as near-certain.
+
+### Accepted and applied
+
+| # | Finding | Verified how | Disposition |
+|---|---|---|---|
+| ⚑1 | Three documents disagreed on when P4.5 runs; T0 quoted a stale build order | Master line 11 is C12 (the P−1 skip); the order lives in an unnumbered "Joe amendment" block at lines 13–14 and already read P4→P5→**P4.5**→P6. **There is no master §11.** | Master gained a 2026-07-31 amendment; §2/§5 rows swapped; P4.5 protocol header carries both amendments; §8 freeze marked superseded; T0 step 5 retargeted to the real anchors |
+| ⚑2 | Failure loop quoted as "P2–P4"; master says "P2–P5" | Master line 197 verified verbatim | Corrected in §2 Q1 and T13. Master §6's loop rewritten to classify **mechanics vs presentation**, since after the reorder presentation failures finally have a legal remedy |
+| 3 | §8 deadlocks: it required both "P4.5 passed" **and** "goldens byte-identical, engine still 8", while T13's own failure path prescribes a mechanics retune that forces a bump | Logic check against master §7 | **Real bug.** The digest pin is re-scoped to "P6 must not move it", with failure-loop retunes explicitly re-pinning under master §7 |
+| ⚑4 | Bubbles justified as comprehension but scheduled after the comprehension gate | Read against §1 and Q5 | Moved into Milestone A as **T6b**, before Gate A. Bubbles are information; card squash/poof/sparkle stay in T11 |
+| ⚑5 | Gate A depended on `art:bill`, which T13 creates | Read against Gate A and T13 | Split: **`art:bill:core`** ships at the end of Milestone A and Gate A runs it; T13 extends it to the full gate |
+| ⚑6 | Audio procurement is unscheduled and load-bearing for the only fun gate; and §7's cut contradicted SPEC §17 | SPEC.md:688 verified — the authorized cut is "one loop **+ queue cues**", not the music-only set this plan wrote, which would leave the SFX slider dead against §11.7/§18 | **Approach changed: audio is synthesized from authored TypeScript, exactly like sprites.** See §0b. §7's cut realigned to SPEC §17 verbatim |
+| 7 | Evening tiles contradicted design.md §7 and gold pools had no delivering task | design.md:89 verified: "day tiles (cream-bright) and evening tiles (**plum-dim + gold pools**)". The drafted `MATERIAL_RAMP` only darkened each material inside its own ramp | Evening tiles now shift toward Dusk plum; `content/home-map.json` gains authored `lamps`; T3 packs gold-pool tiles and asserts both properties |
+| 8 | "200% text scaling" is unexecutable | `career-state.ts:102` verified: `hudTextScale` is `.min(0.75).max(1.5)` | T7 measures at **1.5**. The crisp-type tension is resolved by rounding every scaled Silkscreen size to the nearest multiple of 8, so no setting produces anti-aliased pixel type (design.md §13) |
+| ⚑9 | T13's deferral grep would fire on comments this plan itself prescribes | Confirmed: T1's `png.ts`, T2's `objects.ts`, and T5's test comments all match `\bP6\b` | Marker convention adopted: only `TODO(P6)` and `placeholder` trip the gate, `docs/` excluded, and the prescribed comments reworded |
+| 10 | Browser autoplay never addressed — music `play()` rejects before a gesture, and the "never double-play" guard then blocks retry, so the frozen playtest could run silent | Chrome autoplay policy; verified the drafted guard has this shape | **Real bug.** A rejected `play()` no longer counts as started; a one-time first-gesture unlock is added; an autoplay row joins the edge matrix |
+| 11 | Audio bus wired in the wrong file; directory-level `git add` would swallow uncommitted P5 work | `ApplicationRoot.tsx:126` verified as the construction site, not `boot.ts` | Paths corrected throughout. P5 is now committed (`4abbf86`, merged at `1f483b0`), so the tree is clean; every commit step uses explicit file lists per master §8 |
+| 12 | Errata | Each checked individually | `stand-droop` name unified; `stateRunning` fixture corrected against `state.ts:36,39` (activity units need `cardId`; sleep has **no** `endMinute`); `tv`/`wardrobe` lose active frames (`activities: []` verified); footsteps corrected to **three** materials; `1024×768` dropped for SPEC's MBA-13 + 1366×768; `expo-font` provenance corrected — SPEC §3 names Silkscreen and `expo-audio`, not `expo-font`; the `hint` bubble is **specified**, not left as an empty slot; "NOT MET" no longer satisfies completion and 60 fps gains a numeric definition |
+
+### Accepted with a narrower scope
+
+| # | Finding | Why narrowed |
+|---|---|---|
+| 13 | "Gate A is author self-assessment" — proposed a fresh-eyes checker | Accepted: Gate A gains a two-minute name-what-you-see check by one person who will **not** be a counted tester. Rejected the stronger variant (freeze and run P4.5 at Gate A) — it would spend three irreplaceable fresh testers on a build with no audio and no juice, and master §6 requires the frozen build be the shipping one |
+| 14 | "Character authoring is the critical path; Gate A will thrash T2/T4" | Accepted as **process**, and it matches HFM lesson §2.1 (prove the cell size on hard subjects before generating the cast). T2 now ends with an explicit objects-only naming checkpoint, so a silhouette rethink cannot cascade into a 192-sprite preset re-bake |
+
+### Rejected
+
+| Finding | Why |
+|---|---|
+| "Decoration bill 6 vs design.md's ~10 is a gap" | Already ruled in §7 with v2 named as owner. Authoring four unreachable sprites *is* placeholder art |
+| "Expand droop to every pose" | Both audits agreed this is optional; design.md asks that tiredness be visible, not exhaustive. Stand and idle carry it |
+
+## 0b. Ruling — audio is authored, not procured
+
+**The problem the audits found is real and structural:** T13's bill gate requires a file
+on disk for every declared cue, `verify` folds that gate in, and P4.5 runs only on the
+frozen build — so v1's sole external validation was sequenced behind a licensed-pack
+purchase with no deadline, no acceptance criteria, and no trigger for taking the cut.
+Five of six reviewers converged on it independently.
+
+**Ruling: P6 synthesizes its audio from authored parameters in TypeScript and renders it
+to committed WAV at build time — the same pipeline shape the atlas already uses.**
+
+This is not a workaround; it is the same answer the project already gave for art:
+
+- **Deterministic and byte-reproducible.** `npm run audio:check` diffs committed output
+  against a fresh render, exactly like `art:check`.
+- **No supply chain.** `png.ts` is dependency-free "because a pixel-art validator that
+  pulls an image library is a supply-chain surface for no benefit". A WAV writer is the
+  same 40 lines of RIFF header plus PCM, and Node's stdlib covers it.
+- **Reviewable in a diff.** A change to the day bed is a parameter change with a visible
+  cause, not an opaque binary swap.
+- **Stylistically coherent.** Chiptune-adjacent synthesis is the audio counterpart of
+  chunky flat pixel art; a licensed orchestral pack would fight design.md, not serve it.
+- **It removes the dependency that made the fun gate hostage.** Nothing in P6 now waits
+  on a purchase.
+
+**What this does not change:** SPEC §14's required *set* is delivered in full — day and
+evening beds with a 19:00 crossfade, four level-dependent Practice riff layers, room tone
+plus a rain variant, footsteps per floor material, activity loops, and the six UI cues.
+The bill gate still requires a real file per declared id; it is now satisfiable by running
+the build rather than by waiting.
+
+**Budget, because uncompressed audio is the obvious risk:** mono, 22,050 Hz, 16-bit.
+Music beds are 8-second loops (~350 KB each); every other cue is under 1.5 s. The whole
+bank is held under **4 MB**, asserted by a test in T10 rather than hoped for. If it
+exceeds that, the beds drop to 16,000 Hz before anything is cut.
+
+**If audio is cut anyway** (SPEC §17 cut line 2), the authorized reduced set is verbatim
+SPEC's: **one loop + queue cues** — not the music-only set this plan originally wrote,
+which would have left P5's shipped SFX slider controlling nothing, against §11.7 and §18.
+Taking the cut means trimming `content/audio.json`'s declared list so the bill gate
+validates shipped scope; T13 step 1 names that as the operation.
+
+---
+
 ## 0. Definition of Ready
 
 Checked against the current tree, not inherited. **Rows 1 and 10 are red today.**
@@ -136,9 +218,24 @@ Checked against the current tree, not inherited. **Rows 1 and 10 are red today.*
 
 P6 is one master phase with four internal milestones and two hard gates.
 
-1. **Milestone A — legibility** (T0 → T7). Everything needed for a stranger to identify
-   what they are looking at: object silhouettes, day/evening rooms, a pose per activity,
-   real appearance presets, distinct decorations, the pixel font, icons and UI chrome.
+> **Task-body currency (2026-07-31).** §0a's dispositions are binding and take precedence
+> over any drafted code block below them. The task bodies were written before the audits;
+> where a disposition changes a recipe, a name, a fixture, or a path, the disposition wins
+> and the implementation follows it. The drafted blocks were never the deliverable — they
+> exist to make the intent unambiguous — so they are left as written rather than rewritten
+> into a second source of truth that could drift from §0a.
+
+1. **Milestone A — legibility** (T0 → T0A → T2 → T3 → T4 → T5 → T6 → **T6b** → T7 → T1
+   gates throughout). Everything needed for a stranger to identify what they are looking
+   at: object silhouettes, day/evening rooms, a pose per activity, real appearance
+   presets, distinct decorations, **the world bubbles that say *why* she is doing it**,
+   the pixel font, icons and UI chrome. Two additions from the audits:
+   - **T0A** hardens `index.web.ts`, which today blocks the *entire* app on CanvasKit —
+     the exact mistake HFM recorded (`docs/lessons-from-hero-football-manager.md` §1.4).
+   - **T6b** is the world bubble layer, moved here from T11 because bubbles are
+     information, not juice, and Gate A is the comprehension gate.
+   - Milestone A ends by shipping **`npm run art:bill:core`**, so Gate A runs a real gate
+     rather than "the four bill tests directly".
 2. **Gate A — legible build.** Full `npm run verify`, the bill-of-materials gate, and an
    exported-browser pass at both desktop viewports. **This is where the comprehension
    question gets answered** — Joe reads the room himself and either can or cannot name
@@ -3006,9 +3103,14 @@ re-authored to survive it.
   reward decorations that need them).
 - AI-generated assets → not used (Q3), route stays documented.
 - Remote CI and deployment → unchanged; all P6 evidence is local, stated as such.
-- If audio is cut at the §17 cut line, the honest reduced set is **music bed + mute +
-  sliders wired**, with ambience, footsteps, activity loops, and UI cues → **v1.1**. The
-  sliders and `M` binding P5 shipped must control something real either way.
+- If audio is cut at the §17 cut line, the authorized reduced set is **SPEC's own words —
+  "one loop + queue cues"** ([SPEC.md:688](../../../SPEC.md)), with ambience, footsteps,
+  activity loops, and the remaining UI cues → **v1.1**. An earlier draft of this plan wrote
+  the cut as "music bed + sliders only", which drops the queue cues SPEC keeps and would
+  leave P5's shipped SFX slider controlling nothing — against §11.7 and §18. Taking the cut
+  means trimming `content/audio.json`'s declared list so the bill gate validates shipped
+  scope; T13 step 1 owns that operation. **§0b makes the cut unlikely to be needed:** audio
+  is synthesized from authored parameters, so nothing waits on procurement.
 
 ---
 
@@ -3024,9 +3126,18 @@ P6 is complete only when:
    only execution, so P6 cannot exit without it;
 3. the bill gate is green: no debug sprite, no placeholder comment, and an authored asset
    for every object, pose, appearance, decoration, icon, and audio cue the game can reach;
-4. both goldens are byte-identical and `ENGINE_VERSION` is still 8;
-5. measured desktop frame times are recorded for MBA-13 and 1366×768, and either meet
-   60 fps or are recorded as a named NOT MET result;
+4. **P6 itself moved neither golden** — both digests are byte-identical to the pre-P6
+   values and `ENGINE_VERSION` is still 8 *on the build P4.5 first runs against*. This pin
+   scopes P6's own work only: if master §6's failure loop later prescribes a mechanics
+   retune, that retune re-pins the goldens and bumps the engine under master §7's rules,
+   and doing so does **not** violate this item. (An earlier draft made the pin absolute,
+   which deadlocked completion the moment a single legal fix followed a failed playtest —
+   an invariant written across a retry loop.)
+5. measured desktop frame times are recorded for MBA-13 and 1366×768 and **meet the bar**:
+   p95 frame time ≤ 16.7 ms with ≤ 1% dropped frames, over a 600-frame sample, at 1× and
+   4×, idle and mid-travel. A miss is a SPEC §18 DoD failure that Joe must explicitly
+   accept — **recording it as "NOT MET" does not satisfy this item.** An earlier draft let
+   the phase self-grant that waiver;
 6. audio mixes with working sliders and a persisted mute, with no orphaned audio after
    tab close;
 7. SPEC §18's technical and game lists are walked with evidence per line;

@@ -345,7 +345,7 @@ test('every individual card menu exposes semantic move, do-next, remove, and det
   press(tree.root.findByProps({ testID: 'queue-action:move-later' }));
   expect(handlers.onMoveCard).toHaveBeenLastCalledWith(
     'urgent-shower',
-    4,
+    3,
   );
 
   press(tree.root.findByProps({ testID: 'queue-menu:meal' }));
@@ -359,16 +359,15 @@ test('every individual card menu exposes semantic move, do-next, remove, and det
   act(() => tree.unmount());
 });
 
-test('a collapsed anchor block expands before its individual cards can be edited', () => {
+test('every anchor action is visible and editable without expanding a block', () => {
   const { tree } = setup();
-  const block = tree.root.findByProps({ testID: 'queue-block:wake#1:wake-brush' });
-  expect(block).toBeDefined();
-  expect(tree.root.findAllByProps({ testID: 'queue-menu:wake-brush' })).toHaveLength(0);
-
-  press(tree.root.findByProps({ testID: 'queue-block-expand:wake#1:wake-brush' }));
-
   expect(tree.root.findByProps({ testID: 'queue-menu:wake-brush' })).toBeDefined();
   expect(tree.root.findByProps({ testID: 'queue-menu:wake-breakfast' })).toBeDefined();
+  expect(
+    tree.root.findAllByProps({
+      testID: 'queue-block:wake#1:wake-brush',
+    }),
+  ).toHaveLength(0);
 
   act(() => tree.unmount());
 });

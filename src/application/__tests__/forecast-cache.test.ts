@@ -72,7 +72,7 @@ test('application publishes queue cards already joined to forecast annotations b
   const loop = new GameLoop(fresh(), content);
   const snapshot = loop.runOneTick();
 
-  expect(snapshot.queue).toHaveLength(4);
+  expect(snapshot.queue).toHaveLength(5);
   for (const card of snapshot.queue) {
     expect(card.forecast.cardId).toBe(card.id);
     expect(card.forecast.targetObjectId.length).toBeGreaterThan(0);

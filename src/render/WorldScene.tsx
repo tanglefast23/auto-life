@@ -13,6 +13,8 @@ import {
 } from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { content } from '../sim/content';
+import { resolvePaletteId } from './appearance';
+import { lightingAt } from './lighting';
 import type { RenderView } from '../sim/render-view';
 import atlasIndexJson from '../../assets/generated/atlas-index.json';
 import {
@@ -60,29 +62,43 @@ const index = atlasIndexJson as AtlasIndex;
 
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
 
-/** Every character sprite, flattened so a worklet can index it without object access. */
-const CHAR_SPRITES: readonly string[] = (() => {
+/**
+ * Every character sprite for one appearance, flattened so a worklet can index it by
+ * number without touching an object.
+ *
+ * Built from the atlas index's own pose table rather than a hard-coded pose list, so an
+ * added frame needs no edit here — and enumerating at module scope means a missing frame
+ * throws at startup and in the mounted tests, never mid-frame in a player's session.
+ */
+function characterLookup(paletteId: string): { rects: number[][]; indexOf: Record<string, number> } {
   const names = new Set<string>();
-  for (const pose of ['walk', 'stand', 'sit', 'sleep'] as const) {
-    for (const facing of ['up', 'down', 'left', 'right'] as const) {
-      names.add(characterSprite(pose, facing, 0));
-      names.add(characterSprite(pose, facing, 0.75));
-    }
+  for (const [key, frames] of Object.entries(index.poses)) {
+    for (let i = 0; i < frames; i++) names.add(`char.${paletteId}.${key}-${i}`);
   }
-  return [...names].sort();
-})();
-
-/** Flat [x, y, w, h] per sprite index — plain numbers, worklet-safe. */
-const CHAR_RECTS: readonly number[][] = CHAR_SPRITES.map((n) => {
-  const r = lookup(index, n);
-  return [r.x, r.y, r.w, r.h];
-});
-const CHAR_INDEX_OF: Record<string, number> = Object.fromEntries(CHAR_SPRITES.map((n, i) => [n, i]));
+  // `stand` aliases walk frame 0, so its four facings are reachable names too.
+  for (const facing of ['up', 'down', 'left', 'right'] as const) {
+    names.add(`char.${paletteId}.walk-${facing}-0`);
+  }
+  const sorted = [...names].sort();
+  return {
+    rects: sorted.map((n) => {
+      const r = lookup(index, n);
+      return [r.x, r.y, r.w, r.h];
+    }),
+    indexOf: Object.fromEntries(sorted.map((n, i) => [n, i])),
+  };
+}
 
 export interface WorldSceneProps {
   view: RenderView;
   /** Run-scoped game rewards; kept out of SimState and painted dynamically. */
   decorationIds?: readonly string[];
+  /** Which baked appearance to draw (P6 T5). Unknown ids fall back rather than crash. */
+  paletteId?: string;
+  /** Active idle variant — an identity preference or Goal 4's air-guitar reward. */
+  idleVariantId?: string | null;
+  /** Minute of the game day, so the room can swap to its evening tile set (design.md §7). */
+  minuteOfDay?: number;
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
@@ -99,16 +115,23 @@ export interface WorldSceneProps {
 export function WorldScene({
   view,
   decorationIds = [],
+  paletteId,
+  idleVariantId = null,
+  minuteOfDay = 12 * 60,
   alphaRef,
   scale,
   physicalPerArtPixel = scale,
   effectiveSpeed,
 }: WorldSceneProps) {
   const image = useImage(require('../../assets/generated/atlas.png'));
+  const appearance = resolvePaletteId(paletteId);
+  const lighting = lightingAt(minuteOfDay);
 
-  // Static world: memoized, so this runs once per session.
+  // Static world: memoized per lighting state. There are exactly two, so this rebuilds
+  // once at the 19:00 boundary rather than per frame, and the 350-quad buffer stays
+  // stable within a state — which is what keeps the Atlas upload off the frame path.
   const staticScene = useMemo(() => {
-    const quads = buildStaticQuads(content.homeMap, content.objects);
+    const quads = buildStaticQuads(content.homeMap, content.objects, lighting);
     return {
       sprites: quads.map((q) => {
         const r = lookup(index, q.sprite);
@@ -116,7 +139,10 @@ export function WorldScene({
       }),
       transforms: quads.map((q) => Skia.RSXform(1, 0, q.x, q.y)),
     };
-  }, []);
+  }, [lighting]);
+
+  // Rebuilt only when the career's appearance changes, i.e. once on load.
+  const chars = useMemo(() => characterLookup(appearance), [appearance]);
   const decorationScene = useMemo(() => {
     const quads = buildDecorationQuads(decorationIds);
     return {
@@ -142,9 +168,10 @@ export function WorldScene({
     val.set(1, 0, charX.value, charY.value);
   });
 
+  const charRectTable = chars.rects;
   const charRects = useRectBuffer(1, (val) => {
     'worklet';
-    const r = CHAR_RECTS[charSprite.value] ?? CHAR_RECTS[0]!;
+    const r = charRectTable[charSprite.value] ?? charRectTable[0]!;
     val.setXYWH(r[0]!, r[1]!, r[2]!, r[3]!);
   });
 
@@ -160,12 +187,18 @@ export function WorldScene({
     alphaRef,
     effectiveSpeed,
     physicalPerArtPixel,
+    appearance,
+    idleVariantId,
+    indexOf: chars.indexOf,
   });
   latest.current = {
     view,
     alphaRef,
     effectiveSpeed,
     physicalPerArtPixel,
+    appearance,
+    idleVariantId,
+    indexOf: chars.indexOf,
   };
 
   useEffect(() => {
@@ -178,17 +211,20 @@ export function WorldScene({
         alphaRef: getAlpha,
         effectiveSpeed: speed,
         physicalPerArtPixel: pixelGrid,
+        appearance: paletteKey,
+        idleVariantId: variant,
+        indexOf,
       } = latest.current;
       const delta = last === null ? 0 : now - last;
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
       phase = advancePhase(phase, delta * speed, v.mSpeed);
-      const quad = buildCharacterQuad(v, getAlpha(), phase);
+      const quad = buildCharacterQuad(index, paletteKey, v, getAlpha(), phase, variant);
       const drawX = snapToPhysicalPixel(quad.x, pixelGrid);
       const drawY = snapToPhysicalPixel(quad.y, pixelGrid);
       charX.value = drawX;
       charY.value = drawY;
-      charSprite.value = CHAR_INDEX_OF[quad.sprite] ?? 0;
+      charSprite.value = indexOf[quad.sprite] ?? 0;
       // §11.1: progress ring over the sim. Centred above the head.
       ringProgress.value = v.activityProgress ?? 0;
       ringX.value = drawX + CHAR_W / 2;

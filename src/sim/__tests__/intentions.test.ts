@@ -66,6 +66,7 @@ test('Balanced leaves the existing wake routine untouched', () => {
     'brush',
     'shower',
     'meal',
+    'stretch',
   ]);
 });
 
@@ -81,6 +82,7 @@ test('Take it easy suppresses the workout anchor and favors Quick wash', () => {
     'brush',
     'quickwash',
     'meal',
+    'stretch',
   ]);
 
   const workout = freshAt(1050);

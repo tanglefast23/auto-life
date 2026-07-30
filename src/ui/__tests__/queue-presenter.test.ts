@@ -35,7 +35,7 @@ const card = (
   };
 };
 
-test('the running card is removed before its remaining AUTO block is grouped', () => {
+test('the running card is removed and every upcoming action keeps its own row', () => {
   const queue = [
     card('wake-running', { blockId: 'wake#1', activityId: 'toilet' }),
     card('wake-brush', { blockId: 'wake#1', activityId: 'brush' }),
@@ -49,13 +49,21 @@ test('the running card is removed before its remaining AUTO block is grouped', (
 
   const items = groupQueueForStrip(queue, 'wake-running');
 
-  expect(items).toHaveLength(2);
-  expect(items[0]).toMatchObject({
-    kind: 'block',
-    blockId: 'wake#1',
-    cards: [{ id: 'wake-brush' }, { id: 'wake-shower' }],
-  });
-  expect(items[1]).toMatchObject({ kind: 'card', card: { id: 'player' } });
+  expect(items).toHaveLength(3);
+  expect(items).toEqual([
+    expect.objectContaining({
+      kind: 'card',
+      card: expect.objectContaining({ id: 'wake-brush' }),
+    }),
+    expect.objectContaining({
+      kind: 'card',
+      card: expect.objectContaining({ id: 'wake-shower' }),
+    }),
+    expect.objectContaining({
+      kind: 'card',
+      card: expect.objectContaining({ id: 'player' }),
+    }),
+  ]);
   expect(
     items.flatMap((item) =>
       item.kind === 'block' ? item.cards.map((c) => c.id) : [item.card.id],
@@ -63,7 +71,7 @@ test('the running card is removed before its remaining AUTO block is grouped', (
   ).not.toContain('wake-running');
 });
 
-test('a PINNED member splits matching AUTO members into two maximal fragments', () => {
+test('block membership never hides individual actions', () => {
   const queue = [
     card('wake-a', { blockId: 'wake#1', activityId: 'toilet' }),
     card('wake-b', { blockId: 'wake#1', activityId: 'brush' }),
@@ -78,17 +86,12 @@ test('a PINNED member splits matching AUTO members into two maximal fragments', 
 
   const items = groupQueueForStrip(queue, null);
 
-  expect(items.map((item) => item.kind)).toEqual(['block', 'card', 'block']);
-  expect(items[0]).toMatchObject({
-    kind: 'block',
-    cards: [{ id: 'wake-a' }, { id: 'wake-b' }],
-  });
-  expect(items[1]).toMatchObject({ kind: 'card', card: { id: 'moved-pin' } });
-  expect(items[2]).toMatchObject({
-    kind: 'block',
-    cards: [{ id: 'wake-c' }, { id: 'wake-d' }],
-  });
-  expect(items[0]?.key).not.toBe(items[2]?.key);
+  expect(items).toHaveLength(5);
+  expect(
+    items.map((item) =>
+      item.kind === 'card' ? item.card.id : item.key,
+    ),
+  ).toEqual(['wake-a', 'wake-b', 'moved-pin', 'wake-c', 'wake-d']);
 });
 
 test('a PINNED card retaining a block id is always rendered as an individual card', () => {
@@ -108,7 +111,7 @@ test('a PINNED card retaining a block id is always rendered as an individual car
   ]);
 });
 
-test('visual movement crosses a collapsed block without landing inside it', () => {
+test('visual movement targets the exact visible action row', () => {
   const queue = [
     card('current', {
       owner: 'PINNED',
@@ -141,7 +144,7 @@ test('visual movement crosses a collapsed block without landing inside it', () =
       'loose-before',
       1,
     ),
-  ).toBe(3);
+  ).toBe(2);
   expect(
     engineIndexForVisualMove(
       queue,
