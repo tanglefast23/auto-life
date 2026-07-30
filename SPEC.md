@@ -643,6 +643,32 @@ Dev hygiene (HFM lesson): web previews auto-muted in dev builds; QA checklist in
 
 ## 16. Architecture & testing
 
+### 16.0 Inherited lessons — [docs/lessons-from-hero-football-manager.md](docs/lessons-from-hero-football-manager.md) is binding
+
+Auto Life shares Hero Football Manager's stack and art direction, so it inherits HFM's
+failure modes by default. A review of 569 HFM commits (handed over 2026-07-31) is recorded
+in that file as binding rules. **Every phase plan that touches rendering, artwork,
+typography, audio, or interaction feel must name the rules it is honouring and how.**
+
+The rules that most often get lost, stated here so they are impossible to miss:
+
+- **Scan every use site, never maintain a list.** A list of screens is something a new
+  screen escapes. This is how nearest-neighbour sampling and pixel typography stay true.
+- **React Native does not inherit `fontFamily` through a `View`.** Half of HFM's UI text
+  silently fell back to a system font. Ship shared text components; never apply synthetic
+  bold to a one-weight bitmap font.
+- **One completed action owns exactly one sound**, across touch, mouse, keyboard, and
+  synthetic activation — and feedback is semantic, so cancel never inherits celebration.
+- **Design the audio lifecycle on day one:** mute, background, foreground, reload,
+  teardown, interrupted initialization.
+- **Inspect worst cases, not the average asset** — and the test must not share the
+  transform's assumption, or it will pass for the same wrong reason.
+- **Prove the cell size and silhouette on a few hard subjects before generating the cast.**
+- **Profile before redesigning performance architecture.**
+- **A green web export is not native acceptance.** They are separate surfaces (§18).
+- **Test complete sequences, not resting screenshots** — entry, midpoint, rest, exit,
+  reduced motion, every supported viewport.
+
 ### 16.1 Rings (HFM, inherited)
 
 ```
