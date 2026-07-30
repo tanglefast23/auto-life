@@ -543,7 +543,8 @@ On night-Sleep start (no URGENT queued, no input for 10 s): dissolve → 07:00. 
 
 ### 11.5 Responsive & scaling (verified policy)
 
-1. Reserve UI first: ~48 px HUD + 72 px queue on desktop; phones overlay the HUD and collapse the queue to a 48 px expandable strip.
+1. Reserve UI first: **148 px HUD** + 72 px queue on desktop; phones overlay the HUD and collapse the queue to a 48 px expandable strip.
+   - **148, not the ~48 this line originally sketched** [CONFIRMED by Joe, 2026-07-30]. The §11.1 Health block is seven rows — label · Health bar · four sub-bars · Practice counter — and measures ~148 px as built. Reserving 48 let the renderer believe it had 100 px it did not have, so the room was drawn *underneath* the HUD panel, hiding the top of the bedroom and the starting character (found in P3's fourth adversarial pass, evidence/P3.md). The reservation must describe the HUD that exists, not the one the line sketched. The alternative — shrink §11.1's block to genuinely fit 48 — was considered and rejected: the seven rows are all §11.1-required.
 2. Scale `S` = largest value where `S × devicePixelRatio` is an integer and the scene fits the remaining area — on 2× retina this legalizes half-steps (1.5× = exactly 3 physical px per art px; fits MacBook Air 13, verified). 1×-DPR laptops (1366×768) run 1×.
 3. Phones: no integer fit exists (verified) — render at 1× offscreen, downscale ~0.72–0.88 with a sharp-bilinear pixel-art filter (chosen over raw nearest-neighbor shimmer). **Landscape-first; portrait is out of scope for v1.** Respect safe areas (verified: 0.87 scale clears the iPhone 15 Dynamic Island).
 

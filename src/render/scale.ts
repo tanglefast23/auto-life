@@ -19,16 +19,17 @@ export const WORLD_W = 768;
 export const WORLD_H = 448;
 
 /**
- * SPEC §11.5: reserve UI first.
+ * SPEC §11.5: reserve UI first. **These numbers now match the SPEC** — §11.5 was updated
+ * to 148 px [CONFIRMED by Joe, 2026-07-30], so this is no longer a deviation.
  *
- * §11.5 says "~48 px HUD", but the §11.1 Health block is a seven-row panel (label +
- * Health bar + four sub-bars + Practice counter) and measures far taller. Reserving 48
- * let the HUD overlay the top of the world — including the starting character — while
- * `tooSmall` still reported false (adversarial pass 4). The reservation must describe
- * the HUD that exists, not the one the SPEC sketched.
+ * Why 148 and not the ~48 §11.5 originally sketched: the §11.1 Health block is seven
+ * rows (label · Health bar · four sub-bars · Practice counter). Reserving 48 let the
+ * renderer believe it had 100 px it did not have, so the room was drawn *underneath*
+ * the HUD, hiding the top of the bedroom and the starting character — while `tooSmall`
+ * still reported false (P3 adversarial pass 4).
  *
- * Recorded as a §11.5 deviation: either this number stays, or P4's HUD pass shrinks the
- * block to genuinely fit 48. It cannot be both.
+ * If P4's layout work changes the HUD's real height, change it here AND in §11.5. One
+ * number, two places, and they must never disagree again.
  */
 export const HUD_H = 148;
 export const QUEUE_H = 72;
