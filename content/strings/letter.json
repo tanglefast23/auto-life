@@ -1,0 +1,25 @@
+{
+  "offer": {
+    "eyebrow": "A LETTER FOR YOU",
+    "title": "A note from the venue",
+    "body": "A small venue has a five-day trial for a guitarist. The job begins in the next chapter.",
+    "prepared": "Your Practice L{level} locks in a {bonus}% Prepared Performer bonus for those first five workdays.",
+    "unprepared": "You can accept now, but there won't be a Prepared Performer bonus.",
+    "accept": "Accept the trial",
+    "decline": "Not yet",
+    "declineNote": "Say no for now and the letter will return on Sunday.",
+    "announcement": "A letter has arrived. The game is paused for your answer."
+  },
+  "accepted": {
+    "eyebrow": "NEXT CHAPTER",
+    "title": "First gigs, booked",
+    "body": "You're set to start {weekday}, Day {day}. Prepared Performer is locked at {bonus}% for your first five workdays.",
+    "bodyWithoutBonus": "You're set to start {weekday}, Day {day}. You accepted before Practice L1, so there is no Prepared Performer bonus.",
+    "terminal": "That's the end of this chapter. Your first shift begins in the next one.",
+    "done": "Back home"
+  },
+  "summary": {
+    "accepted": "First gigs start {weekday}, Day {day}. Prepared Performer: {bonus}%. The first shift begins in the next chapter.",
+    "declined": "The letter will return {weekday}, Day {day}."
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "defaultId": "balanced",
+  "intentions": [
+    {
+      "id": "balanced",
+      "labelStringId": "intentions:balanced.label",
+      "descriptionStringId": "intentions:balanced.description",
+      "policy": {
+        "kind": "balanced"
+      },
+      "biasTarget": {
+        "kind": "any-completed-activity"
+      }
+    },
+    {
+      "id": "take-it-easy",
+      "labelStringId": "intentions:takeItEasy.label",
+      "descriptionStringId": "intentions:takeItEasy.description",
+      "policy": {
+        "kind": "take-it-easy",
+        "suppressAnchorId": "workout",
+        "favorQuickVariants": true
+      },
+      "biasTarget": {
+        "kind": "activity",
+        "activityIds": ["nap", "quickwash"]
+      }
+    },
+    {
+      "id": "get-moving",
+      "labelStringId": "intentions:getMoving.label",
+      "descriptionStringId": "intentions:getMoving.description",
+      "policy": {
+        "kind": "get-moving",
+        "suggestActivityId": "stretch",
+        "waiveSecondWorkoutCrossCost": true
+      },
+      "biasTarget": {
+        "kind": "activity-tag",
+        "tag": "workout"
+      }
+    },
+    {
+      "id": "eat-properly",
+      "labelStringId": "intentions:eatProperly.label",
+      "descriptionStringId": "intentions:eatProperly.description",
+      "policy": {
+        "kind": "eat-properly",
+        "preferActivityId": "meal",
+        "wellFedThreshold": 60
+      },
+      "biasTarget": {
+        "kind": "activity",
+        "activityIds": ["meal"]
+      }
+    },
+    {
+      "id": "practice-focus",
+      "labelStringId": "intentions:practiceFocus.label",
+      "descriptionStringId": "intentions:practiceFocus.description",
+      "policy": {
+        "kind": "practice-focus",
+        "suggestedActivityId": "practice",
+        "protectContiguousBlock": true
+      },
+      "biasTarget": {
+        "kind": "activity",
+        "activityIds": ["practice"]
+      }
+    }
+  ]
+}

@@ -26,4 +26,8 @@ export const kv: KvStore = {
     const db = await openDb();
     await db.runAsync('INSERT OR REPLACE INTO kv (k, v) VALUES (?, ?)', key, value);
   },
+  async removeItem(key) {
+    const db = await openDb();
+    await db.runAsync('DELETE FROM kv WHERE k = ?', key);
+  },
 };

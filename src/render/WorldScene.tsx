@@ -18,11 +18,13 @@ import atlasIndexJson from '../../assets/generated/atlas-index.json';
 import {
   advancePhase,
   buildCharacterQuad,
+  buildDecorationQuads,
   buildStaticQuads,
   CHAR_H,
   CHAR_W,
   characterSprite,
   lookup,
+  snapToPhysicalPixel,
   TILE,
   type AtlasIndex,
 } from './scene-layout';
@@ -32,9 +34,9 @@ const index = atlasIndexJson as AtlasIndex;
 /**
  * The Skia scene (P3 T6).
  *
- * Master §9: Atlas is mandatory from the first sprite renderer. Two Atlas calls, split
- * by change rate — the 350-quad static world is memoized and never re-uploads; the
- * character is one quad.
+ * Master §9: Atlas is mandatory from the first sprite renderer. Calls are split by
+ * change rate — the 350-quad static world is memoized and never re-uploads, run
+ * decorations update only when granted, and the character is one quad.
  *
  * **Nothing here re-renders React per frame.** The character's position and sprite live
  * in Reanimated shared values that a single RAF writes; `useRSXformBuffer` /
@@ -79,9 +81,13 @@ const CHAR_INDEX_OF: Record<string, number> = Object.fromEntries(CHAR_SPRITES.ma
 
 export interface WorldSceneProps {
   view: RenderView;
+  /** Run-scoped game rewards; kept out of SimState and painted dynamically. */
+  decorationIds?: readonly string[];
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
+  /** Actual screen pixels occupied by one art pixel at the chosen exact scale. */
+  physicalPerArtPixel?: number;
   /**
    * Effective playback speed (0 while paused). The walk cycle is scaled by it, so at 4×
    * the legs move with the body instead of the sim sliding on frozen strides, and a
@@ -90,7 +96,14 @@ export interface WorldSceneProps {
   effectiveSpeed: number;
 }
 
-export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldSceneProps) {
+export function WorldScene({
+  view,
+  decorationIds = [],
+  alphaRef,
+  scale,
+  physicalPerArtPixel = scale,
+  effectiveSpeed,
+}: WorldSceneProps) {
   const image = useImage(require('../../assets/generated/atlas.png'));
 
   // Static world: memoized, so this runs once per session.
@@ -104,6 +117,18 @@ export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldScene
       transforms: quads.map((q) => Skia.RSXform(1, 0, q.x, q.y)),
     };
   }, []);
+  const decorationScene = useMemo(() => {
+    const quads = buildDecorationQuads(decorationIds);
+    return {
+      sprites: quads.map((quad) => {
+        const sprite = lookup(index, quad.sprite);
+        return rect(sprite.x, sprite.y, sprite.w, sprite.h);
+      }),
+      transforms: quads.map((quad) =>
+        Skia.RSXform(1, 0, quad.x, quad.y),
+      ),
+    };
+  }, [decorationIds]);
 
   const charX = useSharedValue(view.position.x * TILE);
   const charY = useSharedValue(view.position.y * TILE - (CHAR_H - TILE));
@@ -130,27 +155,44 @@ export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldScene
   // frame timestamp each time — the walk cycle never actually ran, it just restarted
   // (adversarial pass 4). The watched-day test could not catch this: it never mounts
   // React. Latest inputs are read through a ref instead.
-  const latest = useRef({ view, alphaRef, effectiveSpeed });
-  latest.current = { view, alphaRef, effectiveSpeed };
+  const latest = useRef({
+    view,
+    alphaRef,
+    effectiveSpeed,
+    physicalPerArtPixel,
+  });
+  latest.current = {
+    view,
+    alphaRef,
+    effectiveSpeed,
+    physicalPerArtPixel,
+  };
 
   useEffect(() => {
     let raf = 0;
     let phase = 0;
     let last: number | null = null;
     const frame = (now: number) => {
-      const { view: v, alphaRef: getAlpha, effectiveSpeed: speed } = latest.current;
+      const {
+        view: v,
+        alphaRef: getAlpha,
+        effectiveSpeed: speed,
+        physicalPerArtPixel: pixelGrid,
+      } = latest.current;
       const delta = last === null ? 0 : now - last;
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
       phase = advancePhase(phase, delta * speed, v.mSpeed);
       const quad = buildCharacterQuad(v, getAlpha(), phase);
-      charX.value = quad.x;
-      charY.value = quad.y;
+      const drawX = snapToPhysicalPixel(quad.x, pixelGrid);
+      const drawY = snapToPhysicalPixel(quad.y, pixelGrid);
+      charX.value = drawX;
+      charY.value = drawY;
       charSprite.value = CHAR_INDEX_OF[quad.sprite] ?? 0;
       // §11.1: progress ring over the sim. Centred above the head.
       ringProgress.value = v.activityProgress ?? 0;
-      ringX.value = quad.x + CHAR_W / 2;
-      ringY.value = quad.y - 6;
+      ringX.value = drawX + CHAR_W / 2;
+      ringY.value = drawY - 6;
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
@@ -166,6 +208,14 @@ export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldScene
         transforms={staticScene.transforms}
         sampling={NEAREST}
       />
+      {decorationScene.sprites.length > 0 && (
+        <Atlas
+          image={image}
+          sprites={decorationScene.sprites}
+          transforms={decorationScene.transforms}
+          sampling={NEAREST}
+        />
+      )}
       <Atlas image={image} sprites={charRects} transforms={charTransforms} sampling={NEAREST} />
       <ProgressRing progress={ringProgress} cx={ringX} cy={ringY} />
     </Group>

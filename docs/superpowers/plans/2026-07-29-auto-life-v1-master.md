@@ -8,7 +8,14 @@
 
 **Chosen stack:** Expo managed workflow + strict TypeScript · React Native Web static export · Vercel target · `@shopify/react-native-skia` (Atlas from the first real sprite renderer in P3) · Reanimated v4 · Zustand when the first UI consumer arrives · Zod 4 · `expo-sqlite` · `expo-audio` · Jest for the pure TypeScript rings.
 
-**Fixed decision (C12):** P−1 is skipped and will not be reopened. Build order is P0 → P1 → P2 → P3 → P4 → **P4.5 external playtest, the sole fun gate** → P5 → P6. The response to that choice is a stronger, non-movable P4.5 protocol—not a disguised replacement prototype.
+**Fixed decision (C12):** P−1 is skipped and will not be reopened.
+
+**Joe amendment — 2026-07-30:** the external playtest moves from immediately
+after P4 to immediately after P5. Build order is now P0 → P1 → P2 → P3 → P4 →
+P5 → **P4.5 external playtest, the sole fun gate** → P6. Joe will first run the
+same questions himself as a diagnostic, then recruit at least three fresh friends
+for the counted sessions. The six pass conditions remain unchanged; this changes
+timing, not the standard.
 
 ---
 
@@ -32,10 +39,10 @@ This file does **not** lock speculative filenames or write placeholder P2–P6 c
 | P2 headless game loop | `2026-07-29-p2-headless-game-loop.md` | **COMPLETED** (incl. P2.1 dual-audit stabilization, ENGINE_VERSION 5) — evidence/p2.md |
 | A0 art-risk spike | authored after P2; must pass before the P3 plan is approved | **COMPLETED** — layer/anchor/offset strategy accepted with 3 documented simplifications; evidence/A0.md |
 | P3 placeholder world + HUD | `2026-07-30-p3-placeholder-world-hud.md` | **COMPLETED** — 4 adversarial loops (self / codex 5.6-sol max / self / codex 5.6-sol max); evidence/P3.md |
-| P4 queue UI + minimum first-session slice | `2026-07-30-p4-queue-ui-first-session.md` | **drafted — awaiting plan audit (master §3.7) before code starts** |
-| P4.5 external playtest protocol | authored and frozen no later than P4 start; run after P4 exits | pending |
-| P5 remaining v1 game/content/settings/saves | authored only after P4.5 passes | blocked by fun gate |
-| P6 final art/audio/juice/performance | authored only after P5 exits | pending |
+| P4 queue UI + minimum first-session slice | `2026-07-30-p4-queue-ui-first-session.md` | **COMPLETED 2026-07-30** — T0–T12, post-phase audit fix, evidence/P4.md |
+| P5 remaining v1 game/content/settings/saves | `2026-07-30-p5-v1-systems-settings-saves.md` | **COMPLETE 2026-07-30; local verify and post-P5 freeze green, evidence/P5.md** |
+| P4.5 external playtest protocol | `2026-07-30-p4.5-external-playtest-protocol.md` | Criteria **FROZEN 2026-07-30 by Joe**; Joe diagnostic and three fresh-friend sessions are now the next gate |
+| P6 final art/audio/juice/performance | authored only after P5 exits and P4.5 passes | blocked by the deferred fun gate |
 
 Writing detailed P2–P6 plans just in time is deliberate. A phase-index row alone is not the no-skip safeguard; the Definition of Ready and traceability rules below are.
 
@@ -133,9 +140,9 @@ This makes the Day-1 07:00 wake window observable on the first step. Leaf system
 | **P2** | Top-level headless step, anchors/reactive/priority, queue ownership and suppression, adjacency, deterministic A*/travel timing, **Practice scoring/curves/block-bonus math**, commitments DTO, forecaster, unattended golden, fairness/recovery/property harness | Full unattended placeholder week including travel; Practice math/unit pacing green; replay diff tied to `ENGINE_VERSION`; forecast agrees with real step path; queue invariants green |
 | **A0** | One four-direction walk, seated action, hair layer, and outfit on average + offset-derived slim bodies | Reviewed rendered evidence at target scales; anchors/layers accepted or simplified **before P3 planning** |
 | **P3** | Placeholder home scene, rendering/interpolation, visible travel/actions, HUD/clock/speeds, pause/background behavior, desktop scaling baseline | A complete placeholder day is watchable at 1×/2×/4×; sim result is speed-independent; desktop frame/scaling evidence recorded |
-| **P4** | Full §7.4 queue interaction surface, forecasts/why-lines needed for comprehension, keyboard/mouse/touch-capable-web parity, **player-visible Practice integration using P2's math**, **§11.4 sleep-skip** (assigned 2026-07-30 — see below), plus the minimum first-session slice below | Every interaction passes; scripted queue replay added; a frozen build contains the complete P4.5 slice |
-| **P4.5** | External test of comprehension **and enjoyment** using the frozen protocol below | Pass record from at least 3 fresh external testers; otherwise P5/P6 remain closed |
-| **P5** | Remaining goals 3–7, full wrinkle shapes/variants and storylets, Practice levels/Prepared-Performer progression around the already-playable core, intentions, identity/preferences, journal, remaining recap, settings/autonomy, three-layer persistence, rotating saves/migrations, Day-8 letter | Mid-activity kill/resume; goals completable; scripted-player replay extended with Practice pacing, wrinkle exposure, Goal 6, suppression, and undo; authored-string gate current |
+| **P4** | Full §7.4 queue interaction surface, forecasts/why-lines needed for comprehension, keyboard/mouse/touch-capable-web parity, **player-visible Practice integration using P2's math**, **§11.4 sleep-skip** (assigned 2026-07-30 — see below), plus the minimum first-session slice below | Every interaction passes; scripted queue replay added; a recorded P4 baseline contains the complete minimum slice |
+| **P5** | Remaining goals 3–7, full wrinkle shapes/variants and storylets, **§7.4 blocked-object deferral, Quick-wash rerouting, and visitor behaviour beyond P4's Day-1 package** (ruled 2026-07-30 at P4 T0 — retaining them in P4 needed engine work outside its Q1/Q6/Q7 allowance), Practice levels/Prepared-Performer progression around the already-playable core, intentions, identity/preferences, journal, remaining recap, settings/autonomy, three-layer persistence, rotating saves/migrations, Day-8 letter | Mid-activity kill/resume; goals completable; scripted-player replay extended with Practice pacing, wrinkle exposure, Goal 6, suppression, and undo; authored-string gate current |
+| **P4.5** | After P5: Joe diagnostic self-test, then external test of comprehension **and enjoyment** using the unchanged frozen criteria below | Pass record from at least 3 fresh external testers; otherwise P6 remains closed |
 | **P6** | Final art per `design.md`, animation/juice, audio/music, desktop performance and ship pass | No placeholders; desktop-web DoD and re-run playtest criteria pass |
 
 ### §11.4 sleep-skip — owner assigned to P4 (2026-07-30)
@@ -148,7 +155,8 @@ Scope is small and deliberately bounded (SPEC §11.4): on night-sleep start, wit
 
 ### Minimum first-session slice required before P4.5
 
-P4.5 must test the game the spec claims is fun, not only a queue editor. The frozen P4 build must include, in placeholder art:
+P4.5 must test the game the spec claims is fun, not only a queue editor. The
+post-P5 frozen build must preserve at least this P4-proven slice, in placeholder art:
 
 - the full autonomous routine and editable queue;
 - forecast start times, cap-waste, conflicts, and plain-language why-lines;
@@ -185,8 +193,8 @@ The detailed protocol is written and approved by P4 start, before results can in
 **Failure loop**
 
 - Classify each failure as discoverability, comprehension, agency, consequence visibility, pacing, or desire-to-continue.
-- P5 and P6 stay closed.
-- Change the smallest implicated P2–P4 behavior, record the change, freeze a new build, and rerun the unchanged protocol with fresh testers.
+- P6 stays closed.
+- Change the smallest implicated P2–P5 behavior, record the change, freeze a new build, and rerun the unchanged protocol with fresh testers.
 - Criteria cannot be weakened, waived, or moved without Joe's explicit decision.
 
 ## 7. Staged replay and harness ownership
@@ -194,9 +202,11 @@ The detailed protocol is written and approved by P4 start, before results can in
 The full §16.3 suite cannot truthfully exist in P2 because some player-dependent systems arrive later:
 
 - **P2:** unattended seven-day golden; fairness, recovery, travel-inclusive timing, pin/property invariants; replay command format.
-- **P4:** scripted queue edits, stop/remove/undo/suppression, forecast agreement.
+- **P4:** scripted queue edits, stop/remove/undo/suppression, forecast agreement, **and the four player-dependent adjacency pairs** (warmed-up, cramp, minty-fresh, fresh-mind) with per-pair nonzero-effect assertions.
 - **P2:** Practice scoring/curve/block-bonus unit coverage.
-- **P5:** week-scale Practice pacing, wrinkle-band exposure, adjacency involving Practice, Goal 6.
+- **P5:** week-scale Practice pacing, wrinkle-band exposure, **adjacency pairs beyond P4's four**, Goal 6.
+
+**Ruling 2026-07-30 (P4 T0).** This line and evidence/p2.md contradicted each other: p2.md recorded the four player-dependent pairs as "P4 owner" while this list sent "adjacency involving Practice" to P5. Resolved in favour of p2.md — **P4 owns warmed-up, cramp, minty-fresh and fresh-mind**; P5 owns the rest. §6.7/§16.3's "every bonus delivers a nonzero effect at least once" is therefore P4's obligation for those four, asserted in P4's scripted-player golden.
 
 Each extension uses the same deterministic replay format. Any behavior-changing code or balance-data change requires an explicit `ENGINE_VERSION` decision and reviewed golden diff.
 
@@ -218,4 +228,4 @@ Each extension uses the same deterministic replay format. Any behavior-changing 
 - Desktop web is the v1 release gate. P4/P6 plans must not silently restore iPhone as a v1 blocker; native verification belongs to the v1.1 mobile pass.
 - P0 proves that Skia works on exported web; P3 is where Atlas becomes mandatory from the first sprite renderer.
 - A0 is a P3 entry gate, not “any time before P6.”
-- The headless forecaster is never cut. Its minimum visible start-time/why/conflict presentation is required for P4.5; only post-gate forecast polish may move.
+- The headless forecaster is never cut. Its minimum visible start-time/why/conflict presentation is required for P4.5. P5 may expand it before the gate but may not remove the P4-proven minimum.

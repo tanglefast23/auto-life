@@ -1,0 +1,60 @@
+{
+  "storylets": [
+    {
+      "id": "package-on-counter",
+      "source": {
+        "kind": "wrinkle-outcome",
+        "wrinkleId": "package-delivery"
+      },
+      "stringId": "storylets:wrinkles.package"
+    },
+    {
+      "id": "repair-van-left",
+      "source": {
+        "kind": "wrinkle-outcome",
+        "wrinkleId": "repair-visit"
+      },
+      "stringId": "storylets:wrinkles.repair"
+    },
+    {
+      "id": "show-credits",
+      "source": {
+        "kind": "wrinkle-outcome",
+        "wrinkleId": "favorite-show"
+      },
+      "stringId": "storylets:wrinkles.favoriteShow"
+    },
+    {
+      "id": "quiet-couch",
+      "source": {
+        "kind": "idle-moment",
+        "activityId": "idle"
+      },
+      "stringId": "storylets:idle.couch"
+    },
+    {
+      "id": "window-light",
+      "source": {
+        "kind": "idle-moment",
+        "activityId": "idle"
+      },
+      "stringId": "storylets:idle.window"
+    },
+    {
+      "id": "first-chord-note",
+      "source": {
+        "kind": "milestone",
+        "goalId": "first-chord"
+      },
+      "stringId": "storylets:milestones.firstChord"
+    },
+    {
+      "id": "balanced-week-note",
+      "source": {
+        "kind": "milestone",
+        "goalId": "balanced-week"
+      },
+      "stringId": "storylets:milestones.balancedWeek"
+    }
+  ]
+}

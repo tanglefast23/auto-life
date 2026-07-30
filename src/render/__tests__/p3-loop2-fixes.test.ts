@@ -140,7 +140,9 @@ describe('BLOCKER: pause and speed changes do not lose or invent time', () => {
 describe('speed-independence still holds after the pass-2 changes', () => {
   test('a day at 1×, 2× and 4× produces identical state', () => {
     const digests = ([1, 2, 4] as const).map((speed) => {
-      const loop = new GameLoop(fresh(), content);
+      // This is the P3 watched-day oracle: T9's real-time idle skip is a separate
+      // presentation path and is disabled so exactly 1,440 visible ticks are sampled.
+      const loop = new GameLoop(fresh(), content, {}, { sleepSkipEnabled: false });
       loop.setSpeed(speed);
       for (let i = 0; i < 1440; i++) loop.advance(msPerTick(speed));
       expect(loop.stats.ticksRun).toBe(1440);

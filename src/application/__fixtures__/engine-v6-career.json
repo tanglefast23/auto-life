@@ -1,0 +1,218 @@
+{
+  "fixtureVersion": 1,
+  "sourceEngineVersion": 6,
+  "sourceCommit": "ad347a41e4e6d4d0befa114e8d8e18f648180c83",
+  "synthetic": true,
+  "rootSeed": 1234,
+  "sim": {
+    "engineVersion": 6,
+    "chronotype": "baseline",
+    "clock": {
+      "absoluteMinute": 615
+    },
+    "bars": {
+      "energy": 472000,
+      "nutrition": 473600,
+      "movement": 476800,
+      "hygiene": 475200
+    },
+    "position": {
+      "x": 11,
+      "y": 8
+    },
+    "queue": [
+      {
+        "id": "c1",
+        "activityId": "practice",
+        "enqueuedTick": 613,
+        "owner": "PINNED",
+        "source": "player",
+        "urgent": false
+      }
+    ],
+    "current": {
+      "type": "travel",
+      "cardId": "c1",
+      "path": [
+        {
+          "x": 13,
+          "y": 12
+        },
+        {
+          "x": 13,
+          "y": 11
+        },
+        {
+          "x": 13,
+          "y": 10
+        },
+        {
+          "x": 13,
+          "y": 9
+        },
+        {
+          "x": 12,
+          "y": 9
+        },
+        {
+          "x": 12,
+          "y": 8
+        },
+        {
+          "x": 11,
+          "y": 8
+        },
+        {
+          "x": 10,
+          "y": 8
+        },
+        {
+          "x": 9,
+          "y": 8
+        },
+        {
+          "x": 8,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 8
+        },
+        {
+          "x": 7,
+          "y": 9
+        },
+        {
+          "x": 6,
+          "y": 9
+        }
+      ],
+      "totalTicks": 4,
+      "elapsedTicks": 2
+    },
+    "suppression": {},
+    "anchorsConsumedOnDay": {
+      "wake": 1,
+      "lunch": 1,
+      "workout": 1,
+      "dinner": 1,
+      "bedtime": 1
+    },
+    "anchorMutationGenerations": {},
+    "nextAnchorMutationGeneration": 1,
+    "removalReceipt": {
+      "id": "r0",
+      "card": {
+        "id": "c2",
+        "activityId": "stretch",
+        "enqueuedTick": 613,
+        "owner": "PINNED",
+        "source": "player",
+        "urgent": false
+      },
+      "originalIndex": 1,
+      "previousNeighborId": "c1",
+      "nextNeighborId": null,
+      "suppressionMutation": null,
+      "anchorMutation": null
+    },
+    "nextRemovalReceiptSeq": 1,
+    "lastMealCompletedAt": null,
+    "napEffectiveUsesToday": 0,
+    "preferredWorkout": "weights",
+    "practice": {
+      "points100": 0,
+      "sessionsCountedToday": 0,
+      "prevCompletionWasPractice": false,
+      "mintyArmed": false,
+      "mintyPaidToday": false
+    },
+    "decayModifiers": [],
+    "lastCompletion": {
+      "activityId": "package",
+      "isWorkout": false,
+      "atMinute": 611
+    },
+    "pendingInstantDeltas": [],
+    "nextCardSeq": 3,
+    "events": {
+      "urgentCount": 0,
+      "anchorsMissed": 0
+    },
+    "urgentActive": {},
+    "prng": {
+      "rootSeed": 1234,
+      "streams": {
+        "wrinkles": {
+          "state": 608136794,
+          "calls": 0
+        },
+        "storylets": {
+          "state": 2242055169,
+          "calls": 0
+        },
+        "relationships": {
+          "state": 320442108,
+          "calls": 0
+        },
+        "careerEvents": {
+          "state": 57702294,
+          "calls": 0
+        },
+        "cosmetic": {
+          "state": 2752068848,
+          "calls": 0
+        }
+      }
+    }
+  },
+  "game": {
+    "goals": {
+      "meet-you": {
+        "status": "active",
+        "counters": {
+          "activitiesCompleted": 1,
+          "whyLineOpened": 0
+        }
+      },
+      "change-of-plans": {
+        "status": "active",
+        "counters": {
+          "queueEdits": 2,
+          "forecastChangesSeen": 0
+        }
+      }
+    },
+    "observations": {
+      "whyLineOpened": false,
+      "forecastChangeObserved": false
+    },
+    "wrinkles": {
+      "firedIds": [
+        "package-delivery"
+      ],
+      "pendingId": null,
+      "choiceReadyId": null,
+      "resolvedIds": [
+        "package-delivery"
+      ]
+    },
+    "decorations": {
+      "grantedIds": [
+        "sunny-vase"
+      ]
+    },
+    "unlocks": {
+      "journal": false
+    },
+    "recap": {
+      "forDay": 1,
+      "completedActivityIds": [
+        "package"
+      ],
+      "missedAnchorIds": [],
+      "practicePoints100": 0
+    },
+    "morningRecap": null
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "why": {
+    "reactiveTrigger": "Added: {bar} drops past {threshold} around {time}.",
+    "anchorWindow": "Added: {anchor} starts around {time}.",
+    "wrinklePackage": "Added: A package is waiting at the door.",
+    "wrinkleFallback": "Added: Today's wrinkle put this in the queue."
+  },
+  "chips": {
+    "conflict": "Risk",
+    "wakeConflict": "Wake",
+    "warmedUp": "Warm",
+    "itSticks": "Sticky",
+    "cramp": "Cramp",
+    "mintyFresh": "Minty",
+    "freshMind": "Fresh",
+    "practiceBlock": "Block",
+    "blocked": "Blocked",
+    "waiting": "Wait",
+    "reroute": "Quick wash"
+  },
+  "details": {
+    "conflict": "{bar} drops below 15 around {time}.",
+    "wakeConflict": "This pin delays the next morning routine.",
+    "capWaste": "{amount} {bar} may be wasted at full.",
+    "halveDuration": "Takes half the usual time.",
+    "scaleDecay": "{bar} drops {percent}% slower for {hours} hours.",
+    "barDelta": "{amount} {bar} when this starts.",
+    "scalePoints": "Practice earns {percent}% more.",
+    "practiceBlock": "Keeps {block}% of base instead of {scattered}%.",
+    "objectBlocked": "{object} is blocked until {time}.",
+    "activityUnavailable": "{activity} is unavailable until {time}.",
+    "reroute": "Shower blocked. Quick wash runs instead."
+  },
+  "announcements": {
+    "forecastUpdated": "Forecast updated."
+  }
+}

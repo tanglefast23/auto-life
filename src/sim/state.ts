@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { ActiveTimedActivitySchema, type ActiveTimedActivity } from './activities';
-import { PrngSnapshotSchema, type PrngSnapshot } from './prng';
-import { QueueCardSchema, type QueueCard } from './queue';
+import type { PrngSnapshot } from './prng';
+import {
+  QueueCardSchema,
+  RemovalReceiptSchema,
+  type QueueCard,
+  type RemovalReceipt,
+} from './queue';
 import { ENGINE_VERSION } from './version';
 import { initialAbsoluteMinute, initialBars } from './initial-state';
 import type { RatesConfig } from './content-schemas';
@@ -45,6 +50,12 @@ export const SimStateSchema = z.strictObject({
   current: CurrentSchema.nullable(),
   suppression: z.record(z.string(), z.number().int()),
   anchorsConsumedOnDay: z.record(z.string(), z.number().int()),
+  /** Exact write ownership for T4 anchor-receipt equality guards. */
+  anchorMutationGenerations: z.record(z.string(), z.number().int().positive()),
+  nextAnchorMutationGeneration: z.number().int().positive(),
+  /** Single-depth, engine-issued undo truth. Real-time visibility lives in application/. */
+  removalReceipt: RemovalReceiptSchema.nullable(),
+  nextRemovalReceiptSeq: z.number().int().min(0),
   lastMealCompletedAt: z.number().int().nullable(),
   napEffectiveUsesToday: z.number().int().min(0),
   preferredWorkout: z.enum(['weights', 'treadmill']),
@@ -69,7 +80,6 @@ export const SimStateSchema = z.strictObject({
   // §7.2 row 6: one urgent event per <15 crossing per bar — the flag holds while
   // the crisis lasts so re-adds/deletions never re-count the same crisis.
   urgentActive: z.partialRecord(BarIdSchema, z.boolean()),
-  prng: PrngSnapshotSchema,
 });
 export type SimState = z.infer<typeof SimStateSchema>;
 
@@ -77,7 +87,12 @@ export function restoreSimState(raw: unknown): SimState {
   return SimStateSchema.parse(raw);
 }
 
-export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed: number, prng: PrngSnapshot): SimState {
+export function newGameState(
+  chronotype: Chronotype,
+  cfg: RatesConfig,
+  _rootSeed: number,
+  _legacyPrng?: PrngSnapshot,
+): SimState {
   return {
     engineVersion: ENGINE_VERSION,
     chronotype,
@@ -88,6 +103,10 @@ export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed:
     current: null,
     suppression: {},
     anchorsConsumedOnDay: {},
+    anchorMutationGenerations: {},
+    nextAnchorMutationGeneration: 1,
+    removalReceipt: null as RemovalReceipt | null,
+    nextRemovalReceiptSeq: 0,
     lastMealCompletedAt: null,
     napEffectiveUsesToday: 0,
     preferredWorkout: 'weights',
@@ -104,6 +123,5 @@ export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed:
     nextCardSeq: 0,
     events: { urgentCount: 0, anchorsMissed: 0 },
     urgentActive: {},
-    prng,
   };
 }

@@ -439,11 +439,11 @@ The answer to both audits' core finding. Health buys speed; speed buys free hour
 
 ### 9.1 Identity-lite at first run [DECIDED]
 
-60-second, fully skippable (skip = randomize): **name · pronouns · one of 4 appearance presets** (palette-swaps of the layered doll — cheap by construction) · reveal of two rolled **preferences** (below). Full paper-doll editor remains v6 ("expanded customization"). Data model is preference-tagged and gender-neutral throughout; dating-pool preferences are collected by a one-question prompt when v5's chapter opens (docs/05 §1) and stored in the field v6's editor later edits.
+60-second, fully skippable (skip = randomize): **name · pronouns · one of 4 appearance presets** (palette-swaps of the layered doll — cheap by construction) · reveal of two rolled **preferences** (below). **Chronotype is always one of the two** (early bird or night owl); the second category is drawn from workout, food mood, and idle. `baseline` chronotype is migration/test-only, never a newly created player's hidden neutral roll. Full paper-doll editor remains v6 ("expanded customization"). Data model is preference-tagged and gender-neutral throughout; dating-pool preferences are collected by a one-question prompt when v5's chapter opens (docs/05 §1) and stored in the field v6's editor later edits.
 
 ### 9.2 Visible preferences
 
-Rolled at creation, shown as tags on cards and in the journal — never hidden modifiers:
+Only the two active categories are rolled at creation and shown as tags on cards and in the journal — never hidden modifiers. Inactive categories use ordinary/default behavior without a preference tag, bonus, happy bubble, or grumble:
 
 - **Workout:** prefers weights *or* treadmill (planner picks it; the other still works).
 - **Chronotype:** early bird (`wakeTarget` 06:30 / `bedTarget` 22:30) or night owl (07:30 / 23:30). **Every clock rule in this spec is an offset from these targets** [DECIDED round 2] — anchor windows, **reactive windows (Nap, Stretch), and wrinkle windows** all shift with them; Day 1 begins at the sim's own wakeTarget; sleep and sleep-skip end at wakeTarget; the "morning check" is **wake + 2 h**. Every absolute time printed in this spec (07:00, 09:00, 08:00–20:00…) is the trace baseline at the neutral midpoint.
@@ -468,7 +468,7 @@ Its **bias target** — the thing Goal 5 checks — is completing at least one a
 
 ### 9.4 Wrinkles & storylets — one small story per day
 
-**Deck architecture [DECIDED round 2]:** the exposure guarantee below is a property of the **scripted-player harness week** (§16.3) — the unattended golden seed deals only benign wrinkles, so fairness bands and exposure never fight. Wrinkles are **6 mechanical shapes** (blocked object · timed window · slowed activity · free half-hour · forced substitution · visitor) × **text variants** (6–10 per shape, unlocking per version, venue, and friend — flavor scales to ~40 without new systems; a round-2 audit costed the flat 6-deck at 105–140 slots across v1–v5, four full repeats by mid-v2). Quiet days are allowed — the deck may deal "nothing today"; the no-repeat window is 6 days. **Exposure guarantee:** the deck ensures each reactive band (§7.2) is visited roughly weekly — the round-2 "margin vs exposure" finding proved a player could otherwise finish v1 never seeing a Snack, Stretch, Nap, URGENT card, or focus penalty. The repair-visit two-day pattern (skip a shower → Hygiene <40 → focus penalty + reactive shower become real) is the template.
+**Deck architecture [DECIDED round 2; clarified P5 T0]:** the exposure guarantee below is a property of the **scripted-player harness week** (§16.3) — the unattended golden seed deals only benign wrinkles, so fairness bands and exposure never fight. Wrinkles have **6 reusable shapes** (blocked object · timed window · slowed activity · free half-hour · forced substitution · visitor) × **text variants** (6–10 per shape, unlocking per version, venue, and friend — flavor scales to ~40 without new systems), plus two explicit v1 day modifiers that are not falsely squeezed into those shapes: **availability gate** (empty fridge) and **wake modifier** (rough night). Quiet days are allowed — the deck may deal "nothing today"; the no-repeat window is 6 days. **Exposure guarantee:** the deck ensures each reactive band (§7.2) is visited roughly weekly — the round-2 "margin vs exposure" finding proved a player could otherwise finish v1 never seeing a Snack, Stretch, Nap, URGENT card, or focus penalty. The repair-visit two-day pattern (skip a shower → Hygiene <40 → focus penalty + reactive shower become real) is the template.
 
 **Day 1 is scripted:** the package delivery always fires as the tutorial wrinkle — it carries the decoration choice and the first real decision, which is what §12's 60-second target rests on. From Day 2, one seeded wrinkle most days. Launch text variants for the six shapes (every entry declares a success condition requiring a queue action):
 
@@ -525,10 +525,11 @@ The permanent HUD is **capped forever** at: Health block · Funds · Connection 
 - **Goal chip** under the health block; tap → goals panel.
 - **World:** thought bubbles (need <40, preferences, hints), progress ring over the sim, ⚠ forecast pulses (§7.5).
 
-### 11.2 Queue strip (bottom) — the primary control surface
+### 11.2 Queue rail (right) — the primary control surface
 
-- **Current card** 64 px: icon, radial progress, Stop on hover/tap.
-- **Upcoming** ~6 visible of the player's 10 (anchor blocks and urgent cards render additionally, outside the cap — §7.4): drag to reorder; PINNED pin glyph, AUTO gear glyph, URGENT pulse; **adjacency chips render between cards**; predicted start time on each card.
+- **One column, one task per row.** The rail stays fixed to the right edge and scrolls vertically.
+- **Current card** 64 px tall: activity name, icon, radial progress, Stop on hover/tap.
+- **Upcoming** ~6 visible of the player's 10 (anchor blocks and urgent cards render additionally, outside the cap — §7.4): drag vertically to reorder; PINNED pin glyph, AUTO gear glyph, URGENT pulse; **adjacency chips render between rows**; predicted start time on each card.
 - **`+` palette:** grid popover grouped by room — icon, live duration, effect with cap-waste, preference tag.
 - Every card has a **card menu** (⋯): move earlier / move later / do next / remove / details — full parity with dragging (§11.6).
 - Remove → 5-s Undo toast. Hit targets ≥44 px.
@@ -543,7 +544,7 @@ On night-Sleep start (no URGENT queued, no input for 10 s): dissolve → 07:00. 
 
 ### 11.5 Responsive & scaling (verified policy)
 
-1. Reserve UI first: **148 px HUD** + 72 px queue on desktop; phones overlay the HUD and collapse the queue to a 48 px expandable strip.
+1. Reserve UI first: **148 px HUD** + **224 px right queue rail** on desktop; phones overlay the HUD and collapse the queue to a 48 px expandable strip.
    - **148, not the ~48 this line originally sketched** [CONFIRMED by Joe, 2026-07-30]. The §11.1 Health block is seven rows — label · Health bar · four sub-bars · Practice counter — and measures ~148 px as built. Reserving 48 let the renderer believe it had 100 px it did not have, so the room was drawn *underneath* the HUD panel, hiding the top of the bedroom and the starting character (found in P3's fourth adversarial pass, evidence/P3.md). The reservation must describe the HUD that exists, not the one the line sketched. The alternative — shrink §11.1's block to genuinely fit 48 — was considered and rejected: the seven rows are all §11.1-required.
 2. Scale `S` = largest value where `S × devicePixelRatio` is an integer and the scene fits the remaining area — on 2× retina this legalizes half-steps (1.5× = exactly 3 physical px per art px; fits MacBook Air 13, verified). 1×-DPR laptops (1366×768) run 1×.
 3. Phones: no integer fit exists (verified) — render at 1× offscreen, downscale ~0.72–0.88 with a sharp-bilinear pixel-art filter (chosen over raw nearest-neighbor shimmer). **Landscape-first; portrait is out of scope for v1.** Respect safe areas (verified: 0.87 scale clears the iPhone 15 Dynamic Island).
@@ -582,7 +583,7 @@ Modal policy: routine simulation never blocks; modals are reserved for **player-
 | `Space` | Pause / resume |
 | `1 / 2 / 3` | Speed 1× / 2× / 4× |
 | `Esc` | Close panel → pause menu |
-| `Q` | Focus queue (then:) `←/→` move focus · `Shift+←/→` move card · `Enter` card menu · `Delete` remove (Undo toast). `Tab` stays ordinary focus traversal (round-2 a11y fix) and reaches the queue in document order. All single-key shortcuts are suppressed while a text field is focused |
+| `Q` | Focus queue (then:) `↑/↓` move focus · `Shift+↑/↓` move card · `Enter` card menu · `Delete` remove (Undo toast). `←/→` remain aliases. `Tab` stays ordinary focus traversal (round-2 a11y fix) and reaches the queue in document order. All single-key shortcuts are suppressed while a text field is focused |
 | `W` | Week Plan panel (v2+, once commitments exist) |
 | `X` | Stop current activity |
 | `A` | Activity palette |
@@ -605,7 +606,7 @@ Goals are data (`content/goals.json`) with **explicit sampling rules**; every go
 | 3 | **Handle the wrinkle** | Resolve today's wrinkle with zero URGENT events that day (count sampled midnight) | Decoration choice |
 | 4 | **First chord** | Reach Practice L1 | New idle behavior: air-guitar (or the next variant if already rolled at creation) |
 | 5 | **Find the rhythm** | Pick an intention and complete its bias target (§9.3) that day | Poster decoration |
-| 6 | **Balanced week** | 3 consecutive days: **≥2 Practice sessions each day** *and* every bar ≥65 at the morning check (§6.8) *and* zero URGENT events — the practice demand makes the bar clauses compete instead of auto-passing (round-2 fix: the old clauses were the unattended harness's guarantees verbatim) | "Routine memory" — a §7.3 tie-break: reactive scores within ±0.1 prefer the relative order you've used most in the last 3 days (stored in the save, deterministic) |
+| 6 | **Balanced week** | 3 consecutive days: **≥2 Practice sessions each day** *and* every bar ≥65 at the morning check (§6.8) *and* zero URGENT events — the practice demand makes the bar clauses compete instead of auto-passing (round-2 fix: the old clauses were the unattended harness's guarantees verbatim) | "Routine memory" — a §7.3 total-order tie-break for non-urgent reactives: `round(baseScore × 10)` bucket desc → 3-day scalar routine rank asc → enqueue tick asc → stable card ID code-unit asc. Routine rank never crosses PINNED/anchor boundaries (stored in the save, deterministic). |
 | 7 | **Holiday's over** | (teaser) A letter arrives Day 8… | Opens v2 chapter |
 
 First-session pacing targets (P4.5-tested, not assumed): a real choice within ~60 s (Goal 2 + Day-1 wrinkle) · visible consequence within ~3 min · recap at first night · first lasting reward by day 2–3. Goal 1 completes inside the first morning — no "watch a whole day" gate (audit-verified pacing failure, removed).
@@ -636,8 +637,8 @@ Dev hygiene (HFM lesson): web previews auto-muted in dev builds; QA checklist in
 
 - Versioned JSON snapshot behind the **`persistence/kv` adapter** [P0 kill-gate ruling, evidence/P0.md]: web driver = localStorage (expo-sqlite's alpha web support hung the exported-build proof), native driver = expo-sqlite, one interface. Blob shape: `{schemaVersion, engineVersion, clock, bars, queue, currentActivity+phase, practice, goals, journal, wrinkleDeck, prefs, prngStates}`. **App-global preferences live outside the career save** (§11.7's three layers) — New Game or corruption never resets audio or accessibility.
 - **Major decisions bypass the 5-s coalescing** and write immediately: purchases, chapter acceptance, proposal responses, identity edits, New Game.
-- **Write policy** (verified): on activity completion, queue edit (500 ms trailing debounce), day boundary, app background/close (best-effort — not guaranteed by browsers), and major decisions; plus a 60-s throttled periodic. All writes coalesced to ≥5 s apart (4× completion-storms verified otherwise).
-- **3 rotating snapshots**; corrupt-load falls back a generation with a plain notice. Engine-version mismatch: migrate via the migration map, or offer read-only "finish the day" + fresh start if unmigratable.
+- **Write policy** (verified, clarified P5 T0): on activity completion, queue edit (500 ms trailing debounce), day boundary, app background/close (best-effort — not guaranteed by browsers), and major decisions; plus a 60-s throttled periodic. Ordinary foreground writes are coalesced to ≥5 s apart (4× completion-storms verified otherwise). `visibilitychange`→hidden, `pagehide`, Return to Title, and confirmed New Game are durability barriers: they reserve the newest generation, obsolete older queued work, and bypass the foreground coalescer. Web uses its synchronous localStorage driver through the typed persistence interface; native flush remains explicitly best-effort. Do not depend on `beforeunload`.
+- **3 rotating snapshots**; corrupt-load falls back a generation with a plain notice. Engine-version mismatch: migrate via the migration map, or offer read-only **"view the last readable day"** + fresh start if unmigratable. Preserve all generations until fresh start is confirmed; recovery can copy/export the raw local blob for diagnosis.
 - Single player-visible slot; New Game double-confirms.
 
 ## 16. Architecture & testing

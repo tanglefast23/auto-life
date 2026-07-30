@@ -1,4 +1,34 @@
 import { z } from 'zod';
+import { BarIdSchema } from './content-schemas';
+
+/**
+ * Structured queue provenance used by the forecast/read-model. T2 owns the
+ * wrinkle variant; T3 extends this union for anchor and reactive reasons.
+ *
+ * It lives on the card — not in application state or a parallel lookup — so a
+ * save, replay, reorder, and T4's removal receipt all carry the explanation with
+ * the unit they are explaining.
+ */
+export const QueueReasonSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('anchorWindow'),
+    anchorId: z.string().min(1),
+    /** Absolute game minute, so a restored cross-day card stays unambiguous. */
+    targetMinute: z.number().int().min(0),
+  }),
+  z.strictObject({
+    kind: z.literal('reactiveTrigger'),
+    bar: BarIdSchema,
+    threshold: z.number().min(0).max(100),
+    /** Absolute minute at which the planner authored this explanation. */
+    atMinute: z.number().int().min(0),
+  }),
+  z.strictObject({
+    kind: z.literal('wrinkle'),
+    wrinkleId: z.string().min(1),
+  }),
+]);
+export type QueueReason = z.infer<typeof QueueReasonSchema>;
 
 /**
  * The queue model (SPEC §7.4). Anchor blocks share a blockId — that is what makes
@@ -11,11 +41,49 @@ export const QueueCardSchema = z.strictObject({
   activityId: z.string().min(1),
   owner: z.enum(['AUTO', 'PINNED']),
   urgent: z.boolean(),
-  source: z.enum(['anchor', 'reactive', 'player']),
+  source: z.enum(['anchor', 'reactive', 'player', 'wrinkle']),
+  reason: QueueReasonSchema.optional(),
   blockId: z.string().min(1).optional(),
   enqueuedTick: z.number().int().min(0),
+}).superRefine((card, ctx) => {
+  if (card.source === 'wrinkle' && card.reason?.kind !== 'wrinkle') {
+    ctx.addIssue({ code: 'custom', message: 'wrinkle cards require a wrinkle reason' });
+  } else if (card.source !== 'wrinkle' && card.reason?.kind === 'wrinkle') {
+    ctx.addIssue({ code: 'custom', message: 'wrinkle reasons belong only on wrinkle cards' });
+  } else if (card.source === 'anchor' && card.reason !== undefined && card.reason.kind !== 'anchorWindow') {
+    ctx.addIssue({ code: 'custom', message: 'anchor cards require anchor-window reasons' });
+  } else if (card.source === 'reactive' && card.reason !== undefined && card.reason.kind !== 'reactiveTrigger') {
+    ctx.addIssue({ code: 'custom', message: 'reactive cards require reactive-trigger reasons' });
+  } else if (card.source === 'player' && card.reason !== undefined) {
+    ctx.addIssue({ code: 'custom', message: 'player cards do not carry planner reasons' });
+  }
 });
 export type QueueCard = z.infer<typeof QueueCardSchema>;
+
+export const RemovalReceiptSchema = z.strictObject({
+  id: z.string().min(1),
+  card: QueueCardSchema,
+  originalIndex: z.number().int().min(0),
+  previousNeighborId: z.string().min(1).nullable(),
+  nextNeighborId: z.string().min(1).nullable(),
+  suppressionMutation: z
+    .strictObject({
+      activityId: z.string().min(1),
+      previousUntil: z.number().int().nullable(),
+      writtenUntil: z.number().int(),
+    })
+    .nullable(),
+  anchorMutation: z
+    .strictObject({
+      anchorId: z.string().min(1),
+      previousDay: z.number().int().nullable(),
+      previousGeneration: z.number().int().positive().nullable(),
+      writtenDay: z.number().int(),
+      writtenGeneration: z.number().int().positive(),
+    })
+    .nullable(),
+});
+export type RemovalReceipt = z.infer<typeof RemovalReceiptSchema>;
 
 export const PLAYER_CARD_CAP = 10;
 
@@ -32,6 +100,12 @@ export const playerCardCount = (queue: readonly QueueCard[]): number =>
 export function canPlayerInsert(queue: readonly QueueCard[]): boolean {
   return playerCardCount(queue) < PLAYER_CARD_CAP;
 }
+
+/** Any queued card for an activity already represents a plan for that need. */
+export const hasCardFor = (
+  queue: readonly QueueCard[],
+  activityId: string,
+): boolean => queue.some((card) => card.activityId === activityId);
 
 export interface SuppressionMap {
   [activityId: string]: number; // suppressed-until absoluteMinute

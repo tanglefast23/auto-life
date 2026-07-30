@@ -1,0 +1,118 @@
+{
+  "appearancePresets": [
+    {
+      "id": "morning-blue",
+      "labelStringId": "identity:appearance.morningBlue",
+      "paletteId": "morning-blue"
+    },
+    {
+      "id": "moss-green",
+      "labelStringId": "identity:appearance.mossGreen",
+      "paletteId": "moss-green"
+    },
+    {
+      "id": "warm-clay",
+      "labelStringId": "identity:appearance.warmClay",
+      "paletteId": "warm-clay"
+    },
+    {
+      "id": "plum-night",
+      "labelStringId": "identity:appearance.plumNight",
+      "paletteId": "plum-night"
+    }
+  ],
+  "preferenceCategories": [
+    {
+      "id": "chronotype",
+      "labelStringId": "identity:categories.chronotype",
+      "alwaysActive": true,
+      "options": [
+        {
+          "id": "early-bird",
+          "labelStringId": "identity:preferences.earlyBird",
+          "mechanic": {
+            "kind": "chronotype",
+            "value": "early"
+          }
+        },
+        {
+          "id": "night-owl",
+          "labelStringId": "identity:preferences.nightOwl",
+          "mechanic": {
+            "kind": "chronotype",
+            "value": "owl"
+          }
+        }
+      ]
+    },
+    {
+      "id": "workout",
+      "labelStringId": "identity:categories.workout",
+      "alwaysActive": false,
+      "options": [
+        {
+          "id": "weights-person",
+          "labelStringId": "identity:preferences.weightsPerson",
+          "mechanic": {
+            "kind": "preferred-workout",
+            "activityId": "weights"
+          }
+        },
+        {
+          "id": "treadmill-person",
+          "labelStringId": "identity:preferences.treadmillPerson",
+          "mechanic": {
+            "kind": "preferred-workout",
+            "activityId": "treadmill"
+          }
+        }
+      ]
+    },
+    {
+      "id": "food",
+      "labelStringId": "identity:categories.food",
+      "alwaysActive": false,
+      "options": [
+        {
+          "id": "proper-meals",
+          "labelStringId": "identity:preferences.properMeals",
+          "mechanic": {
+            "kind": "food-mood",
+            "value": "proper-meals"
+          }
+        },
+        {
+          "id": "grazer",
+          "labelStringId": "identity:preferences.grazer",
+          "mechanic": {
+            "kind": "food-mood",
+            "value": "grazer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "idle",
+      "labelStringId": "identity:categories.idle",
+      "alwaysActive": false,
+      "options": [
+        {
+          "id": "window-gazer",
+          "labelStringId": "identity:preferences.windowGazer",
+          "mechanic": {
+            "kind": "idle-variant",
+            "idleVariantId": "window-gazing"
+          }
+        },
+        {
+          "id": "slow-stretcher",
+          "labelStringId": "identity:preferences.slowStretcher",
+          "mechanic": {
+            "kind": "idle-variant",
+            "idleVariantId": "slow-stretching"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "meetTheRoutine": {
+    "title": "Meet the routine",
+    "instruction": "Let three activities finish, then open one Why line."
+  },
+  "changeOfPlans": {
+    "title": "Change of plans",
+    "instruction": "Move or add a card, then check what changed in the forecast."
+  },
+  "handleTheWrinkle": {
+    "title": "Handle the wrinkle",
+    "instruction": "Resolve a wrinkle day without letting anything become urgent."
+  },
+  "firstChord": {
+    "title": "First chord",
+    "instruction": "Reach Practice L1."
+  },
+  "findTheRhythm": {
+    "title": "Find the rhythm",
+    "instruction": "Choose an intention, then complete one activity it favors that day."
+  },
+  "balancedWeek": {
+    "title": "Balanced week",
+    "instruction": "For three days, finish two Practice sessions before bed. At each morning check, keep every need at 65 or higher with nothing urgent."
+  },
+  "holidaysOver": {
+    "title": "Holiday's over",
+    "instruction": "Answer the letter that arrives after your first week."
+  },
+  "rewards": {
+    "journal": "Journal",
+    "bedroomPlant": "Bedroom plant",
+    "wrinkleDecoration": "Decoration of your choice",
+    "airGuitar": "Air-guitar idle",
+    "practicePoster": "Practice poster",
+    "routineMemory": "Routine memory",
+    "firstGigs": "First gigs promise"
+  },
+  "ui": {
+    "eyebrow": "YOUR PROGRESS",
+    "title": "Goals & Journal",
+    "panelLabel": "Goals and Journal",
+    "open": "Open Goals and Journal",
+    "close": "Close Goals and Journal",
+    "allComplete": "All current goals complete",
+    "practiceSummary": "Practice L{level} · {points} points",
+    "practiceAccessibility": "Practice level {level}, {points} mastery points",
+    "routineMemory": "Routine memory notices whether Shower or Stretch usually comes first. When both need attention at once, it follows that recent order.",
+    "requiresFullRoutine": "Requires Full routine.",
+    "rewardPrefix": "Reward: {reward}",
+    "chooseReward": "Choose your decoration",
+    "filters": {
+      "current": "In progress",
+      "all": "All goals"
+    },
+    "journal": {
+      "heading": "Journal",
+      "locked": "Finish Meet the routine to open the Journal.",
+      "empty": "Nothing written yet.",
+      "entry": "Day {day} · {line}"
+    },
+    "wrinkle": {
+      "heading": "Today's wrinkle",
+      "pending": "Nothing announced yet.",
+      "quiet": "Quiet day.",
+      "resolved": "Resolved",
+      "active": "Still in play"
+    },
+    "statuses": {
+      "active": "In progress",
+      "complete": "Ready to claim",
+      "rewarded": "Rewarded",
+      "locked": "Locked"
+    },
+    "progress": {
+      "activitiesAndWhy": "{activities}/{required} activities · {why}",
+      "whyOpened": "Why opened",
+      "openWhy": "open a Why line",
+      "queueAndForecast": "{edit} · {forecast}",
+      "editDone": "edit done",
+      "makeEdit": "make an edit",
+      "forecastSeen": "forecast seen",
+      "checkForecast": "check the forecast",
+      "wrinkleDay": "{days}/1 resolved wrinkle day",
+      "practiceLevel": "Practice L{level}/L{required}",
+      "intentionBias": "{days}/1 intention followed",
+      "balancedStreak": "{days}/{required} steady mornings",
+      "letter": "{answers}/1 letter answered"
+    },
+    "decorationChoices": {
+      "wrinkleKeepsake": "Keepsake",
+      "wrinklePrint": "Little print"
+    }
+  }
+}

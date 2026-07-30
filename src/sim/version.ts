@@ -40,4 +40,26 @@
  * player cap counts only inserted cards. Snapshot gains `processed` (read-model;
  * fixes the travel undercount — 24 recorded vs 32 real). Golden re-recorded.
  */
-export const ENGINE_VERSION = 5 as const;
+/**
+ * v6 (2026-07-30, P4 queue UI + first session): player/object insertion returns
+ * typed outcomes; wrinkle insertion carries durable provenance and urgent ordering;
+ * moving pins cards; remove/stop/receipt-backed undo preserve exact card identity
+ * and suppression; system-only activities cannot leak into player pickers. The
+ * application tick now folds serializable game actions, goals, the Day-1 package
+ * choice, decorations, and recap state beside the sim. Both unattended and scripted
+ * player goldens re-recorded.
+ */
+/**
+ * v7 (2026-07-30, post-P4 dual-audit stabilization): stopping while travelling
+ * to an anchor consumes that block instead of re-enqueueing it on the same tick;
+ * player-touched/PINNED reactive cards satisfy their need without spawning an
+ * AUTO duplicate. Both goldens reviewed and re-recorded.
+ */
+/**
+ * v8 (2026-07-30, P5 save-safe spine): deterministic state now lives in a
+ * versioned CareerState payload; the five unchanged PRNG streams move out of
+ * SimState to the application-owned career envelope; complete P5 game fields,
+ * immutable SimRules, calendar sampling, and pending-boundary work enter the
+ * replay contract. Stable Goal 1 and reward IDs now match authored content.
+ */
+export const ENGINE_VERSION = 8 as const;

@@ -1,0 +1,38 @@
+{
+  "balanced": {
+    "label": "Balanced",
+    "description": "Keep the usual routine."
+  },
+  "takeItEasy": {
+    "label": "Take it easy",
+    "description": "Skip the workout plan and favor shorter care."
+  },
+  "getMoving": {
+    "label": "Get moving",
+    "description": "Favor the usual workout and suggest a morning stretch."
+  },
+  "eatProperly": {
+    "label": "Eat properly",
+    "description": "Favor meals, hold dinner, and stretch the well-fed window."
+  },
+  "practiceFocus": {
+    "label": "Practice focus",
+    "description": "Suggest one protected block at the guitar."
+  },
+  "prompt": {
+    "chip": "Choose today's intention",
+    "eyebrow": "TODAY",
+    "title": "What matters today?",
+    "body": "Pick one. The planner will lean that way.",
+    "close": "Not now",
+    "manual": "Choose an intention",
+    "selected": "Today's intention",
+    "locked": "Chosen until tomorrow",
+    "addPracticeBlock": "Add two Practice sessions",
+    "practiceBlockFull": "Make room for two Practice cards first."
+  },
+  "preferenceBubbles": {
+    "happy": "…that's more like it.",
+    "grumble": "…not my usual."
+  }
+}

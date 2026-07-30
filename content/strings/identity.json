@@ -1,0 +1,24 @@
+{
+  "appearance": {
+    "morningBlue": "Morning blue",
+    "mossGreen": "Moss green",
+    "warmClay": "Warm clay",
+    "plumNight": "Plum night"
+  },
+  "categories": {
+    "chronotype": "Daily clock",
+    "workout": "Workout",
+    "food": "Food mood",
+    "idle": "Idle habit"
+  },
+  "preferences": {
+    "earlyBird": "Early bird",
+    "nightOwl": "Night owl",
+    "weightsPerson": "Prefers weights",
+    "treadmillPerson": "Prefers treadmill",
+    "properMeals": "Proper meals",
+    "grazer": "Grazer",
+    "windowGazer": "Window gazer",
+    "slowStretcher": "Slow stretcher"
+  }
+}

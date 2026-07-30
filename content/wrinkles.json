@@ -1,0 +1,245 @@
+{
+  "quietDayWeight": 1,
+  "noRepeatDays": 6,
+  "entries": [
+    {
+      "id": "package-delivery",
+      "firstDay": 1,
+      "effect": {
+        "kind": "visitor",
+        "activityId": "package",
+        "window": [180, 300],
+        "durationMin": 15,
+        "anchorPrecedence": "none"
+      },
+      "success": {
+        "kind": "queue-slot-free",
+        "window": [180, 300],
+        "durationMin": 15
+      },
+      "variants": [
+        {
+          "id": "package-first-home",
+          "titleStringId": "wrinkles:package.title",
+          "introStringId": "wrinkles:package.intro",
+          "successStringId": "wrinkles:package.success",
+          "failureStringId": "wrinkles:package.failure",
+          "outcomeStringId": "wrinkles:package.outcome",
+          "playerAction": {
+            "id": "keep-package-slot",
+            "kind": "keep-slot-free",
+            "labelStringId": "wrinkles:package.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "repair-visit",
+      "firstDay": 2,
+      "effect": {
+        "kind": "blocked-object",
+        "objectId": "shower",
+        "window": [30, 150],
+        "fallbackActivityId": "quickwash",
+        "anchorPrecedence": "blocks-object-only"
+      },
+      "success": {
+        "kind": "one-of-activities-completed",
+        "activityIds": ["quickwash", "shower"]
+      },
+      "variants": [
+        {
+          "id": "repair-bathroom",
+          "titleStringId": "wrinkles:repair.title",
+          "introStringId": "wrinkles:repair.intro",
+          "successStringId": "wrinkles:repair.success",
+          "failureStringId": "wrinkles:repair.failure",
+          "outcomeStringId": "wrinkles:repair.outcome",
+          "playerAction": {
+            "id": "plan-around-repair",
+            "kind": "reroute-or-reschedule",
+            "labelStringId": "wrinkles:repair.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "favorite-show",
+      "firstDay": 2,
+      "effect": {
+        "kind": "timed-window",
+        "activityId": "idle",
+        "window": [720, 780],
+        "collidingAnchorId": "dinner",
+        "replacementTargetOffsets": [660, 780],
+        "anchorPrecedence": "wrinkle-shifts-anchor"
+      },
+      "success": {
+        "kind": "anchor-rescheduled",
+        "anchorId": "dinner",
+        "allowedTargetOffsets": [660, 780]
+      },
+      "variants": [
+        {
+          "id": "favorite-show-cozy",
+          "titleStringId": "wrinkles:favoriteShow.title",
+          "introStringId": "wrinkles:favoriteShow.intro",
+          "successStringId": "wrinkles:favoriteShow.success",
+          "failureStringId": "wrinkles:favoriteShow.failure",
+          "outcomeStringId": "wrinkles:favoriteShow.outcome",
+          "playerAction": {
+            "id": "move-dinner",
+            "kind": "reschedule-anchor",
+            "labelStringId": "wrinkles:favoriteShow.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "headache-day",
+      "firstDay": 2,
+      "effect": {
+        "kind": "slowed-activity",
+        "activityTag": "workout",
+        "durationFactor": 2,
+        "clearActivityId": "nap",
+        "anchorPrecedence": "anchor-remains"
+      },
+      "success": {
+        "kind": "activity-completed",
+        "activityId": "nap"
+      },
+      "variants": [
+        {
+          "id": "headache-slow-day",
+          "titleStringId": "wrinkles:headache.title",
+          "introStringId": "wrinkles:headache.intro",
+          "successStringId": "wrinkles:headache.success",
+          "failureStringId": "wrinkles:headache.failure",
+          "outcomeStringId": "wrinkles:headache.outcome",
+          "playerAction": {
+            "id": "clear-headache",
+            "kind": "schedule-recovery",
+            "labelStringId": "wrinkles:headache.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "slept-great",
+      "firstDay": 2,
+      "effect": {
+        "kind": "free-time",
+        "wakeOffsetMin": -30,
+        "energy": 100,
+        "anchorPrecedence": "wake-only"
+      },
+      "success": {
+        "kind": "activity-completed",
+        "activityId": "practice"
+      },
+      "variants": [
+        {
+          "id": "slept-great-practice",
+          "titleStringId": "wrinkles:sleptGreat.title",
+          "introStringId": "wrinkles:sleptGreat.intro",
+          "successStringId": "wrinkles:sleptGreat.success",
+          "failureStringId": "wrinkles:sleptGreat.failure",
+          "outcomeStringId": "wrinkles:sleptGreat.outcome",
+          "playerAction": {
+            "id": "use-early-half-hour",
+            "kind": "use-free-time",
+            "labelStringId": "wrinkles:sleptGreat.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "burned-breakfast",
+      "firstDay": 2,
+      "effect": {
+        "kind": "forced-substitution",
+        "targetActivityId": "meal",
+        "nutritionDelta": 10,
+        "countsAsMeal": false,
+        "anchorPrecedence": "replaces-wake-meal"
+      },
+      "success": {
+        "kind": "activity-completed",
+        "activityId": "snack"
+      },
+      "variants": [
+        {
+          "id": "burned-breakfast-toast",
+          "titleStringId": "wrinkles:burnedBreakfast.title",
+          "introStringId": "wrinkles:burnedBreakfast.intro",
+          "successStringId": "wrinkles:burnedBreakfast.success",
+          "failureStringId": "wrinkles:burnedBreakfast.failure",
+          "outcomeStringId": "wrinkles:burnedBreakfast.outcome",
+          "playerAction": {
+            "id": "recover-after-breakfast",
+            "kind": "plan-recovery",
+            "labelStringId": "wrinkles:burnedBreakfast.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty-fridge",
+      "firstDay": 2,
+      "effect": {
+        "kind": "availability-gate",
+        "activityIds": ["meal"],
+        "availableAtWakeOffset": 420,
+        "anchorPrecedence": "gate-wins"
+      },
+      "success": {
+        "kind": "activity-completed",
+        "activityId": "snack"
+      },
+      "variants": [
+        {
+          "id": "empty-fridge-delivery",
+          "titleStringId": "wrinkles:emptyFridge.title",
+          "introStringId": "wrinkles:emptyFridge.intro",
+          "successStringId": "wrinkles:emptyFridge.success",
+          "failureStringId": "wrinkles:emptyFridge.failure",
+          "outcomeStringId": "wrinkles:emptyFridge.outcome",
+          "playerAction": {
+            "id": "use-snacks-until-delivery",
+            "kind": "use-alternative",
+            "labelStringId": "wrinkles:emptyFridge.action"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rough-night",
+      "firstDay": 2,
+      "effect": {
+        "kind": "wake-modifier",
+        "energy": 60,
+        "anchorPrecedence": "wake-only"
+      },
+      "success": {
+        "kind": "activity-completed",
+        "activityId": "nap"
+      },
+      "variants": [
+        {
+          "id": "rough-night-rest",
+          "titleStringId": "wrinkles:roughNight.title",
+          "introStringId": "wrinkles:roughNight.intro",
+          "successStringId": "wrinkles:roughNight.success",
+          "failureStringId": "wrinkles:roughNight.failure",
+          "outcomeStringId": "wrinkles:roughNight.outcome",
+          "playerAction": {
+            "id": "recover-after-rough-night",
+            "kind": "recover-energy",
+            "labelStringId": "wrinkles:roughNight.action"
+          }
+        }
+      ]
+    }
+  ]
+}

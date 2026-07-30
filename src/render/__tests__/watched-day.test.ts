@@ -22,7 +22,9 @@ const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.cr
 
 /** Drive a whole day at a given speed, sampling the character quad every tick. */
 function watchOneDay(speed: 1 | 2 | 4) {
-  const loop = new GameLoop(fresh(), content);
+  // A watched-day renderer oracle must sample every tick. T9's idle sleep dissolve
+  // has its own parity suite, so disable only its automatic presentation trigger here.
+  const loop = new GameLoop(fresh(), content, {}, { sleepSkipEnabled: false });
   loop.setSpeed(speed);
   const per = msPerTick(speed);
 

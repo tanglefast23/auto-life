@@ -4,7 +4,7 @@ import { isUrgentBarValue } from './priority';
 import type { ReactiveConfig, ReactiveRule } from '../content-schemas';
 import type { Bars } from '../types';
 import type { QueueCard, SuppressionMap } from '../queue';
-import { hasAutoCardFor, isSuppressed } from '../queue';
+import { hasAutoCardFor, hasCardFor, isSuppressed } from '../queue';
 
 export interface ReactiveContext {
   absoluteMinute: number;
@@ -65,7 +65,9 @@ export function evaluateReactive(
       if (incumbent && rule.supersedesGroup) groupWinner.set(rule.exclusiveGroup, { rule, activityId, urgent });
       else groupWinner.set(rule.exclusiveGroup, { rule, activityId, urgent });
     } else {
-      if (!hasAutoCardFor(queue, activityId)) add.push({ rule, activityId, urgent });
+      // A player-touched reactive becomes PINNED but still handles this exact
+      // need. Looking only for AUTO ownership cloned it on the same tick.
+      if (!hasCardFor(queue, activityId)) add.push({ rule, activityId, urgent });
     }
   }
 

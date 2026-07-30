@@ -1,0 +1,251 @@
+{
+  "fixtureVersion": 1,
+  "sourceEngineVersion": 7,
+  "sourceCommit": "working-tree-after-p4-dual-audit",
+  "synthetic": true,
+  "auditCoverage": [
+    "travel-toward-anchor",
+    "pinned-reactive-provenance",
+    "cross-registry-id-validation"
+  ],
+  "rootSeed": 1234,
+  "sim": {
+    "engineVersion": 7,
+    "chronotype": "baseline",
+    "clock": {
+      "absoluteMinute": 781
+    },
+    "bars": {
+      "energy": 599500,
+      "nutrition": 299600,
+      "movement": 359800,
+      "hygiene": 419700
+    },
+    "position": {
+      "x": 7,
+      "y": 2
+    },
+    "queue": [
+      {
+        "id": "c0",
+        "activityId": "meal",
+        "owner": "AUTO",
+        "urgent": false,
+        "source": "anchor",
+        "reason": {
+          "kind": "anchorWindow",
+          "anchorId": "lunch",
+          "targetMinute": 780
+        },
+        "blockId": "lunch#1",
+        "enqueuedTick": 780
+      },
+      {
+        "id": "audit-pinned-shower",
+        "activityId": "shower",
+        "owner": "PINNED",
+        "urgent": false,
+        "source": "reactive",
+        "reason": {
+          "kind": "reactiveTrigger",
+          "bar": "hygiene",
+          "threshold": 40,
+          "atMinute": 781
+        },
+        "enqueuedTick": 781
+      }
+    ],
+    "current": {
+      "type": "travel",
+      "cardId": "c0",
+      "path": [
+        {
+          "x": 4,
+          "y": 2
+        },
+        {
+          "x": 5,
+          "y": 2
+        },
+        {
+          "x": 6,
+          "y": 2
+        },
+        {
+          "x": 7,
+          "y": 2
+        },
+        {
+          "x": 7,
+          "y": 3
+        },
+        {
+          "x": 8,
+          "y": 3
+        },
+        {
+          "x": 9,
+          "y": 3
+        },
+        {
+          "x": 10,
+          "y": 3
+        },
+        {
+          "x": 10,
+          "y": 4
+        },
+        {
+          "x": 11,
+          "y": 4
+        },
+        {
+          "x": 12,
+          "y": 4
+        },
+        {
+          "x": 13,
+          "y": 4
+        },
+        {
+          "x": 13,
+          "y": 5
+        },
+        {
+          "x": 13,
+          "y": 6
+        },
+        {
+          "x": 13,
+          "y": 7
+        },
+        {
+          "x": 13,
+          "y": 8
+        },
+        {
+          "x": 14,
+          "y": 8
+        },
+        {
+          "x": 15,
+          "y": 8
+        },
+        {
+          "x": 15,
+          "y": 9
+        },
+        {
+          "x": 16,
+          "y": 9
+        },
+        {
+          "x": 17,
+          "y": 9
+        },
+        {
+          "x": 18,
+          "y": 9
+        }
+      ],
+      "totalTicks": 7,
+      "elapsedTicks": 1
+    },
+    "suppression": {},
+    "anchorsConsumedOnDay": {
+      "wake": 1,
+      "workout": 1,
+      "dinner": 1,
+      "bedtime": 1
+    },
+    "anchorMutationGenerations": {},
+    "nextAnchorMutationGeneration": 1,
+    "removalReceipt": null,
+    "nextRemovalReceiptSeq": 0,
+    "lastMealCompletedAt": null,
+    "napEffectiveUsesToday": 0,
+    "preferredWorkout": "weights",
+    "practice": {
+      "points100": 0,
+      "sessionsCountedToday": 0,
+      "prevCompletionWasPractice": false,
+      "mintyArmed": false,
+      "mintyPaidToday": false
+    },
+    "decayModifiers": [],
+    "lastCompletion": null,
+    "pendingInstantDeltas": [],
+    "nextCardSeq": 1,
+    "events": {
+      "urgentCount": 0,
+      "anchorsMissed": 0
+    },
+    "urgentActive": {},
+    "prng": {
+      "rootSeed": 1234,
+      "streams": {
+        "wrinkles": {
+          "state": 608136794,
+          "calls": 0
+        },
+        "storylets": {
+          "state": 2242055169,
+          "calls": 0
+        },
+        "relationships": {
+          "state": 320442108,
+          "calls": 0
+        },
+        "careerEvents": {
+          "state": 57702294,
+          "calls": 0
+        },
+        "cosmetic": {
+          "state": 2752068848,
+          "calls": 0
+        }
+      }
+    }
+  },
+  "game": {
+    "goals": {
+      "meet-you": {
+        "status": "active",
+        "counters": {
+          "activitiesCompleted": 0,
+          "whyLineOpened": 0
+        }
+      },
+      "change-of-plans": {
+        "status": "active",
+        "counters": {
+          "queueEdits": 0,
+          "forecastChangesSeen": 0
+        }
+      }
+    },
+    "observations": {
+      "whyLineOpened": false,
+      "forecastChangeObserved": false
+    },
+    "wrinkles": {
+      "firedIds": [],
+      "pendingId": null,
+      "choiceReadyId": null,
+      "resolvedIds": []
+    },
+    "decorations": {
+      "grantedIds": []
+    },
+    "unlocks": {
+      "journal": false
+    },
+    "recap": {
+      "forDay": 1,
+      "completedActivityIds": [],
+      "missedAnchorIds": [],
+      "practicePoints100": 0
+    },
+    "morningRecap": null
+  }
+}

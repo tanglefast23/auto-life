@@ -95,6 +95,19 @@ export interface StartOptions {
   effectiveUse?: boolean;
 }
 
+/**
+ * Intrinsic duration at the bars' current Energy speed. Sleep windows and idle
+ * units do not have a speed-scaled finite duration.
+ *
+ * Shared by activity start and the P4 queue DTO so the UI never reimplements —
+ * and eventually drifts from — the engine's integer-exact ceiling.
+ */
+export function activityDurationTicksAtCurrentSpeed(def: ActivityDef, bars: Bars): number | null {
+  if (def.kind === 'sleepWindow' || def.kind === 'idle') return null;
+  const denom = 300_000 + bars.energy;
+  return Math.max(1, Math.floor((def.baseMin * 600_000 + denom - 1) / denom));
+}
+
 /** Start = a sampler: everything duration- or bonus-relevant is captured once, here. */
 export function startTimedActivity(
   def: ActivityDef,
@@ -119,8 +132,8 @@ export function startTimedActivity(
   // in critic round 3 from the git-archived pre-fix expression, energyFixed 0..600000 x baseMin 1..132) — e.g. baseMin 17
   // at Energy 18.00 → 26 instead of 25). mSpeed = (300000 + energyFixed) / 600000,
   // so duration = ceil(baseMin × 600000 / (300000 + energyFixed)), exactly.
-  const denom = 300_000 + bars.energy;
-  const durationTicks = Math.max(1, Math.floor((def.baseMin * 600_000 + denom - 1) / denom));
+  const durationTicks = activityDurationTicksAtCurrentSpeed(def, bars);
+  if (durationTicks === null) throw new Error(`timed activity "${def.id}" has no finite duration`);
 
   // Explicit rounding rule, computed IN INTEGERS so it is exactly decimal
   // round-half-up (a float form of this comment previously lied: 45×0.7 gave 31,
