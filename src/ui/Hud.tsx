@@ -4,7 +4,7 @@ import { content } from '../sim/content';
 import type { SimSnapshot } from '../sim/step';
 import type { Speed } from '../application/loop';
 import { SPEEDS } from '../application/loop';
-import { BAR_COLOR, BAR_ICON, BAR_ORDER, bandFor, type BandName } from './bands';
+import { BAR_COLOR, BAR_ICON, BAR_ORDER, bandFor, bandForDefault, type BandName } from './bands';
 import { formatClock } from './clock-format';
 
 /**
@@ -94,14 +94,16 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
           <Text style={styles.healthLabel}>HEALTH</Text>
           <Text style={styles.healthValue}>{Math.round(health)}</Text>
         </View>
-        {/* Health uses the DEFAULT bands like any other bar. It was pinned to "normal",
-            so a Day-1 Health of ~60 never showed the 40–69 warning (pass 4). */}
+        {/* Health is a composite with no BarId, so it names the default bands directly.
+            It was pinned to "normal" (a Day-1 Health of ~60 never showed the 40–69
+            warning), then briefly borrowed Nutrition's — which would break silently the
+            day Nutrition gains an override of its own. */}
         <Bar
           value={health}
           color={INK}
           width={168}
           height={10}
-          band={bandFor('nutrition', health, content.rates).band}
+          band={bandForDefault(health, content.rates).band}
           pulseOpacity={pulse}
         />
 

@@ -37,12 +37,28 @@ export function GameScreen() {
   // cap working correctly; found properly in adversarial pass 2.
   const frameClock = useRef<{ last: number | null }>({ last: null });
 
+  const [fps, setFps] = useState(0);
+
   useEffect(() => {
     let raf = 0;
+    let frames = 0;
+    let windowStart = 0;
     const frame = (now: number) => {
       const prev = frameClock.current.last;
       frameClock.current.last = now;
       loop.advance(prev === null ? 0 : now - prev);
+
+      // fps is measured on THIS loop rather than a third RAF of its own. The readout
+      // previously ran its own animation frame, so the app kept three concurrent loops
+      // (sim advance, scene animation, fps) where two are enough — and the counter was
+      // measuring its own callback rate rather than the one that drives the sim.
+      frames += 1;
+      if (windowStart === 0) windowStart = now;
+      else if (now - windowStart >= 1000) {
+        setFps(Math.round((frames * 1000) / (now - windowStart)));
+        frames = 0;
+        windowStart = now;
+      }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
@@ -75,7 +91,7 @@ export function GameScreen() {
         </Canvas>
       </View>
       <Hud snapshot={snapshot} speed={speed} onSpeed={setSpeed} />
-      <ScaleReadout fit={fit} dpr={dpr} />
+      <ScaleReadout fit={fit} dpr={dpr} fps={fps} />
     </View>
   );
 }
@@ -85,28 +101,8 @@ export function GameScreen() {
  * Shows the scale actually chosen and the measured frame rate, so the evidence is read
  * off the running build rather than asserted. Removed when the queue strip lands in P4.
  */
-function ScaleReadout({ fit, dpr }: { fit: ReturnType<typeof solveScale>; dpr: number }) {
+function ScaleReadout({ fit, dpr, fps }: { fit: ReturnType<typeof solveScale>; dpr: number; fps: number }) {
   const ticksRun = useGameStore((s) => s.ticksRun);
-  const [fps, setFps] = useState(0);
-
-  useEffect(() => {
-    let frames = 0;
-    let raf = 0;
-    let start = 0;
-    const count = (now: number) => {
-      if (start === 0) start = now;
-      frames += 1;
-      if (now - start >= 1000) {
-        setFps(Math.round((frames * 1000) / (now - start)));
-        frames = 0;
-        start = now;
-      }
-      raf = requestAnimationFrame(count);
-    };
-    raf = requestAnimationFrame(count);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
   return (
     <View style={styles.readout} pointerEvents="none">
       <Text style={styles.readoutText}>

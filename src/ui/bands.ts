@@ -34,11 +34,26 @@ function thresholdsFor(bar: BarId, cfg: RatesConfig): { tick: number; alert: num
   return bar === 'energy' ? cfg.displayBands.energy : cfg.displayBands.default;
 }
 
-export function bandFor(bar: BarId, displayValue: number, cfg: RatesConfig): BandStyle {
-  const { tick, alert } = thresholdsFor(bar, cfg);
-  if (displayValue < alert) return { band: 'alert', pulse: true, alertGlyph: true };
-  if (displayValue < tick) return { band: 'tick', pulse: false, alertGlyph: false };
+/**
+ * The default bands, named explicitly.
+ *
+ * The composite Health bar has no `BarId`, so it was reading `bandFor('nutrition', …)`
+ * as a stand-in for "the default thresholds". That works only for as long as Nutrition
+ * has no override of its own — the moment a second bar gets custom bands (Energy already
+ * has one), Health would silently start following the wrong rule with nothing failing.
+ */
+export function bandForDefault(displayValue: number, cfg: RatesConfig): BandStyle {
+  return classify(displayValue, cfg.displayBands.default);
+}
+
+function classify(displayValue: number, t: { tick: number; alert: number }): BandStyle {
+  if (displayValue < t.alert) return { band: 'alert', pulse: true, alertGlyph: true };
+  if (displayValue < t.tick) return { band: 'tick', pulse: false, alertGlyph: false };
   return { band: 'normal', pulse: false, alertGlyph: false };
+}
+
+export function bandFor(bar: BarId, displayValue: number, cfg: RatesConfig): BandStyle {
+  return classify(displayValue, thresholdsFor(bar, cfg));
 }
 
 /** design.md §9 — per-bar icon identity, with the alert variant as a distinct shape. */

@@ -133,10 +133,18 @@ This makes the Day-1 07:00 wake window observable on the first step. Leaf system
 | **P2** | Top-level headless step, anchors/reactive/priority, queue ownership and suppression, adjacency, deterministic A*/travel timing, **Practice scoring/curves/block-bonus math**, commitments DTO, forecaster, unattended golden, fairness/recovery/property harness | Full unattended placeholder week including travel; Practice math/unit pacing green; replay diff tied to `ENGINE_VERSION`; forecast agrees with real step path; queue invariants green |
 | **A0** | One four-direction walk, seated action, hair layer, and outfit on average + offset-derived slim bodies | Reviewed rendered evidence at target scales; anchors/layers accepted or simplified **before P3 planning** |
 | **P3** | Placeholder home scene, rendering/interpolation, visible travel/actions, HUD/clock/speeds, pause/background behavior, desktop scaling baseline | A complete placeholder day is watchable at 1×/2×/4×; sim result is speed-independent; desktop frame/scaling evidence recorded |
-| **P4** | Full §7.4 queue interaction surface, forecasts/why-lines needed for comprehension, keyboard/mouse/touch-capable-web parity, **player-visible Practice integration using P2's math**, plus the minimum first-session slice below | Every interaction passes; scripted queue replay added; a frozen build contains the complete P4.5 slice |
+| **P4** | Full §7.4 queue interaction surface, forecasts/why-lines needed for comprehension, keyboard/mouse/touch-capable-web parity, **player-visible Practice integration using P2's math**, **§11.4 sleep-skip** (assigned 2026-07-30 — see below), plus the minimum first-session slice below | Every interaction passes; scripted queue replay added; a frozen build contains the complete P4.5 slice |
 | **P4.5** | External test of comprehension **and enjoyment** using the frozen protocol below | Pass record from at least 3 fresh external testers; otherwise P5/P6 remain closed |
 | **P5** | Remaining goals 3–7, full wrinkle shapes/variants and storylets, Practice levels/Prepared-Performer progression around the already-playable core, intentions, identity/preferences, journal, remaining recap, settings/autonomy, three-layer persistence, rotating saves/migrations, Day-8 letter | Mid-activity kill/resume; goals completable; scripted-player replay extended with Practice pacing, wrinkle exposure, Goal 6, suppression, and undo; authored-string gate current |
 | **P6** | Final art per `design.md`, animation/juice, audio/music, desktop performance and ship pass | No placeholders; desktop-web DoD and re-run playtest criteria pass |
+
+### §11.4 sleep-skip — owner assigned to P4 (2026-07-30)
+
+§11.4's dissolve-to-morning was in no phase's owned list: P3's list did not contain it, P4 was given "the first-night recap" and P5 "remaining recap", and the *skip* is neither. Master §3 requires a deferral to name an owner, so this closes that gap.
+
+**Why P4 and not "later":** measured on the shipped engine, a night is ~493 game-minutes — **4.1 real minutes at 1×, a third of a 12-minute day of dead air**. P4.5 is the external fun gate. If the skip is missing then, three fresh testers either sit through the night or someone builds it mid-P4 with no owner and no plan. It also belongs beside the first-night recap, which P4 already owns: the skip is what gets you *to* the recap.
+
+Scope is small and deliberately bounded (SPEC §11.4): on night-sleep start, with no URGENT queued and no input for 10 s, dissolve to `wakeTarget`. **Daytime urgent sleep never skips** — its cost is meant to be felt.
 
 ### Minimum first-session slice required before P4.5
 
