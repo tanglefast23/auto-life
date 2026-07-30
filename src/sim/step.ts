@@ -2,6 +2,7 @@ import { applyBarContributions, type BarContribution } from './bar-deltas';
 import { passiveContribution, type BodyMode } from './rates';
 import {
   crossedWakeBoundary,
+  activityDurationTicksAtCurrentSpeed,
   napEligibility,
   progressTimedActivity,
   sleepContribution,
@@ -11,10 +12,25 @@ import {
 import { anchorsToEnqueue, isMissed, resolveBlock } from './planner/anchors';
 import { evaluateReactive } from './planner/reactive';
 import { sortReactivesAroundBlocks } from './planner';
-import { autoCleanup, canPlayerInsert, hasAutoCardFor, insertPlayerCard, isSuppressed, moveCard, objectClick, removeCard, type QueueCard } from './queue';
+import {
+  autoCleanup,
+  canPlayerInsert,
+  hasAutoCardFor,
+  insertPlayerCard,
+  isSuppressed,
+  moveCard,
+  objectClick,
+  PLAYER_CARD_CAP,
+  playerCardCount,
+  REMOVE_SUPPRESSION_MIN,
+  removeCard,
+  type QueueCard,
+  type QueueReason,
+  type RemovalReceipt,
+} from './queue';
 import { isUrgentBarValue } from './planner/priority';
 import { buildWalkGrid, findPath, travelTicks } from './travel';
-import { dayNumber, minuteOfDay, morningCheckMinute, targetsFor } from './clock';
+import { dayNumber, minuteOfDay, morningCheckMinute, targetsFor, TICKS_PER_DAY } from './clock';
 import { healthDisplay, isWellFedAtStart, mOutAtStart, mSpeedAtStart } from './bars';
 import { toDisplay, toFixed } from './fixed';
 import { activityByIdIn, objectForActivityIn, type ContentRegistry } from './content';
@@ -24,10 +40,43 @@ import { type BarId } from './types';
 
 export type Command =
   | { type: 'insertPlayer'; activityId: string }
+  | { type: 'insertWrinkle'; wrinkleId: string; activityId: string }
   | { type: 'removeCard'; cardId: string }
+  | { type: 'undoLastRemove'; receiptId: string }
+  | { type: 'expireRemovalReceipt'; receiptId: string }
   | { type: 'moveCard'; cardId: string; toIndex: number }
   | { type: 'stopCurrent' }
   | { type: 'objectClick'; activityId: string };
+
+/**
+ * One serializable result per input command, in input order. `game/` consumes
+ * wrinkle results in the post-event phase; later application surfaces consume
+ * removal receipts and rejections without re-deriving what the engine did.
+ */
+export type CommandOutcome =
+  | { type: 'insertPlayer'; status: 'accepted'; cardId: string }
+  | { type: 'insertPlayer'; status: 'rejected'; reason: 'unknownActivity' | 'unavailableActivity' | 'playerCardCap' }
+  | {
+      type: 'insertWrinkle';
+      status: 'accepted';
+      cardId: string;
+      wrinkleId: string;
+      disposition: 'started' | 'queued';
+    }
+  | { type: 'insertWrinkle'; status: 'rejected'; reason: 'unknownActivity' }
+  | { type: 'objectClick'; status: 'accepted'; cardId: string; effect: 'inserted' | 'promoted' }
+  | { type: 'objectClick'; status: 'rejected'; reason: 'unknownActivity' | 'unavailableActivity' | 'playerCardCap' }
+  | { type: 'removeCard'; status: 'accepted'; cardId: string; effect: 'removed'; receiptId: string }
+  | { type: 'removeCard'; status: 'accepted'; cardId: string; effect: 'stopped' }
+  | { type: 'removeCard'; status: 'rejected'; reason: 'unknownCard' }
+  | { type: 'undoLastRemove'; status: 'accepted'; receiptId: string; cardId: string }
+  | { type: 'undoLastRemove'; status: 'rejected'; reason: 'unknownReceipt' | 'playerCardCap' }
+  | { type: 'expireRemovalReceipt'; status: 'accepted'; receiptId: string }
+  | { type: 'expireRemovalReceipt'; status: 'rejected'; reason: 'unknownReceipt' }
+  | { type: 'moveCard'; status: 'accepted'; cardId: string }
+  | { type: 'moveCard'; status: 'rejected'; reason: 'unknownCard' }
+  | { type: 'stopCurrent'; status: 'accepted'; cardId: string | null }
+  | { type: 'stopCurrent'; status: 'rejected'; reason: 'nothingRunning' };
 
 export interface DomainEvent {
   type: 'anchorMissed' | 'urgent' | 'activityCompleted' | 'practiceAwarded' | 'wakeBoundary' | 'slept';
@@ -40,8 +89,15 @@ export interface SimSnapshot {
   day: number;
   health: number;
   bars: Record<BarId, number>;
+  /** Framework-free, intrinsic queue data only. Forecast fields are composed in
+   * application/ beside this DTO, never inside `buildSnapshot()`. */
+  queue: SimQueueCard[];
   queueIds: string[];
   currentLabel: string;
+  /** Exact identity fixes the duplicate-activity ambiguity of currentLabel. */
+  currentCardId: string | null;
+  /** Post-step progress for the running activity/travel unit; sleep is open-ended. */
+  currentProgress: number | null;
   /**
    * What stage 4 actually PROCESSED this tick — unlike currentLabel (post-step
    * state), this sees the arrival tick of a journey and the whole of a one-tick
@@ -56,6 +112,25 @@ export interface SimSnapshot {
    * so `SimState`, the golden digest, and `ENGINE_VERSION` are all untouched.
    */
   render: RenderView;
+}
+
+export interface SimQueueCard {
+  id: string;
+  activityId: string;
+  owner: QueueCard['owner'];
+  urgent: boolean;
+  source: QueueCard['source'];
+  reason?: QueueReason;
+  blockId?: string;
+  enqueuedTick: number;
+  durationTicksAtCurrentSpeed: number | null;
+}
+
+export interface StepResult {
+  next: SimState;
+  events: DomainEvent[];
+  outcomes: CommandOutcome[];
+  snapshot: SimSnapshot;
 }
 
 const STOP_SUPPRESSION_MIN = 60;
@@ -86,9 +161,67 @@ function currentCardId(s: SimState): string | null {
  * deleted, or retiring late must never move the marker backward — that would
  * resurrect an already-consumed newer day and duplicate the anchor.
  */
-function consumeAnchor(s: SimState, anchorId: string, day: number): void {
-  const prev = s.anchorsConsumedOnDay[anchorId];
-  s.anchorsConsumedOnDay[anchorId] = prev === undefined ? day : Math.max(prev, day);
+interface AnchorMutation {
+  previousDay: number | null;
+  previousGeneration: number | null;
+  writtenDay: number;
+  writtenGeneration: number;
+}
+
+function consumeAnchor(s: SimState, anchorId: string, day: number): AnchorMutation {
+  const previousDay = s.anchorsConsumedOnDay[anchorId] ?? null;
+  const previousGeneration = s.anchorMutationGenerations[anchorId] ?? null;
+  const writtenDay = previousDay === null ? day : Math.max(previousDay, day);
+  const writtenGeneration = s.nextAnchorMutationGeneration++;
+  s.anchorsConsumedOnDay[anchorId] = writtenDay;
+  s.anchorMutationGenerations[anchorId] = writtenGeneration;
+  return { previousDay, previousGeneration, writtenDay, writtenGeneration };
+}
+
+function reinsertFromReceipt(queue: readonly QueueCard[], receipt: RemovalReceipt): QueueCard[] {
+  const previousIndex =
+    receipt.previousNeighborId === null
+      ? -1
+      : queue.findIndex((card) => card.id === receipt.previousNeighborId);
+  const nextIndex =
+    receipt.nextNeighborId === null
+      ? -1
+      : queue.findIndex((card) => card.id === receipt.nextNeighborId);
+  let at: number;
+  if (previousIndex !== -1) at = previousIndex + 1;
+  else if (nextIndex !== -1) at = nextIndex;
+  else at = Math.max(0, Math.min(receipt.originalIndex, queue.length));
+  return [...queue.slice(0, at), receipt.card, ...queue.slice(at)];
+}
+
+function restoreReceiptMutations(s: SimState, receipt: RemovalReceipt): void {
+  const suppression = receipt.suppressionMutation;
+  if (
+    suppression !== null &&
+    s.suppression[suppression.activityId] === suppression.writtenUntil
+  ) {
+    if (suppression.previousUntil === null) delete s.suppression[suppression.activityId];
+    else s.suppression[suppression.activityId] = suppression.previousUntil;
+  }
+
+  const anchor = receipt.anchorMutation;
+  if (
+    anchor !== null &&
+    s.anchorsConsumedOnDay[anchor.anchorId] === anchor.writtenDay &&
+    s.anchorMutationGenerations[anchor.anchorId] === anchor.writtenGeneration
+  ) {
+    if (anchor.previousDay === null) {
+      delete s.anchorsConsumedOnDay[anchor.anchorId];
+      delete s.anchorMutationGenerations[anchor.anchorId];
+    } else {
+      s.anchorsConsumedOnDay[anchor.anchorId] = anchor.previousDay;
+      if (anchor.previousGeneration === null) {
+        delete s.anchorMutationGenerations[anchor.anchorId];
+      } else {
+        s.anchorMutationGenerations[anchor.anchorId] = anchor.previousGeneration;
+      }
+    }
+  }
 }
 
 /**
@@ -126,9 +259,11 @@ export function step(
   state: SimState,
   commands: readonly Command[],
   content: ContentRegistry,
-): { next: SimState; events: DomainEvent[]; snapshot: SimSnapshot } {
+): StepResult {
   const s: SimState = JSON.parse(JSON.stringify(state)) as SimState;
   const events: DomainEvent[] = [];
+  const outcomes: CommandOutcome[] = [];
+  const startedCardIds = new Set<string>();
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
   const today = dayNumber(now);
@@ -137,39 +272,172 @@ export function step(
   // ---- stage 1: commands at the minute boundary ----
   for (const cmd of commands) {
     if (cmd.type === 'insertPlayer') {
+      const activity = content.activities.activities.find((a) => a.id === cmd.activityId);
+      if (activity === undefined) {
+        outcomes.push({ type: 'insertPlayer', status: 'rejected', reason: 'unknownActivity' });
+        continue;
+      }
+      if (activity.playerSelectable === false) {
+        outcomes.push({ type: 'insertPlayer', status: 'rejected', reason: 'unavailableActivity' });
+        continue;
+      }
       // Over-cap inserts are rejected per-command — a raw player command must
       // never abort the tick (round-2; P4 pre-validates but the engine is the law).
       if (canPlayerInsert(s.queue)) {
-        s.queue = insertPlayerCard(s.queue, { id: `c${s.nextCardSeq++}`, activityId: cmd.activityId, enqueuedTick: now, blockId: undefined });
+        const cardId = `c${s.nextCardSeq++}`;
+        s.queue = insertPlayerCard(s.queue, { id: cardId, activityId: cmd.activityId, enqueuedTick: now, blockId: undefined });
+        outcomes.push({ type: 'insertPlayer', status: 'accepted', cardId });
+      } else {
+        outcomes.push({ type: 'insertPlayer', status: 'rejected', reason: 'playerCardCap' });
       }
-    } else if (cmd.type === 'objectClick') {
-      if (s.queue.some((c) => c.activityId === cmd.activityId) || canPlayerInsert(s.queue)) {
-        s.queue = objectClick(s.queue, cmd.activityId, `c${s.nextCardSeq++}`, now);
-      }
-    } else if (cmd.type === 'removeCard') {
-      // Removing the RUNNING card means stopping it (audit round 4) — otherwise
-      // the activity continues invisibly with its queue entry gone.
-      if (cmd.cardId === currentCardId(s) && s.current !== null && s.current.type !== 'travel') {
-        stopRunningUnit(s, now);
+    } else if (cmd.type === 'insertWrinkle') {
+      if (!content.activities.activities.some((a) => a.id === cmd.activityId)) {
+        outcomes.push({ type: 'insertWrinkle', status: 'rejected', reason: 'unknownActivity' });
         continue;
       }
+      const cardId = `c${s.nextCardSeq++}`;
+      s.queue = insertIntoEarliestRun(s.queue, {
+        id: cardId,
+        activityId: cmd.activityId,
+        owner: 'AUTO',
+        urgent: true,
+        source: 'wrinkle',
+        reason: { kind: 'wrinkle', wrinkleId: cmd.wrinkleId },
+        enqueuedTick: now,
+      });
+      outcomes.push({
+        type: 'insertWrinkle',
+        status: 'accepted',
+        cardId,
+        wrinkleId: cmd.wrinkleId,
+        disposition: 'queued',
+      });
+    } else if (cmd.type === 'objectClick') {
+      const activity = content.activities.activities.find((a) => a.id === cmd.activityId);
+      if (activity === undefined) {
+        outcomes.push({ type: 'objectClick', status: 'rejected', reason: 'unknownActivity' });
+        continue;
+      }
+      if (activity.playerSelectable === false) {
+        outcomes.push({ type: 'objectClick', status: 'rejected', reason: 'unavailableActivity' });
+        continue;
+      }
+      const existing = s.queue.find((c) => c.activityId === cmd.activityId);
+      if (existing || canPlayerInsert(s.queue)) {
+        const newId = `c${s.nextCardSeq++}`;
+        s.queue = objectClick(s.queue, cmd.activityId, newId, now);
+        outcomes.push({
+          type: 'objectClick',
+          status: 'accepted',
+          cardId: existing?.id ?? newId,
+          effect: existing ? 'promoted' : 'inserted',
+        });
+      } else {
+        outcomes.push({ type: 'objectClick', status: 'rejected', reason: 'playerCardCap' });
+      }
+    } else if (cmd.type === 'removeCard') {
       const card = s.queue.find((c) => c.id === cmd.cardId);
+      if (!card) {
+        outcomes.push({ type: 'removeCard', status: 'rejected', reason: 'unknownCard' });
+        continue;
+      }
+      // Running activities AND travel targets are Stop, never receipt-bearing
+      // removal (§11.8 / T4). Nobody keeps walking to a removed task.
+      if (cmd.cardId === currentCardId(s) && s.current !== null) {
+        stopRunningUnit(s, now);
+        outcomes.push({ type: 'removeCard', status: 'accepted', cardId: cmd.cardId, effect: 'stopped' });
+        continue;
+      }
+
+      const originalIndex = s.queue.findIndex((candidate) => candidate.id === cmd.cardId);
+      const previousNeighborId = s.queue[originalIndex - 1]?.id ?? null;
+      const nextNeighborId = s.queue[originalIndex + 1]?.id ?? null;
+
       // Q4: deleting a block card consumes the anchor for the BLOCK'S day, not
       // today's — a stale bedtime deleted after midnight must not eat tonight's.
-      if (card?.blockId) {
+      let anchorMutation: RemovalReceipt['anchorMutation'] = null;
+      if (card.blockId) {
         const [anchorId = '', blockDay] = card.blockId.split('#');
-        consumeAnchor(s, anchorId, blockDay !== undefined ? Number(blockDay) : today);
+        const mutation = consumeAnchor(
+          s,
+          anchorId,
+          blockDay !== undefined ? Number(blockDay) : today,
+        );
+        anchorMutation = { anchorId, ...mutation };
       }
+
+      const priorSuppression = s.suppression[card.activityId] ?? null;
       const r = removeCard(s.queue, cmd.cardId, now, s.suppression);
       s.queue = r.queue;
       s.suppression = r.suppression;
-      // Removing the travel target stops the walk — nobody keeps walking to a
-      // task that no longer exists.
-      if (s.current?.type === 'travel' && s.current.cardId === cmd.cardId) s.current = null;
+      const suppressionMutation: RemovalReceipt['suppressionMutation'] =
+        card.owner === 'AUTO'
+          ? {
+              activityId: card.activityId,
+              previousUntil: priorSuppression,
+              writtenUntil: now + REMOVE_SUPPRESSION_MIN,
+            }
+          : null;
+      const receiptId = `r${s.nextRemovalReceiptSeq++}`;
+      s.removalReceipt = {
+        id: receiptId,
+        card: JSON.parse(JSON.stringify(card)) as QueueCard,
+        originalIndex,
+        previousNeighborId,
+        nextNeighborId,
+        suppressionMutation,
+        anchorMutation,
+      };
+      outcomes.push({
+        type: 'removeCard',
+        status: 'accepted',
+        cardId: cmd.cardId,
+        effect: 'removed',
+        receiptId,
+      });
+    } else if (cmd.type === 'undoLastRemove') {
+      const receipt = s.removalReceipt;
+      if (receipt === null || receipt.id !== cmd.receiptId) {
+        outcomes.push({ type: 'undoLastRemove', status: 'rejected', reason: 'unknownReceipt' });
+        continue;
+      }
+      if (
+        receipt.card.source === 'player' &&
+        playerCardCount(s.queue) >= PLAYER_CARD_CAP
+      ) {
+        s.removalReceipt = null;
+        outcomes.push({ type: 'undoLastRemove', status: 'rejected', reason: 'playerCardCap' });
+        continue;
+      }
+      s.queue = reinsertFromReceipt(s.queue, receipt);
+      restoreReceiptMutations(s, receipt);
+      s.removalReceipt = null;
+      outcomes.push({
+        type: 'undoLastRemove',
+        status: 'accepted',
+        receiptId: receipt.id,
+        cardId: receipt.card.id,
+      });
+    } else if (cmd.type === 'expireRemovalReceipt') {
+      if (s.removalReceipt?.id !== cmd.receiptId) {
+        outcomes.push({ type: 'expireRemovalReceipt', status: 'rejected', reason: 'unknownReceipt' });
+        continue;
+      }
+      s.removalReceipt = null;
+      outcomes.push({ type: 'expireRemovalReceipt', status: 'accepted', receiptId: cmd.receiptId });
     } else if (cmd.type === 'moveCard') {
+      if (!s.queue.some((c) => c.id === cmd.cardId)) {
+        outcomes.push({ type: 'moveCard', status: 'rejected', reason: 'unknownCard' });
+        continue;
+      }
       s.queue = moveCard(s.queue, cmd.cardId, cmd.toIndex);
+      outcomes.push({ type: 'moveCard', status: 'accepted', cardId: cmd.cardId });
     } else if (cmd.type === 'stopCurrent' && s.current) {
+      const cardId = currentCardId(s);
       stopRunningUnit(s, now);
+      outcomes.push({ type: 'stopCurrent', status: 'accepted', cardId });
+    } else if (cmd.type === 'stopCurrent') {
+      outcomes.push({ type: 'stopCurrent', status: 'rejected', reason: 'nothingRunning' });
     }
   }
 
@@ -189,7 +457,7 @@ export function step(
     const started = s.anchorsConsumedOnDay[anchor.id] === today;
     if (queued && !started && isMissed(anchor, anchorCtx, false)) {
       s.queue = s.queue.filter((c) => !(c.blockId === blockId && c.owner === 'AUTO'));
-      s.anchorsConsumedOnDay[anchor.id] = today;
+      consumeAnchor(s, anchor.id, today);
       s.events.anchorsMissed += 1;
       emit('anchorMissed', anchor.id);
     }
@@ -199,8 +467,18 @@ export function step(
     const blockId = `${anchor.id}#${today}`;
     if (s.queue.some((c) => c.blockId === blockId)) continue;
     const steps = resolveBlock(anchor, anchorCtx);
+    const targetMinute = (today - 1) * TICKS_PER_DAY + wakeTarget + anchor.targetAt;
     for (const activityId of [...steps].reverse()) {
-      s.queue = insertIntoEarliestRun(s.queue, { id: `c${s.nextCardSeq++}`, activityId, owner: 'AUTO', urgent: false, source: 'anchor', blockId, enqueuedTick: now });
+      s.queue = insertIntoEarliestRun(s.queue, {
+        id: `c${s.nextCardSeq++}`,
+        activityId,
+        owner: 'AUTO',
+        urgent: false,
+        source: 'anchor',
+        reason: { kind: 'anchorWindow', anchorId: anchor.id, targetMinute },
+        blockId,
+        enqueuedTick: now,
+      });
     }
   }
   // Reactive rules.
@@ -217,7 +495,27 @@ export function step(
       // the player may still pin, never a corrective the sim chains (round-2).
       if (def.kind !== 'timed' || !napEligibility(def, s.bars, minuteOfDay(now), wakeTarget, s.napEffectiveUsesToday).effective) continue;
     }
-    s.queue = insertIntoEarliestRun(s.queue, { id: `c${s.nextCardSeq++}`, activityId: a.activityId, owner: 'AUTO', urgent: a.urgent, source: 'reactive', enqueuedTick: now });
+    const rule = content.reactive.rules.find(
+      (candidate) =>
+        candidate.activity === a.activityId ||
+        candidate.supersededBelow?.activity === a.activityId,
+    );
+    if (rule === undefined) {
+      throw new Error(`reactive decision has no authored rule for "${a.activityId}"`);
+    }
+    const threshold =
+      rule.supersededBelow?.activity === a.activityId
+        ? rule.supersededBelow.value
+        : rule.below;
+    s.queue = insertIntoEarliestRun(s.queue, {
+      id: `c${s.nextCardSeq++}`,
+      activityId: a.activityId,
+      owner: 'AUTO',
+      urgent: a.urgent,
+      source: 'reactive',
+      reason: { kind: 'reactiveTrigger', bar: rule.bar, threshold, atMinute: now },
+      enqueuedTick: now,
+    });
   }
   // §7.2 row 6: urgency is a LIVE property of the need, not of card creation.
   // Crisis counting is crossing-based per bar (one urgent event per <15 crossing,
@@ -241,6 +539,10 @@ export function step(
     }
   }
   s.queue = s.queue.map((c) => {
+    // Wrinkle urgency is command-authored. If a wrinkle happens to reuse an
+    // activity that also has a reactive rule, the live need pass must not demote
+    // the visitor/package back out of the URGENT tier.
+    if (c.source === 'wrinkle') return c;
     const bar = servesBar.get(c.activityId);
     if (bar === undefined) return c;
     const urgentNow = urgentNowByBar[bar] === true;
@@ -278,11 +580,13 @@ export function step(
       const ticks = travelTicks(path.length - 1, s.bars);
       if (ticks > 0) {
         s.current = { type: 'travel', cardId: card.id, path, totalTicks: ticks, elapsedTicks: 0 };
+        startedCardIds.add(card.id);
         break;
       }
       s.position = { x: ix, y: iy };
     }
     s.current = beginCard(s, card, content, emit);
+    if (s.current !== null) startedCardIds.add(card.id);
     if (s.current !== null) break;
     if (s.queue.some((c) => c.id === card.id)) break; // dropped-nothing safety: never loop on a card beginCard kept
   }
@@ -386,7 +690,10 @@ export function step(
     // prune stale anchor consumption records
     const d = dayNumber(s.clock.absoluteMinute);
     for (const key of Object.keys(s.anchorsConsumedOnDay)) {
-      if ((s.anchorsConsumedOnDay[key] ?? 0) < d - 1) delete s.anchorsConsumedOnDay[key];
+      if ((s.anchorsConsumedOnDay[key] ?? 0) < d - 1) {
+        delete s.anchorsConsumedOnDay[key];
+        delete s.anchorMutationGenerations[key];
+      }
     }
   }
   // Minty arming expires after the morning check.
@@ -394,7 +701,19 @@ export function step(
     s.practice.mintyArmed = false;
   }
 
-  return { next: s, events, snapshot: buildSnapshot(s, content, processed, processedTravel, processedProgress) };
+  const finalOutcomes = outcomes.map((outcome): CommandOutcome => {
+    if (outcome.type !== 'insertWrinkle' || outcome.status !== 'accepted') return outcome;
+    return {
+      ...outcome,
+      disposition: startedCardIds.has(outcome.cardId) ? 'started' : 'queued',
+    };
+  });
+  return {
+    next: s,
+    events,
+    outcomes: finalOutcomes,
+    snapshot: buildSnapshot(s, content, processed, processedTravel, processedProgress),
+  };
 }
 
 /**
@@ -412,6 +731,26 @@ export function buildSnapshot(
   processedTravel: TravelView | null = null,
   processedProgress: number | null = null,
 ): SimSnapshot {
+  const queue: SimQueueCard[] = s.queue.map((card) => {
+    const def = activityByIdIn(content, card.activityId);
+    return {
+      id: card.id,
+      activityId: card.activityId,
+      owner: card.owner,
+      urgent: card.urgent,
+      source: card.source,
+      reason: card.reason === undefined ? undefined : { ...card.reason },
+      blockId: card.blockId,
+      enqueuedTick: card.enqueuedTick,
+      durationTicksAtCurrentSpeed: activityDurationTicksAtCurrentSpeed(def, s.bars),
+    };
+  });
+  const progress =
+    s.current === null || s.current.type === 'sleep'
+      ? null
+      : s.current.type === 'travel'
+        ? s.current.elapsedTicks / s.current.totalTicks
+        : s.current.dto.elapsedTicks / s.current.dto.durationTicks;
   const snap: SimSnapshot = {
     minuteOfDay: minuteOfDay(s.clock.absoluteMinute),
     day: dayNumber(s.clock.absoluteMinute),
@@ -422,8 +761,11 @@ export function buildSnapshot(
       movement: toDisplay(s.bars.movement),
       hygiene: toDisplay(s.bars.hygiene),
     },
-    queueIds: s.queue.map((c) => c.id),
+    queue,
+    queueIds: queue.map((c) => c.id),
     currentLabel: s.current === null ? 'idle' : s.current.type === 'activity' ? s.current.dto.activityId : s.current.type,
+    currentCardId: currentCardId(s),
+    currentProgress: progress,
     processed,
     practicePoints: s.practice.points100 / 100,
     render: deriveRenderView(s, content, processedTravel, processedProgress),
@@ -438,6 +780,11 @@ export function buildSnapshot(
 /** Freeze the snapshot's own objects/arrays. Not a general deep-freeze: the shape is known. */
 function deepFreezeSnapshot(snap: SimSnapshot): SimSnapshot {
   Object.freeze(snap.bars);
+  for (const card of snap.queue) {
+    if (card.reason !== undefined) Object.freeze(card.reason);
+    Object.freeze(card);
+  }
+  Object.freeze(snap.queue);
   Object.freeze(snap.queueIds);
   Object.freeze(snap.render.position);
   if (snap.render.travel !== null) {
@@ -451,7 +798,7 @@ function deepFreezeSnapshot(snap: SimSnapshot): SimSnapshot {
 
 /** Generic §6.7 pair matcher: first/firstTag × second/secondTag, data-only (the
  * content schema guarantees exactly one of each side is present). */
-function adjacencyMatches(
+export function adjacencyMatches(
   pair: ContentRegistry['adjacency']['pairs'][number],
   lastDef: { id: string; tags?: readonly string[] | string[] },
   secondDef: { id: string; tags?: readonly string[] | string[] },
@@ -545,8 +892,8 @@ function beginCard(
     return null;
   }
   if (def.kind === 'practice') {
-    const denom = 300_000 + s.bars.energy;
-    const durationTicks = Math.max(1, Math.floor((def.baseMin * 600_000 + denom - 1) / denom));
+    const durationTicks = activityDurationTicksAtCurrentSpeed(def, s.bars);
+    if (durationTicks === null) throw new Error('practice must have a finite duration');
     // §6.6: EVERY award multiplier samples at start. Gaps measure first-END to
     // second-START (§6.7); lastCompletion is the intervener rule by construction.
     const wellFed = isWellFedAtStart(s.bars, content.rates);

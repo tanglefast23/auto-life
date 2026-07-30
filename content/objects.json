@@ -13,6 +13,7 @@
     { "id": "treadmill", "room": "living",   "footprint": [[9, 12]],                        "interactPoint": [8, 12], "facing": "right", "activities": ["treadmill"],        "upgradeTrack": "gym",      "decorationSlots": 0 },
     { "id": "rug",       "room": "living",   "footprint": [[5, 11]],                        "interactPoint": [5, 11], "facing": "down",  "activities": ["stretch"],          "upgradeTrack": null,       "decorationSlots": 0, "blocksMovement": false },
     { "id": "guitar",    "room": "living",   "footprint": [[6, 8]],                         "interactPoint": [6, 9],  "facing": "up",    "activities": ["practice"],         "upgradeTrack": null,       "decorationSlots": 0 },
+    { "id": "front-door", "room": "hall",     "footprint": [[12, 12]],                       "interactPoint": [13, 12], "facing": "left",  "activities": ["package"],          "upgradeTrack": null,       "decorationSlots": 0, "blocksMovement": false },
     { "id": "wardrobe",  "room": "bedroom",  "footprint": [[8, 2]],                         "interactPoint": [8, 3],  "facing": "up",    "activities": [],                   "upgradeTrack": "wardrobe", "decorationSlots": 1 }
   ]
 }

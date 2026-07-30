@@ -40,4 +40,13 @@
  * player cap counts only inserted cards. Snapshot gains `processed` (read-model;
  * fixes the travel undercount — 24 recorded vs 32 real). Golden re-recorded.
  */
-export const ENGINE_VERSION = 5 as const;
+/**
+ * v6 (2026-07-30, P4 queue UI + first session): player/object insertion returns
+ * typed outcomes; wrinkle insertion carries durable provenance and urgent ordering;
+ * moving pins cards; remove/stop/receipt-backed undo preserve exact card identity
+ * and suppression; system-only activities cannot leak into player pickers. The
+ * application tick now folds serializable game actions, goals, the Day-1 package
+ * choice, decorations, and recap state beside the sim. Both unattended and scripted
+ * player goldens re-recorded.
+ */
+export const ENGINE_VERSION = 6 as const;

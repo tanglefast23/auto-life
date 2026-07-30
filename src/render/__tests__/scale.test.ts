@@ -32,6 +32,16 @@ describe('SPEC §11.5 verified desktop cases', () => {
     expect(s.available.height).toBe(1080 - HUD_H - QUEUE_H);
     expect(s.available.width).toBe(1920);
   });
+
+  test('larger accessible HUD text reserves its real height before scaling the world', () => {
+    const s = solveScale({
+      width: 1366,
+      height: 900,
+      devicePixelRatio: 1,
+      hudHeight: HUD_H * 1.5,
+    });
+    expect(s.available.height).toBe(900 - HUD_H * 1.5 - QUEUE_H);
+  });
 });
 
 describe('the pixel grid is never resampled on desktop', () => {

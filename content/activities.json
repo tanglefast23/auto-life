@@ -42,6 +42,7 @@
     { "id": "quickwash", "kind": "timed", "object": "sink", "baseMin": 8, "effects": { "hygiene": 15 } },
     { "id": "brush", "kind": "timed", "object": "sink", "baseMin": 5, "effects": { "hygiene": 10 } },
     { "id": "toilet", "kind": "timed", "object": "toilet", "baseMin": 3, "effects": {} },
+    { "id": "package", "kind": "timed", "object": "front-door", "baseMin": 15, "effects": {}, "playerSelectable": false },
     { "id": "practice", "kind": "practice", "object": "guitar", "baseMin": 60 },
     { "id": "idle", "kind": "idle", "object": "couch" }
   ]

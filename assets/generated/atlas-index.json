@@ -117,68 +117,86 @@
       "w": 32,
       "h": 32
     },
-    "object.wardrobe": {
+    "object.front-door": {
       "x": 327,
       "y": 65,
       "w": 32,
       "h": 32
     },
-    "char.walk-down-0": {
+    "object.wardrobe": {
       "x": 360,
+      "y": 65,
+      "w": 32,
+      "h": 32
+    },
+    "decoration.leafy-plant": {
+      "x": 393,
+      "y": 65,
+      "w": 16,
+      "h": 24
+    },
+    "decoration.sunny-vase": {
+      "x": 410,
+      "y": 65,
+      "w": 16,
+      "h": 24
+    },
+    "char.walk-down-0": {
+      "x": 427,
       "y": 65,
       "w": 32,
       "h": 48
     },
     "char.walk-down-1": {
-      "x": 393,
+      "x": 460,
       "y": 65,
       "w": 32,
       "h": 48
     },
     "char.walk-up-0": {
-      "x": 426,
-      "y": 65,
-      "w": 32,
-      "h": 48
-    },
-    "char.walk-up-1": {
-      "x": 459,
-      "y": 65,
-      "w": 32,
-      "h": 48
-    },
-    "char.walk-left-0": {
       "x": 0,
       "y": 114,
       "w": 32,
       "h": 48
     },
-    "char.walk-left-1": {
+    "char.walk-up-1": {
       "x": 33,
       "y": 114,
       "w": 32,
       "h": 48
     },
-    "char.walk-right-0": {
+    "char.walk-left-0": {
       "x": 66,
       "y": 114,
       "w": 32,
       "h": 48
     },
-    "char.walk-right-1": {
+    "char.walk-left-1": {
       "x": 99,
       "y": 114,
       "w": 32,
       "h": 48
     },
-    "char.sit-down": {
+    "char.walk-right-0": {
       "x": 132,
       "y": 114,
       "w": 32,
       "h": 48
     },
-    "debug.interact": {
+    "char.walk-right-1": {
       "x": 165,
+      "y": 114,
+      "w": 32,
+      "h": 48
+    },
+    "char.sit-down": {
+      "x": 198,
+      "y": 114,
+      "w": 32,
+      "h": 48
+    },
+    "debug.interact": {
+      "x": 231,
       "y": 114,
       "w": 8,
       "h": 8

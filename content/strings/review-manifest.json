@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "reviews": [
+    {
+      "file": "content/strings/queue.json",
+      "sha256": "d334aa2bfc4bc417b8a3588d25676b1022016ce35795dc67d3b5020d552acb7d",
+      "reviewedAt": "2026-07-30",
+      "humanizer": {
+        "name": "humanizer",
+        "version": "2.2.0",
+        "invocation": "Full-batch pattern scan, rewrite pass, and second checklist pass."
+      },
+      "stringIds": [
+        "why.reactiveTrigger",
+        "why.anchorWindow",
+        "why.wrinklePackage",
+        "why.wrinkleFallback",
+        "chips.conflict",
+        "chips.wakeConflict",
+        "chips.warmedUp",
+        "chips.itSticks",
+        "chips.cramp",
+        "chips.mintyFresh",
+        "chips.freshMind",
+        "chips.practiceBlock",
+        "details.conflict",
+        "details.wakeConflict",
+        "details.capWaste",
+        "details.halveDuration",
+        "details.scaleDecay",
+        "details.barDelta",
+        "details.scalePoints",
+        "details.practiceBlock",
+        "announcements.forecastUpdated"
+      ],
+      "rewrites": [
+        {
+          "id": "why.reactiveTrigger",
+          "before": "Added: Nutrition will pass 35 around 12:40.",
+          "after": "Added: Nutrition drops past 35 around 12:40.",
+          "reason": "Replaced planner-like future phrasing with a direct forecast."
+        },
+        {
+          "id": "why.anchorWindow",
+          "before": "Added: The morning routine has been scheduled for 07:00.",
+          "after": "Added: Morning routine starts around 07:00.",
+          "reason": "Removed passive, formal phrasing."
+        }
+      ],
+      "checklist": "writing.md section 5 passed"
+    },
+    {
+      "file": "content/strings/first-session.json",
+      "sha256": "71e50effdd8a4b0a6378ff1f12f5902dbbdfda5f17e2bacc19d9c21c56f97c50",
+      "reviewedAt": "2026-07-30",
+      "humanizer": {
+        "name": "humanizer",
+        "version": "2.2.0",
+        "invocation": "Full-batch pattern scan, rewrite pass, and second checklist pass."
+      },
+      "stringIds": [
+        "goals.allComplete",
+        "goals.changeOfPlans.instruction",
+        "goals.changeOfPlans.reward",
+        "goals.changeOfPlans.title",
+        "goals.close",
+        "goals.complete",
+        "goals.eyebrow",
+        "goals.meetYou.instruction",
+        "goals.meetYou.reward",
+        "goals.meetYou.title",
+        "goals.open",
+        "goals.panelLabel",
+        "goals.progress.checkForecast",
+        "goals.progress.editDone",
+        "goals.progress.forecastChangeNotSeen",
+        "goals.progress.forecastChangeSeen",
+        "goals.progress.forecastSeen",
+        "goals.progress.makeEdit",
+        "goals.progress.openWhy",
+        "goals.progress.planEdited",
+        "goals.progress.planNotEdited",
+        "goals.progress.whyLineNotOpened",
+        "goals.progress.whyLineOpened",
+        "goals.progress.whyOpened",
+        "goals.title",
+        "package.announcement",
+        "package.body",
+        "package.choices.leafyPlant.description",
+        "package.choices.leafyPlant.label",
+        "package.choices.sunnyVase.description",
+        "package.choices.sunnyVase.label",
+        "package.eyebrow",
+        "package.title",
+        "recap.activities",
+        "recap.activityLabel",
+        "recap.announcement",
+        "recap.details",
+        "recap.done",
+        "recap.eyebrow",
+        "recap.finishedHeading",
+        "recap.journalLine",
+        "recap.less",
+        "recap.mealLabel",
+        "recap.meals",
+        "recap.missedNone",
+        "recap.missedSome",
+        "recap.noneFinished",
+        "recap.practice",
+        "recap.practiceLabel",
+        "recap.title"
+      ],
+      "rewrites": [
+        {
+          "id": "recap.journalLine",
+          "before": "Small changes made the day feel like yours.",
+          "after": "That little plan change stuck.",
+          "reason": "Replaced a vague reflective line with a specific, conversational consequence."
+        }
+      ],
+      "checklist": "Humanizer v2.2.0 full pass complete; no remaining flagged patterns."
+    }
+  ]
+}

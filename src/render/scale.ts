@@ -38,6 +38,9 @@ export interface Viewport {
   width: number;
   height: number;
   devicePixelRatio: number;
+  /** Accessibility text scaling can make the HUD taller than its 1× baseline. */
+  hudHeight?: number;
+  queueHeight?: number;
 }
 
 export interface ScaleSolution {
@@ -74,9 +77,17 @@ const MAX_PHYSICAL_PER_ART_PIXEL = 18; // 6× at DPR 3 — beyond any plausible 
 
 export function solveScale(vp: Viewport): ScaleSolution {
   const dpr = Number.isFinite(vp.devicePixelRatio) && vp.devicePixelRatio > 0 ? vp.devicePixelRatio : 1;
+  const hudHeight =
+    vp.hudHeight !== undefined && Number.isFinite(vp.hudHeight) && vp.hudHeight >= 0
+      ? vp.hudHeight
+      : HUD_H;
+  const queueHeight =
+    vp.queueHeight !== undefined && Number.isFinite(vp.queueHeight) && vp.queueHeight >= 0
+      ? vp.queueHeight
+      : QUEUE_H;
   const available = {
     width: Math.max(0, vp.width),
-    height: Math.max(0, vp.height - HUD_H - QUEUE_H),
+    height: Math.max(0, vp.height - hudHeight - queueHeight),
   };
 
   // The desktop path never renders BELOW 1:1. Adversarial pass 1 found that a narrow

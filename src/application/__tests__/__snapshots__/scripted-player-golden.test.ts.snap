@@ -1,0 +1,190 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`scripted player golden covers the P4 command surface and full sim plus game state 1`] = `
+{
+  "chronotype": "baseline",
+  "digest": {
+    "bars": {
+      "energy": 100,
+      "hygiene": 59,
+      "movement": 78.93,
+      "nutrition": 54.53,
+    },
+    "clock": 1860,
+    "fullStateSha256": "20c91a9fa7c887b75c2b02fa927cc340c1ae78fc1930362cb66d719f3b7ea842",
+    "queue": [],
+    "session": {
+      "decorations": {
+        "grantedIds": [
+          "goal-plant",
+          "leafy-plant",
+        ],
+      },
+      "goals": {
+        "change-of-plans": {
+          "counters": {
+            "forecastChangesSeen": 1,
+            "queueEdits": 4,
+          },
+          "status": "complete",
+        },
+        "meet-you": {
+          "counters": {
+            "activitiesCompleted": 3,
+            "whyLineOpened": 1,
+          },
+          "status": "complete",
+        },
+      },
+      "morningRecap": {
+        "completedActivityIds": [
+          "toilet",
+          "practice",
+          "shower",
+          "shower",
+          "meal",
+          "package",
+          "meal",
+          "weights",
+          "meal",
+          "brush",
+        ],
+        "forDay": 1,
+        "missedAnchorIds": [],
+        "practicePoints100": 3105,
+      },
+      "observations": {
+        "forecastChangeObserved": true,
+        "whyLineOpened": true,
+      },
+      "recap": {
+        "completedActivityIds": [],
+        "forDay": 2,
+        "missedAnchorIds": [],
+        "practicePoints100": 0,
+      },
+      "unlocks": {
+        "journal": true,
+      },
+      "wrinkles": {
+        "choiceReadyId": null,
+        "firedIds": [
+          "package-delivery",
+        ],
+        "pendingId": null,
+        "resolvedIds": [
+          "package-delivery",
+        ],
+      },
+    },
+    "suppression": {
+      "brush": 545,
+    },
+  },
+  "engineVersion": 6,
+  "forecastAgreement": {
+    "actualStart": 434,
+    "cardId": "c1",
+    "predictedStart": 434,
+  },
+  "script": [
+    {
+      "atMinute": 420,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 420,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 420,
+      "kind": "command",
+      "value": {
+        "activityId": "shower",
+        "type": "objectClick",
+      },
+    },
+    {
+      "atMinute": 421,
+      "kind": "command",
+      "value": {
+        "cardId": "c6",
+        "toIndex": 0,
+        "type": "moveCard",
+      },
+    },
+    {
+      "atMinute": 421,
+      "kind": "command",
+      "value": {
+        "type": "stopCurrent",
+      },
+    },
+    {
+      "atMinute": 421,
+      "kind": "action",
+      "value": {
+        "cardId": "c1",
+        "type": "whyLineOpened",
+      },
+    },
+    {
+      "atMinute": 421,
+      "kind": "action",
+      "value": {
+        "type": "forecastChangeObserved",
+      },
+    },
+    {
+      "atMinute": 422,
+      "kind": "command",
+      "value": {
+        "cardId": "c2",
+        "type": "removeCard",
+      },
+    },
+    {
+      "atMinute": 423,
+      "kind": "command",
+      "value": {
+        "receiptId": "r0",
+        "type": "undoLastRemove",
+      },
+    },
+    {
+      "atMinute": 424,
+      "kind": "command",
+      "value": {
+        "activityId": "shower",
+        "type": "objectClick",
+      },
+    },
+    {
+      "atMinute": 425,
+      "kind": "command",
+      "value": {
+        "cardId": "c5",
+        "type": "removeCard",
+      },
+    },
+    {
+      "atMinute": 616,
+      "kind": "action",
+      "value": {
+        "decorationId": "leafy-plant",
+        "type": "decorationChosen",
+        "wrinkleId": "package-delivery",
+      },
+    },
+  ],
+  "seed": 1234,
+}
+`;

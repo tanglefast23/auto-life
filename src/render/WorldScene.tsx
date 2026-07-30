@@ -18,6 +18,7 @@ import atlasIndexJson from '../../assets/generated/atlas-index.json';
 import {
   advancePhase,
   buildCharacterQuad,
+  buildDecorationQuads,
   buildStaticQuads,
   CHAR_H,
   CHAR_W,
@@ -32,9 +33,9 @@ const index = atlasIndexJson as AtlasIndex;
 /**
  * The Skia scene (P3 T6).
  *
- * Master §9: Atlas is mandatory from the first sprite renderer. Two Atlas calls, split
- * by change rate — the 350-quad static world is memoized and never re-uploads; the
- * character is one quad.
+ * Master §9: Atlas is mandatory from the first sprite renderer. Calls are split by
+ * change rate — the 350-quad static world is memoized and never re-uploads, run
+ * decorations update only when granted, and the character is one quad.
  *
  * **Nothing here re-renders React per frame.** The character's position and sprite live
  * in Reanimated shared values that a single RAF writes; `useRSXformBuffer` /
@@ -79,6 +80,8 @@ const CHAR_INDEX_OF: Record<string, number> = Object.fromEntries(CHAR_SPRITES.ma
 
 export interface WorldSceneProps {
   view: RenderView;
+  /** Run-scoped game rewards; kept out of SimState and painted dynamically. */
+  decorationIds?: readonly string[];
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
@@ -90,7 +93,13 @@ export interface WorldSceneProps {
   effectiveSpeed: number;
 }
 
-export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldSceneProps) {
+export function WorldScene({
+  view,
+  decorationIds = [],
+  alphaRef,
+  scale,
+  effectiveSpeed,
+}: WorldSceneProps) {
   const image = useImage(require('../../assets/generated/atlas.png'));
 
   // Static world: memoized, so this runs once per session.
@@ -104,6 +113,18 @@ export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldScene
       transforms: quads.map((q) => Skia.RSXform(1, 0, q.x, q.y)),
     };
   }, []);
+  const decorationScene = useMemo(() => {
+    const quads = buildDecorationQuads(decorationIds);
+    return {
+      sprites: quads.map((quad) => {
+        const sprite = lookup(index, quad.sprite);
+        return rect(sprite.x, sprite.y, sprite.w, sprite.h);
+      }),
+      transforms: quads.map((quad) =>
+        Skia.RSXform(1, 0, quad.x, quad.y),
+      ),
+    };
+  }, [decorationIds]);
 
   const charX = useSharedValue(view.position.x * TILE);
   const charY = useSharedValue(view.position.y * TILE - (CHAR_H - TILE));
@@ -166,6 +187,14 @@ export function WorldScene({ view, alphaRef, scale, effectiveSpeed }: WorldScene
         transforms={staticScene.transforms}
         sampling={NEAREST}
       />
+      {decorationScene.sprites.length > 0 && (
+        <Atlas
+          image={image}
+          sprites={decorationScene.sprites}
+          transforms={decorationScene.transforms}
+          sampling={NEAREST}
+        />
+      )}
       <Atlas image={image} sprites={charRects} transforms={charTransforms} sampling={NEAREST} />
       <ProgressRing progress={ringProgress} cx={ringX} cy={ringY} />
     </Group>

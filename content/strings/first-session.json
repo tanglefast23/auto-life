@@ -1,0 +1,70 @@
+{
+  "package": {
+    "eyebrow": "DAY 1 WRINKLE",
+    "title": "The package made it",
+    "body": "The box is finally here. Pick the one that feels more like home.",
+    "announcement": "Package opened. Choose a decoration.",
+    "choices": {
+      "leafyPlant": {
+        "label": "Leafy plant",
+        "description": "A little green for the kitchen."
+      },
+      "sunnyVase": {
+        "label": "Sunny vase",
+        "description": "Warm colour for the counter."
+      }
+    }
+  },
+  "goals": {
+    "eyebrow": "FIRST STEPS",
+    "title": "Goals",
+    "panelLabel": "First-session goals",
+    "open": "Open goals",
+    "close": "Close goals",
+    "complete": "Done",
+    "allComplete": "First steps complete",
+    "progress": {
+      "whyOpened": "Why opened",
+      "openWhy": "open Why",
+      "editDone": "edit done",
+      "makeEdit": "make an edit",
+      "forecastSeen": "forecast seen",
+      "checkForecast": "check forecast",
+      "whyLineOpened": "Why line opened",
+      "whyLineNotOpened": "Why line not opened",
+      "planEdited": "plan edited",
+      "planNotEdited": "plan not edited",
+      "forecastChangeSeen": "forecast change seen",
+      "forecastChangeNotSeen": "forecast change not seen"
+    },
+    "meetYou": {
+      "title": "Meet the routine",
+      "instruction": "Watch 3 activities finish and open one Why line.",
+      "reward": "Reward: Journal"
+    },
+    "changeOfPlans": {
+      "title": "Change of plans",
+      "instruction": "Move or add a card, then check the new forecast.",
+      "reward": "Reward: Bedroom plant"
+    }
+  },
+  "recap": {
+    "eyebrow": "MORNING RECAP",
+    "title": "Day {day}, in the books",
+    "activities": "{count} activities finished",
+    "meals": "{count} proper meals",
+    "practice": "{points} Practice points",
+    "activityLabel": "activities",
+    "mealLabel": "meals",
+    "practiceLabel": "Practice",
+    "missedNone": "Every routine got its turn.",
+    "missedSome": "Missed routine: {routines}.",
+    "finishedHeading": "Finished",
+    "noneFinished": "No activities finished.",
+    "journalLine": "That little plan change stuck.",
+    "details": "Details",
+    "less": "Less",
+    "done": "Done",
+    "announcement": "Morning recap ready for Day {day}."
+  }
+}

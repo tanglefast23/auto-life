@@ -32,7 +32,13 @@ export interface HudProps {
   snapshot: SimSnapshot | null;
   speed: Speed;
   onSpeed: (speed: Speed) => void;
+  reducedMotion?: boolean;
 }
+
+const SCALABLE_TEXT = {
+  allowFontScaling: true,
+  maxFontSizeMultiplier: 2,
+} as const;
 
 /**
  * A bar trough with its band rendered, not just computed.
@@ -69,13 +75,18 @@ function Bar({
   );
 }
 
-export function Hud({ snapshot, speed, onSpeed }: HudProps) {
+export function Hud({ snapshot, speed, onSpeed, reducedMotion = false }: HudProps) {
   const health = snapshot?.health ?? 0;
+  const healthBand = bandForDefault(health, content.rates).band;
 
   // design.md §8 says the alert state PULSES. One shared driver for every bar, so the
   // animation cost is constant regardless of how many bars are in crisis.
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
+    if (reducedMotion) {
+      pulse.setValue(1);
+      return;
+    }
     // react-native-web has no RCTAnimation module, so useNativeDriver:true logged a
     // warning on every mount and silently fell back to JS anyway (adversarial pass 3).
     // Desktop web is the v1 target; ask for the native driver only where it exists.
@@ -85,14 +96,22 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
     const loop = Animated.loop(Animated.sequence([step(0.25), step(1)]));
     loop.start();
     return () => loop.stop();
-  }, [pulse]);
+  }, [pulse, reducedMotion]);
   return (
     <View style={styles.root} pointerEvents="box-none">
       {/* Top-left: Health block (§11.1) */}
       <View style={styles.block}>
         <View style={styles.healthRow}>
-          <Text style={styles.healthLabel}>HEALTH</Text>
-          <Text style={styles.healthValue}>{Math.round(health)}</Text>
+          <Text {...SCALABLE_TEXT} style={styles.healthLabel}>HEALTH</Text>
+          <Text
+            {...SCALABLE_TEXT}
+            accessible
+            accessibilityLabel={`Health ${Math.round(health)} of 100, ${healthBand}`}
+            testID="hud-health-value"
+            style={styles.healthValue}
+          >
+            {Math.round(health)}
+          </Text>
         </View>
         {/* Health is a composite with no BarId, so it names the default bands directly.
             It was pinned to "normal" (a Day-1 Health of ~60 never showed the 40–69
@@ -103,7 +122,7 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
           color={INK}
           width={168}
           height={10}
-          band={bandForDefault(health, content.rates).band}
+          band={healthBand}
           pulseOpacity={pulse}
         />
 
@@ -114,8 +133,11 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
           return (
             <View key={bar} style={styles.subRow}>
               <Text
+                {...SCALABLE_TEXT}
+                accessible
                 style={[styles.icon, style.band === 'alert' && styles.iconAlert]}
                 accessibilityLabel={`${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${style.band}`}
+                testID={`hud-bar:${bar}`}
               >
                 {icon}
               </Text>
@@ -127,18 +149,32 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
                 band={style.band}
                 pulseOpacity={pulse}
               />
-              <Text style={styles.subValue}>{Math.round(value)}</Text>
+              <Text {...SCALABLE_TEXT} style={styles.subValue}>{Math.round(value)}</Text>
             </View>
           );
         })}
 
         {/* §11.1 places the Practice counter beneath the health block. */}
-        <Text style={styles.practice}>{`practice ${(snapshot?.practicePoints ?? 0).toFixed(0)}`}</Text>
+        <Text
+          {...SCALABLE_TEXT}
+          accessible
+          accessibilityLabel={`Practice ${(snapshot?.practicePoints ?? 0).toFixed(0)} points`}
+          testID="hud-practice"
+          style={styles.practice}
+        >
+          {`practice ${(snapshot?.practicePoints ?? 0).toFixed(0)}`}
+        </Text>
       </View>
 
       {/* Top-right: clock block + speed controls (§11.1) */}
       <View style={[styles.block, styles.clockBlock]}>
-        <Text style={styles.clock} testID="hud-clock">
+        <Text
+          {...SCALABLE_TEXT}
+          accessible
+          accessibilityLabel={snapshot === null ? 'Game clock unavailable' : formatClock(snapshot.day, snapshot.minuteOfDay)}
+          style={styles.clock}
+          testID="hud-clock"
+        >
           {snapshot === null ? 'Day — · — · --:--' : formatClock(snapshot.day, snapshot.minuteOfDay)}
         </Text>
         <View style={styles.speedRow}>
@@ -152,7 +188,7 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
               testID={`speed-${s}`}
               style={[styles.speedBtn, speed === s && styles.speedBtnActive]}
             >
-              <Text style={[styles.speedText, speed === s && styles.speedTextActive]}>{s === 0 ? '❚❚' : `${s}×`}</Text>
+              <Text {...SCALABLE_TEXT} style={[styles.speedText, speed === s && styles.speedTextActive]}>{s === 0 ? '❚❚' : `${s}×`}</Text>
             </Pressable>
           ))}
         </View>
@@ -203,8 +239,8 @@ const styles = StyleSheet.create({
   clock: { fontFamily: 'monospace', fontSize: 13, color: INK, fontVariant: ['tabular-nums'] },
   speedRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
   speedBtn: {
-    minWidth: 34,
-    minHeight: 26,
+    minWidth: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: CREAM_LIGHT,

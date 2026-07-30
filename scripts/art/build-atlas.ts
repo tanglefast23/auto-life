@@ -10,6 +10,7 @@ import {
   hexToRgb,
   INK,
   LEAF_GREEN,
+  LANTERN_GOLD,
   TERRACOTTA,
   WATER_BLUE,
   WOOD,
@@ -60,6 +61,7 @@ const OBJECT_FILL: Record<string, { base: string; edge: string }> = {
   treadmill: { base: GREY.base, edge: GREY.shadow },
   rug: { base: TERRACOTTA.light, edge: TERRACOTTA.base },
   guitar: { base: WOOD.light, edge: WOOD.shadow },
+  'front-door': { base: WOOD.base, edge: WOOD.shadow },
   wardrobe: { base: WOOD.base, edge: WOOD.shadow },
 };
 
@@ -78,6 +80,52 @@ function box(w: number, h: number, base: string, edge: string): Bitmap {
       bmp.data[i + 3] = 255;
     }
   }
+  return bmp;
+}
+
+function fillRect(
+  bmp: Bitmap,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: string,
+): void {
+  const rgb = hexToRgb(color);
+  for (let py = y; py < y + height; py++) {
+    for (let px = x; px < x + width; px++) {
+      const i = (py * bmp.width + px) * 4;
+      bmp.data[i] = rgb.r;
+      bmp.data[i + 1] = rgb.g;
+      bmp.data[i + 2] = rgb.b;
+      bmp.data[i + 3] = 255;
+    }
+  }
+}
+
+function leafyPlant(): Bitmap {
+  const bmp = createBitmap(16, 24);
+  fillRect(bmp, 7, 6, 2, 11, LEAF_GREEN.shadow);
+  fillRect(bmp, 2, 5, 6, 5, LEAF_GREEN.base);
+  fillRect(bmp, 4, 2, 5, 6, LEAF_GREEN.light);
+  fillRect(bmp, 8, 1, 5, 7, LEAF_GREEN.base);
+  fillRect(bmp, 9, 7, 5, 5, LEAF_GREEN.light);
+  fillRect(bmp, 3, 15, 10, 3, TERRACOTTA.shadow);
+  fillRect(bmp, 4, 18, 8, 5, TERRACOTTA.base);
+  fillRect(bmp, 5, 18, 6, 2, TERRACOTTA.light);
+  return bmp;
+}
+
+function sunnyVase(): Bitmap {
+  const bmp = createBitmap(16, 24);
+  fillRect(bmp, 7, 4, 2, 10, LEAF_GREEN.shadow);
+  fillRect(bmp, 3, 2, 4, 4, LANTERN_GOLD.base);
+  fillRect(bmp, 9, 1, 4, 4, LANTERN_GOLD.light);
+  fillRect(bmp, 6, 4, 4, 3, LANTERN_GOLD.shadow);
+  fillRect(bmp, 5, 12, 6, 3, DUSK_PLUM.shadow);
+  fillRect(bmp, 3, 15, 10, 7, DUSK_PLUM.base);
+  fillRect(bmp, 5, 15, 6, 4, DUSK_PLUM.light);
+  fillRect(bmp, 5, 22, 6, 1, DUSK_PLUM.shadow);
   return bmp;
 }
 
@@ -119,6 +167,15 @@ function collectEntries(): Entry[] {
     if (!fill) throw new Error(`no placeholder fill for object "${o.id}" — add one to OBJECT_FILL`);
     entries.push({ name: `object.${o.id}`, bmp: box(w, h, fill.base, fill.edge) });
   }
+
+  entries.push({
+    name: 'decoration.leafy-plant',
+    bmp: leafyPlant(),
+  });
+  entries.push({
+    name: 'decoration.sunny-vase',
+    bmp: sunnyVase(),
+  });
 
   // Character: A0's average build, full layer stack. v1 ships average only (design.md §6).
   for (const frame of A0_BODY_FRAMES as readonly BodyFrame[]) {

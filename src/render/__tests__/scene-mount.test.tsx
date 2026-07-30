@@ -240,4 +240,44 @@ describe('WorldScene mounts and keeps exactly one animation loop', () => {
     });
     expect(raf.pending).toBe(0);
   });
+
+  test('granting a run decoration adds a dynamic Atlas layer without restarting animation', () => {
+    const raf = installFakeRaf();
+    const loop = new GameLoop(fresh(), content);
+    const view = loop.snapshot.render;
+    let tree: ReturnType<typeof create> | null = null;
+    act(() => {
+      tree = create(
+        <WorldScene
+          view={view}
+          decorationIds={[]}
+          alphaRef={() => 0}
+          scale={1}
+          effectiveSpeed={1}
+        />,
+      );
+    });
+    expect(
+      tree!.root.findAll((node) => String(node.type) === 'Atlas'),
+    ).toHaveLength(2);
+
+    act(() => {
+      tree!.update(
+        <WorldScene
+          view={view}
+          decorationIds={['leafy-plant']}
+          alphaRef={() => 0}
+          scale={1}
+          effectiveSpeed={1}
+        />,
+      );
+    });
+
+    expect(
+      tree!.root.findAll((node) => String(node.type) === 'Atlas'),
+    ).toHaveLength(3);
+    expect(raf.cancels).toBe(0);
+    expect(raf.pending).toBe(1);
+    act(() => tree!.unmount());
+  });
 });

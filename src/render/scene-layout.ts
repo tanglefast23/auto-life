@@ -95,6 +95,38 @@ export function buildStaticQuads(map: HomeMapConfig, objects: ObjectsConfig): Qu
   return [...buildTileQuads(map), ...buildObjectQuads(objects)];
 }
 
+const DECORATION_PLACEMENTS: Readonly<
+  Record<string, Quad>
+> = {
+  // Package choices sit in the counter's two authored decoration slots.
+  'leafy-plant': {
+    sprite: 'decoration.leafy-plant',
+    x: 20 * TILE + 8,
+    y: 8 * TILE - 20,
+  },
+  'sunny-vase': {
+    sprite: 'decoration.sunny-vase',
+    x: 21 * TILE + 8,
+    y: 8 * TILE - 20,
+  },
+  // Goal 2's plant sits on the wardrobe, so it remains distinct from either package choice.
+  'goal-plant': {
+    sprite: 'decoration.leafy-plant',
+    x: 8 * TILE + 8,
+    y: 2 * TILE - 20,
+  },
+};
+
+/** Run-scoped game rewards drawn above the static furniture and below the character. */
+export function buildDecorationQuads(
+  grantedIds: readonly string[],
+): Quad[] {
+  return grantedIds.flatMap((id) => {
+    const placement = DECORATION_PLACEMENTS[id];
+    return placement === undefined ? [] : [{ ...placement }];
+  });
+}
+
 /**
  * Which character sprite to draw.
  *

@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { ActiveTimedActivitySchema, type ActiveTimedActivity } from './activities';
 import { PrngSnapshotSchema, type PrngSnapshot } from './prng';
-import { QueueCardSchema, type QueueCard } from './queue';
+import {
+  QueueCardSchema,
+  RemovalReceiptSchema,
+  type QueueCard,
+  type RemovalReceipt,
+} from './queue';
 import { ENGINE_VERSION } from './version';
 import { initialAbsoluteMinute, initialBars } from './initial-state';
 import type { RatesConfig } from './content-schemas';
@@ -45,6 +50,12 @@ export const SimStateSchema = z.strictObject({
   current: CurrentSchema.nullable(),
   suppression: z.record(z.string(), z.number().int()),
   anchorsConsumedOnDay: z.record(z.string(), z.number().int()),
+  /** Exact write ownership for T4 anchor-receipt equality guards. */
+  anchorMutationGenerations: z.record(z.string(), z.number().int().positive()),
+  nextAnchorMutationGeneration: z.number().int().positive(),
+  /** Single-depth, engine-issued undo truth. Real-time visibility lives in application/. */
+  removalReceipt: RemovalReceiptSchema.nullable(),
+  nextRemovalReceiptSeq: z.number().int().min(0),
   lastMealCompletedAt: z.number().int().nullable(),
   napEffectiveUsesToday: z.number().int().min(0),
   preferredWorkout: z.enum(['weights', 'treadmill']),
@@ -88,6 +99,10 @@ export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed:
     current: null,
     suppression: {},
     anchorsConsumedOnDay: {},
+    anchorMutationGenerations: {},
+    nextAnchorMutationGeneration: 1,
+    removalReceipt: null as RemovalReceipt | null,
+    nextRemovalReceiptSeq: 0,
     lastMealCompletedAt: null,
     napEffectiveUsesToday: 0,
     preferredWorkout: 'weights',

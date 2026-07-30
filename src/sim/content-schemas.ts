@@ -72,6 +72,8 @@ const BarEffectsSchema = z.partialRecord(
 const ActivityBase = {
   id: z.string().min(1),
   object: z.string().min(1),
+  /** System-only activities (for example the Day-1 package) never enter player pickers. */
+  playerSelectable: z.boolean().optional(),
 };
 
 const TimedActivitySchema = z

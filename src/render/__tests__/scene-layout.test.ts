@@ -3,6 +3,7 @@ import atlasIndexJson from '../../../assets/generated/atlas-index.json';
 import {
   advancePhase,
   buildCharacterQuad,
+  buildDecorationQuads,
   buildObjectQuads,
   buildStaticQuads,
   buildTileQuads,
@@ -89,6 +90,24 @@ describe('objects', () => {
       expect(r.w).toBe((Math.max(...xs) - Math.min(...xs) + 1) * TILE);
       expect(r.h).toBe((Math.max(...ys) - Math.min(...ys) + 1) * TILE);
     }
+  });
+});
+
+describe('run decorations', () => {
+  test('grants map to stable world slots while unknown future ids fail soft', () => {
+    expect(buildDecorationQuads([])).toEqual([]);
+    expect(
+      buildDecorationQuads([
+        'leafy-plant',
+        'sunny-vase',
+        'goal-plant',
+        'future-decoration',
+      ]),
+    ).toEqual([
+      { sprite: 'decoration.leafy-plant', x: 648, y: 236 },
+      { sprite: 'decoration.sunny-vase', x: 680, y: 236 },
+      { sprite: 'decoration.leafy-plant', x: 264, y: 44 },
+    ]);
   });
 });
 
