@@ -93,7 +93,7 @@ function sheetForScale(built: BuiltFrame[], scale: number): Bitmap {
 
 export function main(): void {
   const built = buildAllFrames();
-  const reports = built.map((b) => auditBitmap(`${b.build}/${b.frame.id}`, b.composite));
+  const reports = built.map((b) => auditBitmap(`${b.build}/${b.frame.id}`, b.composite, 'character'));
   let failed = 0;
   for (const r of reports) {
     if (!reportIsClean(r)) {

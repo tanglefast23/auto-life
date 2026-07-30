@@ -1,5 +1,6 @@
 import { createBitmap, type Bitmap } from '../../scripts/art/png';
 import { hexToRgb } from './palette';
+import { TRANSPARENT } from './sprites/parts';
 
 /**
  * The design.md §6 character construction, as code.
@@ -70,11 +71,21 @@ export type BuildName = 'average' | 'slim';
 // Rasterizer
 // ---------------------------------------------------------------------------
 
-function paint(bmp: Bitmap, shapes: readonly Shape[], dx = 0, dy = 0): void {
+/**
+ * Paint shapes in order onto a bitmap.
+ *
+ * Exported as `paintShapes` in P6 so the object, tile, decoration, and icon modules share
+ * one rasterizer rather than each growing a copy. `TRANSPARENT` is branched on before the
+ * hex lookup — `hexToRgb` throws on anything that is not `#rrggbb` — and clears all four
+ * bytes, because a pixel carrying residual colour under zero alpha is invisible on screen
+ * yet still has to be filed by the indexed-PNG encoder.
+ */
+export function paintShapes(bmp: Bitmap, shapes: readonly Shape[], dx = 0, dy = 0): void {
   for (const s of shapes) {
-    const { r, g, b } = hexToRgb(s.c);
-    const x0 = (s.k === 'rect' ? s.x : s.x) + dx;
-    const y0 = (s.k === 'rect' ? s.y : s.y) + dy;
+    const clearing = s.c === TRANSPARENT;
+    const { r, g, b } = clearing ? { r: 0, g: 0, b: 0 } : hexToRgb(s.c);
+    const x0 = s.x + dx;
+    const y0 = s.y + dy;
     const w = s.k === 'rect' ? s.w : 1;
     const h = s.k === 'rect' ? s.h : 1;
     for (let y = y0; y < y0 + h; y++) {
@@ -85,11 +96,13 @@ function paint(bmp: Bitmap, shapes: readonly Shape[], dx = 0, dy = 0): void {
         bmp.data[i] = r;
         bmp.data[i + 1] = g;
         bmp.data[i + 2] = b;
-        bmp.data[i + 3] = 255;
+        bmp.data[i + 3] = clearing ? 0 : 255;
       }
     }
   }
 }
+
+const paint = paintShapes;
 
 export interface CompositeRequest {
   frame: BodyFrame;

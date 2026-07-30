@@ -1,49 +1,156 @@
 {
   "activities": [
-    { "id": "sleep", "kind": "sleepWindow", "object": "bed" },
+    {
+      "id": "sleep",
+      "kind": "sleepWindow",
+      "object": "bed",
+      "pose": "sleep"
+    },
     {
       "id": "nap",
       "kind": "timed",
       "object": "couch",
+      "pose": "nap",
       "baseMin": 45,
-      "effects": { "energy": 10 },
+      "effects": {
+        "energy": 10
+      },
       "effectiveUsesPerDay": 1,
-      "startBelow": { "energy": 50 },
-      "effectiveWindow": { "wakeOffsetStart": 60, "wakeOffsetEnd": 780 },
+      "startBelow": {
+        "energy": 50
+      },
+      "effectiveWindow": {
+        "wakeOffsetStart": 60,
+        "wakeOffsetEnd": 780
+      },
       "suppressPassiveEnergyWhenEffective": true
     },
     {
       "id": "meal",
       "kind": "timed",
       "object": "microwave",
+      "pose": "eat",
       "baseMin": 30,
-      "effects": { "nutrition": 35 },
+      "effects": {
+        "nutrition": 35
+      },
       "fillStartsAfterFraction": 0.4
     },
-    { "id": "snack", "kind": "timed", "object": "fridge", "baseMin": 10, "effects": { "nutrition": 10 } },
+    {
+      "id": "snack",
+      "kind": "timed",
+      "object": "fridge",
+      "pose": "eat",
+      "baseMin": 10,
+      "effects": {
+        "nutrition": 10
+      }
+    },
     {
       "id": "weights",
       "kind": "timed",
       "object": "bench",
+      "pose": "lift",
       "baseMin": 60,
-      "tags": ["workout"],
-      "effects": { "movement": 50, "nutrition": -5 }
+      "tags": [
+        "workout"
+      ],
+      "effects": {
+        "movement": 50,
+        "nutrition": -5
+      }
     },
     {
       "id": "treadmill",
       "kind": "timed",
       "object": "treadmill",
+      "pose": "run",
       "baseMin": 60,
-      "tags": ["workout"],
-      "effects": { "movement": 50, "hygiene": -5 }
+      "tags": [
+        "workout"
+      ],
+      "effects": {
+        "movement": 50,
+        "hygiene": -5
+      }
     },
-    { "id": "stretch", "kind": "timed", "object": "rug", "baseMin": 15, "effects": { "movement": 8 } },
-    { "id": "shower", "kind": "timed", "object": "shower", "baseMin": 20, "effects": { "hygiene": 40 } },
-    { "id": "quickwash", "kind": "timed", "object": "sink", "baseMin": 8, "effects": { "hygiene": 15 } },
-    { "id": "brush", "kind": "timed", "object": "sink", "baseMin": 5, "effects": { "hygiene": 10 } },
-    { "id": "toilet", "kind": "timed", "object": "toilet", "baseMin": 3, "effects": {} },
-    { "id": "package", "kind": "timed", "object": "front-door", "baseMin": 15, "effects": {}, "playerSelectable": false },
-    { "id": "practice", "kind": "practice", "object": "guitar", "baseMin": 60 },
-    { "id": "idle", "kind": "idle", "object": "couch" }
+    {
+      "id": "stretch",
+      "kind": "timed",
+      "object": "rug",
+      "pose": "stretch",
+      "baseMin": 15,
+      "effects": {
+        "movement": 8
+      }
+    },
+    {
+      "id": "shower",
+      "kind": "timed",
+      "object": "shower",
+      "pose": "shower",
+      "baseMin": 20,
+      "effects": {
+        "hygiene": 40
+      }
+    },
+    {
+      "id": "quickwash",
+      "kind": "timed",
+      "object": "sink",
+      "pose": "quickwash",
+      "baseMin": 8,
+      "effects": {
+        "hygiene": 15
+      }
+    },
+    {
+      "id": "brush",
+      "kind": "timed",
+      "object": "sink",
+      "pose": "brush",
+      "baseMin": 5,
+      "effects": {
+        "hygiene": 10
+      }
+    },
+    {
+      "id": "toilet",
+      "kind": "timed",
+      "object": "toilet",
+      "pose": "toilet",
+      "baseMin": 3,
+      "effects": {}
+    },
+    {
+      "id": "package",
+      "kind": "timed",
+      "object": "front-door",
+      "pose": "stand",
+      "baseMin": 15,
+      "effects": {},
+      "playerSelectable": false
+    },
+    {
+      "id": "read",
+      "kind": "timed",
+      "object": "couch",
+      "pose": "sit",
+      "baseMin": 30,
+      "effects": {}
+    },
+    {
+      "id": "practice",
+      "kind": "practice",
+      "object": "guitar",
+      "pose": "practice",
+      "baseMin": 60
+    },
+    {
+      "id": "idle",
+      "kind": "idle",
+      "object": "couch",
+      "pose": "idle"
+    }
   ]
 }

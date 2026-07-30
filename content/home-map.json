@@ -1,7 +1,38 @@
 {
   "width": 24,
   "height": 14,
-  "rooms": { "bedroom": "B", "bathroom": "T", "living": "L", "kitchen": "K", "hall": "H" },
+  "rooms": {
+    "bedroom": "B",
+    "bathroom": "T",
+    "living": "L",
+    "kitchen": "K",
+    "hall": "H"
+  },
+  "materials": {
+    "bedroom": "carpet",
+    "bathroom": "tile",
+    "living": "wood",
+    "kitchen": "tile",
+    "hall": "wood"
+  },
+  "lamps": [
+    [
+      6,
+      2
+    ],
+    [
+      3,
+      10
+    ],
+    [
+      19,
+      2
+    ],
+    [
+      18,
+      10
+    ]
+  ],
   "walls": "#",
   "grid": [
     "########################",

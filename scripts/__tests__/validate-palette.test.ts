@@ -79,7 +79,7 @@ describe('A0 sprites', () => {
     for (const base of A0_BODY_FRAMES) {
       for (const frame of [base, deriveSlim(base)]) {
         const bmp = frameOf(frame, frame.id.endsWith('-1') ? 1 : 0);
-        const report = auditBitmap(frame.id, bmp);
+        const report = auditBitmap(frame.id, bmp, 'character');
         expect(report.paletteViolations).toEqual([]);
         expect(report.forbiddenExtremes).toEqual([]);
         expect(report.opaquePixels).toBeGreaterThan(200);
