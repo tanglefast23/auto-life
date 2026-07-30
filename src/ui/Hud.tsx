@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { content } from '../sim/content';
 import type { SimSnapshot } from '../sim/step';
 import type { Speed } from '../application/loop';
@@ -76,12 +76,13 @@ export function Hud({ snapshot, speed, onSpeed }: HudProps) {
   // animation cost is constant regardless of how many bars are in crisis.
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.25, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
+    // react-native-web has no RCTAnimation module, so useNativeDriver:true logged a
+    // warning on every mount and silently fell back to JS anyway (adversarial pass 3).
+    // Desktop web is the v1 target; ask for the native driver only where it exists.
+    const useNativeDriver = Platform.OS !== 'web';
+    const step = (toValue: number) =>
+      Animated.timing(pulse, { toValue, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver });
+    const loop = Animated.loop(Animated.sequence([step(0.25), step(1)]));
     loop.start();
     return () => loop.stop();
   }, [pulse]);

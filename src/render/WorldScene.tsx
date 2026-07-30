@@ -177,11 +177,9 @@ function ProgressRing({
   cy: SharedValue<number>;
 }) {
   // Path is built once at the origin; a Group transform moves it to the sim each frame.
-  const ring = useMemo(() => {
-    const p = Skia.Path.Make();
-    p.addCircle(0, 0, RING_RADIUS);
-    return p;
-  }, []);
+  // Skia.Path.Circle, not Path.Make().addCircle() — the latter is deprecated in 2.6.2
+  // and warned on every mount (found by reading the console in adversarial pass 3).
+  const ring = useMemo(() => Skia.Path.Circle(0, 0, RING_RADIUS), []);
   const transform = useDerivedValue(() => [{ translateX: cx.value }, { translateY: cy.value }]);
   return (
     <Group transform={transform}>
