@@ -8,8 +8,8 @@
  *     physical pixels per art pixel, which is what makes a MacBook Air 13 work.
  *  3. A 1×-DPR laptop (1366×768) has no half-steps available, so it runs 1×.
  *
- * Phones and fractional downscaling are explicitly **v1.1** (SPEC §11.5, master §9);
- * this module solves the desktop case and says so when nothing fits.
+ * Exact scaling remains the default. P5's persistent fractional-scaling
+ * setting may opt a cramped viewport into a fitted non-exact result.
  *
  * Pure — no RN, no window. The caller supplies the viewport.
  */
@@ -32,7 +32,8 @@ export const WORLD_H = 448;
  * number, two places, and they must never disagree again.
  */
 export const HUD_H = 148;
-export const QUEUE_H = 72;
+/** Right-side one-column task rail. */
+export const QUEUE_W = 224;
 
 export interface Viewport {
   width: number;
@@ -40,7 +41,9 @@ export interface Viewport {
   devicePixelRatio: number;
   /** Accessibility text scaling can make the HUD taller than its 1× baseline. */
   hudHeight?: number;
-  queueHeight?: number;
+  queueWidth?: number;
+  /** Allow a fitted non-pixel-exact scale when no 1× exact fit exists. */
+  fractionalScaling?: boolean;
 }
 
 export interface ScaleSolution {
@@ -57,8 +60,8 @@ export interface ScaleSolution {
   available: { width: number; height: number };
   /**
    * Set when even 1× does not fit the reserved area. The world is still drawn at the
-   * returned scale (clipped by the caller) rather than throwing — a cramped window
-   * should degrade, not crash. Fractional downscaling is v1.1.
+   * returned scale (clipped by the caller) rather than throwing. A cramped window
+   * should degrade, not crash.
    */
   tooSmall: boolean;
 }
@@ -81,13 +84,13 @@ export function solveScale(vp: Viewport): ScaleSolution {
     vp.hudHeight !== undefined && Number.isFinite(vp.hudHeight) && vp.hudHeight >= 0
       ? vp.hudHeight
       : HUD_H;
-  const queueHeight =
-    vp.queueHeight !== undefined && Number.isFinite(vp.queueHeight) && vp.queueHeight >= 0
-      ? vp.queueHeight
-      : QUEUE_H;
+  const queueWidth =
+    vp.queueWidth !== undefined && Number.isFinite(vp.queueWidth) && vp.queueWidth >= 0
+      ? vp.queueWidth
+      : QUEUE_W;
   const available = {
-    width: Math.max(0, vp.width),
-    height: Math.max(0, vp.height - hudHeight - queueHeight),
+    width: Math.max(0, vp.width - queueWidth),
+    height: Math.max(0, vp.height - hudHeight),
   };
 
   // The desktop path never renders BELOW 1:1. Adversarial pass 1 found that a narrow
@@ -105,8 +108,21 @@ export function solveScale(vp: Viewport): ScaleSolution {
     }
   }
 
-  const scale = chosen === null ? 1 : chosen / dpr;
-  const k = chosen ?? dpr;
+  const fractionalFit =
+    chosen === null && vp.fractionalScaling === true
+      ? Math.min(
+          1,
+          available.width / WORLD_W,
+          available.height / WORLD_H,
+        )
+      : null;
+  const scale =
+    chosen === null
+      ? fractionalFit !== null && fractionalFit > 0
+        ? fractionalFit
+        : 1
+      : chosen / dpr;
+  const k = chosen ?? scale * dpr;
   return {
     scale,
     physicalPerArtPixel: k,
@@ -114,6 +130,6 @@ export function solveScale(vp: Viewport): ScaleSolution {
     width: WORLD_W * scale,
     height: WORLD_H * scale,
     available,
-    tooSmall: chosen === null,
+    tooSmall: chosen === null && fractionalFit === null,
   };
 }

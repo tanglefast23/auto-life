@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ActiveTimedActivitySchema, type ActiveTimedActivity } from './activities';
-import { PrngSnapshotSchema, type PrngSnapshot } from './prng';
+import type { PrngSnapshot } from './prng';
 import {
   QueueCardSchema,
   RemovalReceiptSchema,
@@ -80,7 +80,6 @@ export const SimStateSchema = z.strictObject({
   // §7.2 row 6: one urgent event per <15 crossing per bar — the flag holds while
   // the crisis lasts so re-adds/deletions never re-count the same crisis.
   urgentActive: z.partialRecord(BarIdSchema, z.boolean()),
-  prng: PrngSnapshotSchema,
 });
 export type SimState = z.infer<typeof SimStateSchema>;
 
@@ -88,7 +87,12 @@ export function restoreSimState(raw: unknown): SimState {
   return SimStateSchema.parse(raw);
 }
 
-export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed: number, prng: PrngSnapshot): SimState {
+export function newGameState(
+  chronotype: Chronotype,
+  cfg: RatesConfig,
+  _rootSeed: number,
+  _legacyPrng?: PrngSnapshot,
+): SimState {
   return {
     engineVersion: ENGINE_VERSION,
     chronotype,
@@ -119,6 +123,5 @@ export function newGameState(chronotype: Chronotype, cfg: RatesConfig, rootSeed:
     nextCardSeq: 0,
     events: { urgentCount: 0, anchorsMissed: 0 },
     urgentActive: {},
-    prng,
   };
 }

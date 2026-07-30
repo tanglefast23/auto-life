@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
+import type { AppPreferences } from '../application/career-state';
 
 /**
  * One motion preference for every presentation surface.
@@ -7,7 +8,9 @@ import { AccessibilityInfo, Platform } from 'react-native';
  * Web reads the browser media query directly; native uses React Native's
  * AccessibilityInfo event. State changes never touch deterministic sim/game data.
  */
-export function useReducedMotionPreference(): boolean {
+export function useReducedMotionPreference(
+  override: AppPreferences['display']['reducedMotion'] = 'system',
+): boolean {
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -36,5 +39,7 @@ export function useReducedMotionPreference(): boolean {
     };
   }, []);
 
+  if (override === 'on') return true;
+  if (override === 'off') return false;
   return reducedMotion;
 }

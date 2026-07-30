@@ -49,4 +49,17 @@
  * choice, decorations, and recap state beside the sim. Both unattended and scripted
  * player goldens re-recorded.
  */
-export const ENGINE_VERSION = 6 as const;
+/**
+ * v7 (2026-07-30, post-P4 dual-audit stabilization): stopping while travelling
+ * to an anchor consumes that block instead of re-enqueueing it on the same tick;
+ * player-touched/PINNED reactive cards satisfy their need without spawning an
+ * AUTO duplicate. Both goldens reviewed and re-recorded.
+ */
+/**
+ * v8 (2026-07-30, P5 save-safe spine): deterministic state now lives in a
+ * versioned CareerState payload; the five unchanged PRNG streams move out of
+ * SimState to the application-owned career envelope; complete P5 game fields,
+ * immutable SimRules, calendar sampling, and pending-boundary work enter the
+ * replay contract. Stable Goal 1 and reward IDs now match authored content.
+ */
+export const ENGINE_VERSION = 8 as const;

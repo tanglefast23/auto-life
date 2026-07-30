@@ -10,4 +10,21 @@ export const kv: KvStore = {
   async setItem(key, value) {
     globalThis.localStorage.setItem(PREFIX + key, value);
   },
+  async removeItem(key) {
+    globalThis.localStorage.removeItem(PREFIX + key);
+  },
+  getItemBarrier(key) {
+    return globalThis.localStorage.getItem(PREFIX + key);
+  },
+  setItemBarrier(key, value) {
+    globalThis.localStorage.setItem(PREFIX + key, value);
+  },
+  subscribe(listener) {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || !event.key.startsWith(PREFIX)) return;
+      listener(event.key.slice(PREFIX.length), event.newValue);
+    };
+    globalThis.addEventListener('storage', onStorage);
+    return () => globalThis.removeEventListener('storage', onStorage);
+  },
 };

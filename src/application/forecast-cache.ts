@@ -1,8 +1,13 @@
 import { forecast, type ForecastResult } from '../sim/forecast';
 import type { ContentRegistry } from '../sim/content';
 import type { SimState } from '../sim/state';
+import { DEFAULT_SIM_RULES, type SimRules } from '../sim/rules';
 
-export type ForecastComputer = (state: SimState, content: ContentRegistry) => ForecastResult;
+export type ForecastComputer = (
+  state: SimState,
+  content: ContentRegistry,
+  rules: SimRules,
+) => ForecastResult;
 
 export interface ForecastCacheValue {
   forecast: ForecastResult;
@@ -33,12 +38,13 @@ export class ForecastCache {
     state: SimState,
     content: ContentRegistry,
     commitmentRevision: number,
+    rules: SimRules = DEFAULT_SIM_RULES,
   ): ForecastCacheValue {
-    const key = cacheKey(state, commitmentRevision);
+    const key = cacheKey(state, commitmentRevision, rules.key, rules.revision);
     if (key === this.key && this.value !== null) return this.value;
 
     const value = Object.freeze({
-      forecast: this.compute(state, content),
+      forecast: this.compute(state, content, rules),
       revision: this.nextRevision++,
     });
     this.key = key;
@@ -53,7 +59,12 @@ export class ForecastCache {
   }
 }
 
-function cacheKey(state: SimState, commitmentRevision: number): string {
+function cacheKey(
+  state: SimState,
+  commitmentRevision: number,
+  rulesKey: string,
+  rulesRevision: number,
+): string {
   const schedule = state.queue.map((card) => ({
     id: card.id,
     activityId: card.activityId,
@@ -68,6 +79,8 @@ function cacheKey(state: SimState, commitmentRevision: number): string {
     schedule,
     currentCardId: state.current?.cardId ?? null,
     commitmentRevision,
+    rulesKey,
+    rulesRevision,
     gameHour: Math.floor(state.clock.absoluteMinute / 60),
   });
 }

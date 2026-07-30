@@ -278,6 +278,39 @@ test('forecast publishes shared-engine adjacency matches and the consecutive Pra
   });
 });
 
+test('forecast adjacency gaps use absolute time after Day 1', () => {
+  const s = prepared();
+  s.clock.absoluteMinute = 1440 + 480;
+  s.position = at('practice');
+  const today = dayNumber(s.clock.absoluteMinute);
+  for (const anchor of content.anchors.anchors) {
+    s.anchorsConsumedOnDay[anchor.id] = today;
+  }
+  s.lastCompletion = {
+    activityId: 'shower',
+    atMinute: 480,
+    isWorkout: false,
+  };
+  s.queue = [
+    card({
+      id: 'day-two-practice',
+      activityId: 'practice',
+      owner: 'PINNED',
+      source: 'player',
+    }),
+  ];
+
+  expect(
+    forecast(s, content).annotations.find(
+      (annotation) => annotation.cardId === 'day-two-practice',
+    )?.bonuses,
+  ).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ pairId: 'fresh-mind' }),
+    ]),
+  );
+});
+
 test('a pinned chain crossing the next wake is a separate wake-window warning', () => {
   const s = prepared();
   s.clock.absoluteMinute = 400;

@@ -160,6 +160,56 @@ test('undo restores prior suppression only while the exact removal write still o
   }
 });
 
+test('undo does not duplicate an urgent AUTO replacement', () => {
+  const beforeStart = prepared();
+  beforeStart.bars.hygiene = toFixed(5);
+  beforeStart.position = at('practice');
+  beforeStart.queue = [
+    player('running', 'practice', 1),
+    card({
+      id: 'old-auto-shower',
+      activityId: 'shower',
+      enqueuedTick: 2,
+      urgent: true,
+    }),
+  ];
+  const running = step(beforeStart, [], content).next;
+
+  const removed = step(
+    running,
+    [{ type: 'removeCard', cardId: 'old-auto-shower' }],
+    content,
+  );
+  const receiptId = removed.next.removalReceipt?.id;
+  if (receiptId === undefined) throw new Error('missing receipt');
+  expect(
+    removed.next.queue.filter(
+      (candidate) =>
+        candidate.owner === 'AUTO' &&
+        candidate.activityId === 'shower',
+    ),
+  ).toHaveLength(1);
+
+  const undone = step(
+    removed.next,
+    [{ type: 'undoLastRemove', receiptId }],
+    content,
+  );
+  expect(undone.outcomes[0]).toEqual({
+    type: 'undoLastRemove',
+    status: 'rejected',
+    reason: 'replacementExists',
+  });
+  expect(
+    undone.next.queue.filter(
+      (candidate) =>
+        candidate.owner === 'AUTO' &&
+        candidate.activityId === 'shower',
+    ),
+  ).toHaveLength(1);
+  expect(undone.next.removalReceipt).toBeNull();
+});
+
 test('an undone anchor card can still fire the missed-window sweep', () => {
   const s = prepared();
   s.clock.absoluteMinute = 899; // lunch closes at 15:00 / minute 900

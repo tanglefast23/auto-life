@@ -10,6 +10,7 @@ import {
   characterSprite,
   CHAR_H,
   lookup,
+  snapToPhysicalPixel,
   TILE,
   type AtlasIndex,
 } from '../scene-layout';
@@ -100,13 +101,19 @@ describe('run decorations', () => {
       buildDecorationQuads([
         'leafy-plant',
         'sunny-vase',
-        'goal-plant',
+        'bedroom-plant',
+        'wrinkle-keepsake',
+        'wrinkle-print',
+        'practice-poster',
         'future-decoration',
       ]),
     ).toEqual([
       { sprite: 'decoration.leafy-plant', x: 648, y: 236 },
       { sprite: 'decoration.sunny-vase', x: 680, y: 236 },
       { sprite: 'decoration.leafy-plant', x: 264, y: 44 },
+      { sprite: 'decoration.sunny-vase', x: 72, y: 268 },
+      { sprite: 'decoration.leafy-plant', x: 104, y: 268 },
+      { sprite: 'decoration.sunny-vase', x: 328, y: 44 },
     ]);
   });
 });
@@ -125,6 +132,19 @@ describe('the character quad', () => {
     const q = buildCharacterQuad(base, 0, 0);
     expect(q.x).toBe(5 * TILE);
     expect(q.y).toBe(7 * TILE - (CHAR_H - TILE));
+  });
+
+  test('movement can be locked to the physical pixel grid without snapping back to tiles', () => {
+    const logical = 38.4;
+    const snapped = snapToPhysicalPixel(logical, 3);
+    expect(snapped * 3).toBe(Math.round(logical * 3));
+    expect(snapped).toBeGreaterThan(TILE);
+    expect(snapped).toBeLessThan(TILE * 2);
+  });
+
+  test('pixel-grid locking fails soft for invalid display scales', () => {
+    expect(snapToPhysicalPixel(38.4, 0)).toBe(38.4);
+    expect(snapToPhysicalPixel(38.4, Number.NaN)).toBe(38.4);
   });
 
   test('while travelling the position is interpolated, not snapped', () => {

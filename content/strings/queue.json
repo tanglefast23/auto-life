@@ -13,7 +13,10 @@
     "cramp": "Cramp",
     "mintyFresh": "Minty",
     "freshMind": "Fresh",
-    "practiceBlock": "Block"
+    "practiceBlock": "Block",
+    "blocked": "Blocked",
+    "waiting": "Wait",
+    "reroute": "Quick wash"
   },
   "details": {
     "conflict": "{bar} drops below 15 around {time}.",
@@ -23,7 +26,10 @@
     "scaleDecay": "{bar} drops {percent}% slower for {hours} hours.",
     "barDelta": "{amount} {bar} when this starts.",
     "scalePoints": "Practice earns {percent}% more.",
-    "practiceBlock": "Keeps {block}% of base instead of {scattered}%."
+    "practiceBlock": "Keeps {block}% of base instead of {scattered}%.",
+    "objectBlocked": "{object} is blocked until {time}.",
+    "activityUnavailable": "{activity} is unavailable until {time}.",
+    "reroute": "Shower blocked. Quick wash runs instead."
   },
   "announcements": {
     "forecastUpdated": "Forecast updated."

@@ -24,6 +24,7 @@ import {
   CHAR_W,
   characterSprite,
   lookup,
+  snapToPhysicalPixel,
   TILE,
   type AtlasIndex,
 } from './scene-layout';
@@ -85,6 +86,8 @@ export interface WorldSceneProps {
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
+  /** Actual screen pixels occupied by one art pixel at the chosen exact scale. */
+  physicalPerArtPixel?: number;
   /**
    * Effective playback speed (0 while paused). The walk cycle is scaled by it, so at 4×
    * the legs move with the body instead of the sim sliding on frozen strides, and a
@@ -98,6 +101,7 @@ export function WorldScene({
   decorationIds = [],
   alphaRef,
   scale,
+  physicalPerArtPixel = scale,
   effectiveSpeed,
 }: WorldSceneProps) {
   const image = useImage(require('../../assets/generated/atlas.png'));
@@ -151,27 +155,44 @@ export function WorldScene({
   // frame timestamp each time — the walk cycle never actually ran, it just restarted
   // (adversarial pass 4). The watched-day test could not catch this: it never mounts
   // React. Latest inputs are read through a ref instead.
-  const latest = useRef({ view, alphaRef, effectiveSpeed });
-  latest.current = { view, alphaRef, effectiveSpeed };
+  const latest = useRef({
+    view,
+    alphaRef,
+    effectiveSpeed,
+    physicalPerArtPixel,
+  });
+  latest.current = {
+    view,
+    alphaRef,
+    effectiveSpeed,
+    physicalPerArtPixel,
+  };
 
   useEffect(() => {
     let raf = 0;
     let phase = 0;
     let last: number | null = null;
     const frame = (now: number) => {
-      const { view: v, alphaRef: getAlpha, effectiveSpeed: speed } = latest.current;
+      const {
+        view: v,
+        alphaRef: getAlpha,
+        effectiveSpeed: speed,
+        physicalPerArtPixel: pixelGrid,
+      } = latest.current;
       const delta = last === null ? 0 : now - last;
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
       phase = advancePhase(phase, delta * speed, v.mSpeed);
       const quad = buildCharacterQuad(v, getAlpha(), phase);
-      charX.value = quad.x;
-      charY.value = quad.y;
+      const drawX = snapToPhysicalPixel(quad.x, pixelGrid);
+      const drawY = snapToPhysicalPixel(quad.y, pixelGrid);
+      charX.value = drawX;
+      charY.value = drawY;
       charSprite.value = CHAR_INDEX_OF[quad.sprite] ?? 0;
       // §11.1: progress ring over the sim. Centred above the head.
       ringProgress.value = v.activityProgress ?? 0;
-      ringX.value = quad.x + CHAR_W / 2;
-      ringY.value = quad.y - 6;
+      ringX.value = drawX + CHAR_W / 2;
+      ringY.value = drawY - 6;
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);

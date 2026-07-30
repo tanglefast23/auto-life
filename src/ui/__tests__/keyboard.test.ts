@@ -27,12 +27,12 @@ test('maps every shortcut whose surface exists at T6', () => {
 });
 
 test('maps queue-local keys and keeps Shift as the explicit move-card modifier', () => {
-  expect(keyboardActionFor(event('ArrowLeft'))).toEqual({
+  expect(keyboardActionFor(event('ArrowUp'))).toEqual({
     type: 'queueArrow',
     direction: -1,
     moveCard: false,
   });
-  expect(keyboardActionFor(event('ArrowRight', { shiftKey: true }))).toEqual({
+  expect(keyboardActionFor(event('ArrowDown', { shiftKey: true }))).toEqual({
     type: 'queueArrow',
     direction: 1,
     moveCard: true,
@@ -41,10 +41,12 @@ test('maps queue-local keys and keeps Shift as the explicit move-card modifier',
   expect(keyboardActionFor(event('Delete'))).toEqual({ type: 'removeQueueCard' });
 });
 
-test('Tab stays ordinary traversal and later-task shortcuts are not stolen early', () => {
+test('Tab stays ordinary traversal and v2 shortcuts are not stolen', () => {
   expect(keyboardActionFor(event('Tab'))).toBeNull();
   expect(keyboardActionFor(event('w'))).toBeNull(); // v2 Week Plan
-  expect(keyboardActionFor(event('m'))).toBeNull(); // P6 audio
+  expect(keyboardActionFor(event('m'))).toEqual({
+    type: 'toggleMute',
+  });
 });
 
 test('shortcuts are suppressed in editable controls, contenteditable, and IME composition', () => {

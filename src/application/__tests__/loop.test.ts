@@ -2,6 +2,7 @@ import { GameLoop, MAX_TICKS_PER_FRAME, msPerTick, ticksToRun, type Speed } from
 import { newGameState } from '../../sim/state';
 import { content } from '../../sim/content';
 import { PrngStreams } from '../../sim/prng';
+import { DEFAULT_SIM_RULES } from '../../sim/rules';
 
 /**
  * P3 T4. The headline assertion is speed-independence: the master §5 exit says "sim
@@ -11,6 +12,24 @@ import { PrngStreams } from '../../sim/prng';
 
 const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
 const digest = (loop: GameLoop) => JSON.stringify(loop.peekState());
+
+test('SimRules are derived once per boundary and shared by the tick composition', () => {
+  let derivations = 0;
+  const loop = new GameLoop(fresh(), content, {}, {
+    simRulesForBoundary: () => {
+      derivations += 1;
+      return {
+        ...DEFAULT_SIM_RULES,
+        revision: derivations,
+        key: `boundary-${derivations}`,
+      };
+    },
+  });
+
+  loop.runOneTick();
+  expect(derivations).toBe(1);
+  expect(loop.snapshot.forecastRevision).toBeGreaterThan(0);
+});
 
 describe('ticksToRun — pure timing rules (SPEC §5)', () => {
   test('500 / 250 / 125 ms per tick at 1× / 2× / 4×', () => {
@@ -147,6 +166,48 @@ describe('pause semantics', () => {
     loop.advance(6 * 60 * 60 * 1000); // six hours
     expect(digest(loop)).toBe(before);
     expect(loop.stats.droppedFrames).toBe(0); // paused, not capped
+  });
+
+  test('player-paused queue edits apply immediately without advancing time', () => {
+    const loop = new GameLoop(fresh(), content);
+    loop.setSpeed(0);
+    const beforeMinute = loop.peekState().clock.absoluteMinute;
+    const beforeTicks = loop.stats.ticksRun;
+
+    loop.enqueue({
+      type: 'insertPlayer',
+      activityId: 'practice',
+    });
+
+    expect(
+      loop.snapshot.queue.some(
+        (card) => card.activityId === 'practice',
+      ),
+    ).toBe(true);
+    expect(loop.peekState().clock.absoluteMinute).toBe(beforeMinute);
+    expect(loop.stats.ticksRun).toBe(beforeTicks);
+  });
+
+  test('system pause keeps queue input pending until foreground play resumes', () => {
+    const loop = new GameLoop(fresh(), content);
+    loop.setSystemPaused(true);
+    loop.enqueue({
+      type: 'insertPlayer',
+      activityId: 'practice',
+    });
+
+    expect(
+      loop.snapshot.queue.some(
+        (card) => card.activityId === 'practice',
+      ),
+    ).toBe(false);
+    loop.setSystemPaused(false);
+    loop.runOneTick();
+    expect(
+      loop.snapshot.queue.some(
+        (card) => card.activityId === 'practice',
+      ),
+    ).toBe(true);
   });
 });
 

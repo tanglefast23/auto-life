@@ -19,49 +19,49 @@ test('the drag threshold keeps taps and small pointer wobble as taps', () => {
   expect(shouldStartQueueDrag(6, 6)).toBe(true);
 });
 
-test('horizontal drag rounds by card stride and clamps at both queue edges', () => {
-  expect(reorderIndexFromDrag(3, -131, 6)).toBe(2);
-  expect(reorderIndexFromDrag(3, 131, 6)).toBe(4);
+test('vertical drag rounds by row stride and clamps at both queue edges', () => {
+  expect(reorderIndexFromDrag(3, -61, 6)).toBe(2);
+  expect(reorderIndexFromDrag(3, 61, 6)).toBe(4);
   expect(reorderIndexFromDrag(3, -9999, 6)).toBe(0);
   expect(reorderIndexFromDrag(3, 9999, 6)).toBe(5);
-  expect(reorderIndexFromDrag(3, 20, 6)).toBe(3);
+  expect(reorderIndexFromDrag(3, 10, 6)).toBe(3);
 });
 
-test('leaving the measured strip removes; staying inside issues a move even at one index', () => {
+test('leaving the measured rail removes; staying inside issues a move even at one index', () => {
   expect(
     queueDragDecision({
-      gesture: { dx: 0, dy: -50, moveY: 690 },
+      gesture: { dx: -100, dy: 0, moveX: 1000, moveY: 300 },
       fromIndex: 2,
       cardCount: 5,
-      stripTop: 700,
-      stripBottom: 772,
+      stripLeft: 1100,
+      stripRight: 1324,
     }),
   ).toEqual({ kind: 'remove' });
   expect(
     queueDragDecision({
-      gesture: { dx: 0, dy: 50, moveY: 780 },
+      gesture: { dx: 100, dy: 0, moveX: 1340, moveY: 300 },
       fromIndex: 2,
       cardCount: 5,
-      stripTop: 700,
-      stripBottom: 772,
+      stripLeft: 1100,
+      stripRight: 1324,
     }),
   ).toEqual({ kind: 'remove' });
   expect(
     queueDragDecision({
-      gesture: { dx: 12, dy: 0, moveY: 730 },
+      gesture: { dx: 0, dy: 12, moveX: 1200, moveY: 300 },
       fromIndex: 2,
       cardCount: 5,
-      stripTop: 700,
-      stripBottom: 772,
+      stripLeft: 1100,
+      stripRight: 1324,
     }),
   ).toEqual({ kind: 'move', toIndex: 2 });
   expect(
     queueDragDecision({
-      gesture: { dx: 0, dy: -56, moveY: 0 },
+      gesture: { dx: -56, dy: 0, moveX: 0, moveY: 0 },
       fromIndex: 2,
       cardCount: 5,
-      stripTop: null,
-      stripBottom: null,
+      stripLeft: null,
+      stripRight: null,
     }),
   ).toEqual({ kind: 'remove' });
 });
@@ -69,11 +69,11 @@ test('leaving the measured strip removes; staying inside issues a move even at o
 test('a release below the activation threshold cancels without editing', () => {
   expect(
     queueDragDecision({
-      gesture: { dx: 2, dy: 2, moveY: 730 },
+      gesture: { dx: 2, dy: 2, moveX: 1200, moveY: 300 },
       fromIndex: 2,
       cardCount: 5,
-      stripTop: 700,
-      stripBottom: 772,
+      stripLeft: 1100,
+      stripRight: 1324,
     }),
   ).toEqual({ kind: 'cancel' });
 });
@@ -112,15 +112,15 @@ test('drag-generated moves pin AUTO cards and planner passes preserve the result
     const fromIndex = Math.floor(random() * queue.length);
     const card = queue[fromIndex]!;
     const direction = random() < 0.5 ? -1 : 1;
-    const dx = direction * (1 + Math.floor(random() * 5)) * 132;
+    const dy = direction * (1 + Math.floor(random() * 5)) * 62;
     const decision = queueDragDecision({
-      gesture: { dx, dy: 0, moveY: 730 },
+      gesture: { dx: 0, dy, moveX: 1200, moveY: 300 },
       fromIndex,
       cardCount: queue.length,
-      stripTop: 700,
-      stripBottom: 772,
+      stripLeft: 1100,
+      stripRight: 1324,
     });
-    if (decision.kind !== 'move') throw new Error('horizontal drag must move');
+    if (decision.kind !== 'move') throw new Error('vertical drag must move');
     queue = moveCard(queue, card.id, decision.toIndex);
     expect(queue.find((candidate) => candidate.id === card.id)?.owner).toBe(
       'PINNED',

@@ -27,7 +27,13 @@ test('HUD values have complete screen-reader labels and explicitly permit text s
   let tree: ReactTestRenderer;
   act(() => {
     tree = create(
-      <Hud snapshot={snapshot} speed={1} onSpeed={jest.fn()} reducedMotion />,
+      <Hud
+        snapshot={snapshot}
+        speed={1}
+        onSpeed={jest.fn()}
+        reducedMotion
+        screenReaderVerbosity="full"
+      />,
     );
   });
 
@@ -41,7 +47,7 @@ test('HUD values have complete screen-reader labels and explicitly permit text s
   }
   expect(
     tree!.root.findByProps({ testID: 'hud-practice' }).props.accessibilityLabel,
-  ).toMatch(/Practice \d+ points/);
+  ).toMatch(/Practice level \d, \d+ mastery points/);
 
   const textNodes = tree!.root.findAllByType(Text);
   expect(textNodes.length).toBeGreaterThan(0);
@@ -51,6 +57,34 @@ test('HUD values have complete screen-reader labels and explicitly permit text s
   }
 
   expect(Animated.loop).not.toHaveBeenCalled();
+  act(() => tree!.unmount());
+});
+
+test('brief verbosity shortens bar labels and non-color urgency can be toggled', () => {
+  const urgentSnapshot = {
+    ...snapshot,
+    bars: { ...snapshot.bars, hygiene: 5 },
+  };
+  let tree: ReactTestRenderer;
+  act(() => {
+    tree = create(
+      <Hud
+        snapshot={urgentSnapshot}
+        speed={1}
+        onSpeed={jest.fn()}
+        nonColorUrgency={false}
+        reducedMotion
+        screenReaderVerbosity="brief"
+      />,
+    );
+  });
+  const hygiene = tree!.root.findByProps({
+    testID: 'hud-bar:hygiene',
+  });
+  expect(hygiene.props.accessibilityLabel).toMatch(
+    /^Hygiene \d+, alert$/,
+  );
+  expect(hygiene.props.children).toBe('◍');
   act(() => tree!.unmount());
 });
 
@@ -68,5 +102,43 @@ test('speed controls retain a 44 px target after text scaling support lands', ()
     expect(style.minWidth).toBeGreaterThanOrEqual(44);
     expect(style.minHeight).toBeGreaterThanOrEqual(44);
   }
+  act(() => tree!.unmount());
+});
+
+test('pause and audio controls live in the clock block instead of overlapping the speed row', () => {
+  const onOpenPause = jest.fn();
+  const onToggleMute = jest.fn();
+  let tree: ReactTestRenderer;
+  act(() => {
+    tree = create(
+      <Hud
+        snapshot={snapshot}
+        speed={1}
+        onSpeed={jest.fn()}
+        onOpenPause={onOpenPause}
+        onToggleMute={onToggleMute}
+        muted={false}
+        reducedMotion
+      />,
+    );
+  });
+
+  const clockBlock = tree!.root.findByProps({
+    testID: 'hud-clock-block',
+  });
+  expect(
+    clockBlock.findByProps({ testID: 'hud-meta-controls' }),
+  ).toBeDefined();
+  const metaStyle = StyleSheet.flatten(
+    tree!.root.findByProps({ testID: 'hud-meta-controls' }).props.style,
+  );
+  expect(metaStyle.position).not.toBe('absolute');
+
+  act(() => {
+    tree!.root.findByProps({ testID: 'open-pause-menu' }).props.onPress();
+    tree!.root.findByProps({ testID: 'toggle-mute' }).props.onPress();
+  });
+  expect(onOpenPause).toHaveBeenCalledTimes(1);
+  expect(onToggleMute).toHaveBeenCalledTimes(1);
   act(() => tree!.unmount());
 });

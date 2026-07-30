@@ -110,9 +110,25 @@ const DECORATION_PLACEMENTS: Readonly<
     y: 8 * TILE - 20,
   },
   // Goal 2's plant sits on the wardrobe, so it remains distinct from either package choice.
-  'goal-plant': {
+  'bedroom-plant': {
     sprite: 'decoration.leafy-plant',
     x: 8 * TILE + 8,
+    y: 2 * TILE - 20,
+  },
+  // Goal rewards use existing atlas art until P6 authors their final sprites.
+  'wrinkle-keepsake': {
+    sprite: 'decoration.sunny-vase',
+    x: 2 * TILE + 8,
+    y: 9 * TILE - 20,
+  },
+  'wrinkle-print': {
+    sprite: 'decoration.leafy-plant',
+    x: 3 * TILE + 8,
+    y: 9 * TILE - 20,
+  },
+  'practice-poster': {
+    sprite: 'decoration.sunny-vase',
+    x: 10 * TILE + 8,
     y: 2 * TILE - 20,
   },
 };
@@ -154,6 +170,32 @@ export function buildCharacterQuad(view: RenderView, alpha: number, phase: numbe
     x: tile.x * TILE,
     y: tile.y * TILE - CHAR_Y_OFFSET,
   };
+}
+
+/**
+ * Lock an animated logical coordinate to the display's physical-pixel grid.
+ *
+ * The room is already rendered at an integer number of physical pixels per art pixel,
+ * but travel interpolation deliberately produces fractional art coordinates. Drawing
+ * those fractions directly lets CanvasKit blend the character across adjacent physical
+ * pixels while the floor stays crisp, which reads as a flickering afterimage. This keeps
+ * sub-tile movement while ensuring every rendered edge lands on a real screen pixel.
+ */
+export function snapToPhysicalPixel(
+  logicalPosition: number,
+  physicalPerArtPixel: number,
+): number {
+  if (
+    !Number.isFinite(logicalPosition) ||
+    !Number.isFinite(physicalPerArtPixel) ||
+    physicalPerArtPixel <= 0
+  ) {
+    return logicalPosition;
+  }
+  return (
+    Math.round(logicalPosition * physicalPerArtPixel) /
+    physicalPerArtPixel
+  );
 }
 
 /**

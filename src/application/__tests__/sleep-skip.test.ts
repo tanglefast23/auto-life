@@ -4,13 +4,20 @@ import {
   type LoopObserver,
 } from '../loop';
 import { content } from '../../sim/content';
-import { minuteOfDay, targetsFor } from '../../sim/clock';
+import {
+  dayNumber,
+  minuteOfDay,
+  targetsFor,
+  TICKS_PER_DAY,
+} from '../../sim/clock';
 import { toFixed } from '../../sim/fixed';
 import { PrngStreams } from '../../sim/prng';
 import { newGameState, type SimState } from '../../sim/state';
 import type { DomainEvent } from '../../sim/step';
 import type { Chronotype } from '../../sim/types';
 import type { GameSnapshot } from '../snapshot';
+import { newSession } from '../../game/session';
+import { newCareerState } from '../career-state';
 
 const ROOT_SEED = 1234;
 const ANCHOR_IDS = ['wake', 'lunch', 'workout', 'dinner', 'bedtime'] as const;
@@ -139,11 +146,26 @@ describe('named sleep-skip batch', () => {
       expect(skippedTicks).toBeGreaterThan(0);
       expect(skipped.peekState()).toEqual(watched.peekState());
       expect(skipped.session).toEqual(watched.session);
+      expect(skipped.peekPrng()).toEqual(watched.peekPrng());
+      const exportBase = newCareerState({
+        rootSeed: 0,
+        sim: initial,
+        prng: PrngStreams.create(0).serialize(),
+      }).payload;
+      expect(
+        JSON.stringify(skipped.exportCareerPayload(exportBase)),
+      ).toBe(
+        JSON.stringify(watched.exportCareerPayload(exportBase)),
+      );
       expect(flatten(skippedLog.eventBatches)).toEqual(
         flatten(watchedLog.eventBatches),
       );
       expect(skipped.session.recap).toEqual(watched.session.recap);
       expect(skipped.session.goals).toEqual(watched.session.goals);
+      expect(skipped.session.journal.entries).toHaveLength(1);
+      expect(
+        skipped.session.morningRecap?.journalEntryId,
+      ).toBe(skipped.session.journal.entries[0]?.id);
       expect(skipped.snapshot).toEqual(watched.snapshot);
       expect(skipped.stats).toEqual(watched.stats);
 
@@ -184,6 +206,48 @@ describe('named sleep-skip batch', () => {
     expect(queuedUrgency.skipNightToWake()).toBe(0);
     expect(daytime.peekState().current?.type).toBe('sleep');
     expect(queuedUrgency.peekState().current?.type).toBe('sleep');
+  });
+
+  test('a Day-8 letter stops a sleep-skip at midnight before wake', () => {
+    const initial = sleepingState('baseline');
+    const startMinute = minuteOfDay(
+      initial.clock.absoluteMinute,
+    );
+    initial.clock.absoluteMinute =
+      6 * TICKS_PER_DAY + startMinute;
+    const session = newSession();
+    session.goals['balanced-week']!.status = 'rewarded';
+    const log = observerLog();
+    const loop = new GameLoop(
+      newCareerState({
+        rootSeed: ROOT_SEED,
+        sim: initial,
+        game: session,
+        prng: PrngStreams.create(ROOT_SEED).serialize(),
+      }).payload,
+      content,
+      log.observer,
+    );
+
+    const skippedTicks = loop.skipNightToWake();
+
+    expect(skippedTicks).toBe(TICKS_PER_DAY - startMinute);
+    expect(skippedTicks).toBeLessThan(
+      (targetsFor('baseline', content.rates).wake -
+        startMinute +
+        TICKS_PER_DAY) %
+        TICKS_PER_DAY,
+    );
+    expect(dayNumber(loop.peekState().clock.absoluteMinute)).toBe(8);
+    expect(minuteOfDay(loop.peekState().clock.absoluteMinute)).toBe(0);
+    expect(loop.session.letter.status).toBe('due');
+    expect(
+      flatten(log.eventBatches).some(
+        (event) => event.type === 'wakeBoundary',
+      ),
+    ).toBe(false);
+    expect(log.snapshots).toHaveLength(1);
+    expect(loop.skipNightToWake()).toBe(0);
   });
 });
 

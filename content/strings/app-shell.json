@@ -1,0 +1,53 @@
+{
+  "loading": {
+    "preferences": "Loading settings…",
+    "career": "Checking your save…"
+  },
+  "title": {
+    "eyebrow": "A SMALL LIFE",
+    "name": "Auto Life",
+    "body": "Steer the routine. Keep a little time for yourself.",
+    "newGame": "Start a new life",
+    "resume": "Keep going"
+  },
+  "identity": {
+    "eyebrow": "MEET YOUR SIM",
+    "title": "Who lives here?",
+    "body": "Pick the basics. Their two habits are already showing.",
+    "name": "Name",
+    "pronouns": "Pronouns",
+    "appearance": "Look",
+    "preferences": "Their habits",
+    "start": "Start day one",
+    "skip": "Randomize and start",
+    "back": "Back to game",
+    "theyThem": "They / them",
+    "sheHer": "She / her",
+    "heHim": "He / him"
+  },
+  "resume": {
+    "title": "Welcome back",
+    "body": "Nothing moved while you were away.",
+    "fallback": "The newest copy was damaged. An earlier save opened instead.",
+    "dismiss": "Got it"
+  },
+  "recovery": {
+    "title": "This save would not open",
+    "body": "Your stored copies are still here.",
+    "copyRaw": "Copy save details",
+    "copied": "Save details copied.",
+    "startFresh": "Start fresh",
+    "confirmTitle": "Leave this save behind?",
+    "confirmBody": "It stays untouched until a new save is ready.",
+    "cancel": "Keep this save",
+    "confirm": "Choose a new life"
+  },
+  "conflict": {
+    "title": "This life is open elsewhere",
+    "body": "Reload this page before making another change."
+  },
+  "errors": {
+    "save": "The new save did not finish. Your old save is untouched.",
+    "seed": "A new life could not be started on this device."
+  }
+}

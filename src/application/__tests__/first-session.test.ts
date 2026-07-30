@@ -115,7 +115,7 @@ test('a scripted first day completes both goals, keeps the chosen decoration, an
   });
   loop.enqueueAction({ type: 'forecastChangeObserved' });
   loop.runOneTick();
-  expect(loop.session.goals['change-of-plans']?.status).toBe('complete');
+  expect(loop.session.goals['change-of-plans']?.status).toBe('rewarded');
 
   let rewardQueued = false;
   for (let i = 2; i < TICKS_PER_DAY; i++) {
@@ -133,11 +133,11 @@ test('a scripted first day completes both goals, keeps the chosen decoration, an
     loop.runOneTick();
   }
 
-  expect(loop.session.goals['meet-you']?.status).toBe('complete');
-  expect(loop.session.goals['change-of-plans']?.status).toBe('complete');
+  expect(loop.session.goals['meet-the-routine']?.status).toBe('rewarded');
+  expect(loop.session.goals['change-of-plans']?.status).toBe('rewarded');
   expect(loop.session.unlocks.journal).toBe(true);
   expect(loop.session.decorations.grantedIds).toEqual(
-    expect.arrayContaining(['goal-plant', 'sunny-vase']),
+    expect.arrayContaining(['bedroom-plant', 'sunny-vase']),
   );
   expect(loop.snapshot.session.decorations).toEqual(
     loop.session.decorations,

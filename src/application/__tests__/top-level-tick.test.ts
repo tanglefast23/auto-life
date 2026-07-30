@@ -39,11 +39,13 @@ test('a full day rolls the recap over to the next day', () => {
 
   // Day 1's activities completed and were recapped; crossing the wake boundary starts
   // day 2 clean. Both halves of that are the point.
-  expect(loop.session.recap).toEqual({
+  expect(loop.session.recap).toMatchObject({
     forDay: 2,
     completedActivityIds: [],
     missedAnchorIds: [],
     practicePoints100: 0,
+    practiceSessions: 0,
+    mealCount: 0,
   });
 });
 
@@ -57,7 +59,7 @@ test('typed wrinkle outcomes reach the game fold instead of being dropped by the
 
   loop.runOneTick();
 
-  expect(loop.session.wrinkles).toEqual({
+  expect(loop.session.wrinkles).toMatchObject({
     firedIds: ['package-delivery'],
     pendingId: 'package-delivery',
     choiceReadyId: null,

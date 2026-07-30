@@ -1,0 +1,134 @@
+{
+  "rewards": [
+    {
+      "id": "journal",
+      "kind": "journal-unlock",
+      "labelStringId": "goals:rewards.journal"
+    },
+    {
+      "id": "bedroom-plant",
+      "kind": "decoration",
+      "labelStringId": "goals:rewards.bedroomPlant",
+      "decorationIds": ["bedroom-plant"]
+    },
+    {
+      "id": "wrinkle-decoration",
+      "kind": "decoration",
+      "labelStringId": "goals:rewards.wrinkleDecoration",
+      "decorationIds": ["wrinkle-keepsake", "wrinkle-print"]
+    },
+    {
+      "id": "air-guitar",
+      "kind": "idle-variant",
+      "labelStringId": "goals:rewards.airGuitar",
+      "idleVariantId": "air-guitar",
+      "fallback": "next-available"
+    },
+    {
+      "id": "practice-poster",
+      "kind": "decoration",
+      "labelStringId": "goals:rewards.practicePoster",
+      "decorationIds": ["practice-poster"]
+    },
+    {
+      "id": "routine-memory",
+      "kind": "routine-memory",
+      "labelStringId": "goals:rewards.routineMemory"
+    },
+    {
+      "id": "first-gigs",
+      "kind": "chapter-handoff",
+      "labelStringId": "goals:rewards.firstGigs"
+    }
+  ],
+  "goals": [
+    {
+      "id": "meet-the-routine",
+      "order": 1,
+      "titleStringId": "goals:meetTheRoutine.title",
+      "instructionStringId": "goals:meetTheRoutine.instruction",
+      "rewardId": "journal",
+      "condition": {
+        "kind": "activity-and-why",
+        "activityCompletions": 3
+      },
+      "requiresAutonomy": "any"
+    },
+    {
+      "id": "change-of-plans",
+      "order": 2,
+      "titleStringId": "goals:changeOfPlans.title",
+      "instructionStringId": "goals:changeOfPlans.instruction",
+      "rewardId": "bedroom-plant",
+      "condition": {
+        "kind": "queue-edit-and-forecast"
+      },
+      "requiresAutonomy": "any"
+    },
+    {
+      "id": "handle-the-wrinkle",
+      "order": 3,
+      "titleStringId": "goals:handleTheWrinkle.title",
+      "instructionStringId": "goals:handleTheWrinkle.instruction",
+      "rewardId": "wrinkle-decoration",
+      "condition": {
+        "kind": "wrinkle-day",
+        "maxUrgentEvents": 0,
+        "sample": "midnight"
+      },
+      "requiresAutonomy": "full-routine"
+    },
+    {
+      "id": "first-chord",
+      "order": 4,
+      "titleStringId": "goals:firstChord.title",
+      "instructionStringId": "goals:firstChord.instruction",
+      "rewardId": "air-guitar",
+      "condition": {
+        "kind": "practice-level",
+        "level": 1
+      },
+      "requiresAutonomy": "any"
+    },
+    {
+      "id": "find-the-rhythm",
+      "order": 5,
+      "titleStringId": "goals:findTheRhythm.title",
+      "instructionStringId": "goals:findTheRhythm.instruction",
+      "rewardId": "practice-poster",
+      "condition": {
+        "kind": "intention-bias",
+        "deliberateSelection": true
+      },
+      "requiresAutonomy": "any"
+    },
+    {
+      "id": "balanced-week",
+      "order": 6,
+      "titleStringId": "goals:balancedWeek.title",
+      "instructionStringId": "goals:balancedWeek.instruction",
+      "rewardId": "routine-memory",
+      "condition": {
+        "kind": "balanced-streak",
+        "days": 3,
+        "practiceSessionsPerDay": 2,
+        "barsAtLeast": 65,
+        "maxUrgentEvents": 0,
+        "sampleAtWakeOffset": 120
+      },
+      "requiresAutonomy": "full-routine"
+    },
+    {
+      "id": "holidays-over",
+      "order": 7,
+      "titleStringId": "goals:holidaysOver.title",
+      "instructionStringId": "goals:holidaysOver.instruction",
+      "rewardId": "first-gigs",
+      "condition": {
+        "kind": "letter-accepted",
+        "earliestDay": 8
+      },
+      "requiresAutonomy": "any"
+    }
+  ]
+}

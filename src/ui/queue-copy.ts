@@ -6,8 +6,9 @@ import type {
   ForecastWakeConflict,
 } from '../sim/forecast';
 import type { QueueReason } from '../sim/queue';
+import type { CardStartDecision } from '../sim/step';
 import { formatTimeOfDay } from './clock-format';
-import { blockLabel } from './queue-presenter';
+import { activityCopy, blockLabel } from './queue-presenter';
 
 const QueueStringsSchema = z.strictObject({
   why: z.strictObject({
@@ -25,6 +26,9 @@ const QueueStringsSchema = z.strictObject({
     mintyFresh: z.string().min(1),
     freshMind: z.string().min(1),
     practiceBlock: z.string().min(1),
+    blocked: z.string().min(1),
+    waiting: z.string().min(1),
+    reroute: z.string().min(1),
   }),
   details: z.strictObject({
     conflict: z.string().min(1),
@@ -35,6 +39,9 @@ const QueueStringsSchema = z.strictObject({
     barDelta: z.string().min(1),
     scalePoints: z.string().min(1),
     practiceBlock: z.string().min(1),
+    objectBlocked: z.string().min(1),
+    activityUnavailable: z.string().min(1),
+    reroute: z.string().min(1),
   }),
   announcements: z.strictObject({
     forecastUpdated: z.string().min(1),
@@ -140,4 +147,33 @@ export function capWasteDetail(bar: string, amount: number): string {
     amount: Math.round(amount * 10) / 10,
     bar: titleCase(bar),
   });
+}
+
+export function startConstraintChip(
+  constraint: Exclude<CardStartDecision, { kind: 'start' }>,
+): string {
+  if (constraint.kind === 'reroute') {
+    return queueStrings.chips.reroute;
+  }
+  return constraint.reason === 'object-blocked'
+    ? queueStrings.chips.blocked
+    : queueStrings.chips.waiting;
+}
+
+export function startConstraintDetail(
+  constraint: Exclude<CardStartDecision, { kind: 'start' }>,
+): string {
+  if (constraint.kind === 'reroute') {
+    return queueStrings.details.reroute;
+  }
+  return fill(
+    constraint.reason === 'object-blocked'
+      ? queueStrings.details.objectBlocked
+      : queueStrings.details.activityUnavailable,
+    {
+      time: formatTimeOfDay(constraint.untilMinute),
+      object: titleCase(constraint.targetId),
+      activity: activityCopy(constraint.targetId).label,
+    },
+  );
 }

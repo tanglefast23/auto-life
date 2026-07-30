@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import rawManifest from '../content/strings/review-manifest.json';
 
 const ReviewSchema = z.strictObject({
   file: z.string().startsWith('content/strings/'),
@@ -40,16 +39,59 @@ function leafStringIds(value: unknown, path: string[] = []): string[] {
   );
 }
 
+function leafStrings(
+  value: unknown,
+  path: string[] = [],
+): Array<readonly [string, string]> {
+  if (typeof value === 'string') return [[path.join('.'), value]];
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`authored strings must be nested objects at "${path.join('.')}"`);
+  }
+  return Object.entries(value).flatMap(([key, child]) =>
+    leafStrings(child, [...path, key]),
+  );
+}
+
 export function validateWritingReviews(root = process.cwd()): number {
-  const manifest = ManifestSchema.parse(rawManifest);
+  const manifestPath = resolve(
+    root,
+    'content',
+    'strings',
+    'review-manifest.json',
+  );
+  const manifest = ManifestSchema.parse(
+    JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown,
+  );
   const reviewedFiles = new Set<string>();
+  const authoredFiles = new Set(
+    readdirSync(resolve(root, 'content', 'strings'))
+      .filter(
+        (filename) =>
+          filename.endsWith('.json') && filename !== 'review-manifest.json',
+      )
+      .map((filename) => `content/strings/${filename}`),
+  );
 
   for (const review of manifest.reviews) {
     if (reviewedFiles.has(review.file)) {
       throw new Error(`duplicate writing review for "${review.file}"`);
     }
     reviewedFiles.add(review.file);
+  }
 
+  for (const file of authoredFiles) {
+    if (!reviewedFiles.has(file)) {
+      throw new Error(`missing writing review for "${file}"`);
+    }
+  }
+
+  for (const file of reviewedFiles) {
+    if (!authoredFiles.has(file)) {
+      throw new Error(`writing review has no authored file "${file}"`);
+    }
+  }
+
+  for (const review of manifest.reviews) {
     const bytes = readFileSync(resolve(root, review.file));
     const actualHash = createHash('sha256').update(bytes).digest('hex');
     if (actualHash !== review.sha256) {
@@ -60,6 +102,7 @@ export function validateWritingReviews(root = process.cwd()): number {
 
     const document = JSON.parse(bytes.toString('utf8')) as unknown;
     const actualIds = leafStringIds(document).sort();
+    const actualStrings = new Map(leafStrings(document));
     const reviewedIds = [...new Set(review.stringIds)].sort();
     if (
       reviewedIds.length !== review.stringIds.length ||
@@ -70,10 +113,23 @@ export function validateWritingReviews(root = process.cwd()): number {
       );
     }
 
+    const rewrittenIds = new Set<string>();
     for (const rewrite of review.rewrites) {
       if (!reviewedIds.includes(rewrite.id)) {
         throw new Error(
           `writing rewrite "${rewrite.id}" is not a reviewed string ID`,
+        );
+      }
+      if (rewrittenIds.has(rewrite.id)) {
+        throw new Error(`duplicate writing rewrite for "${rewrite.id}"`);
+      }
+      rewrittenIds.add(rewrite.id);
+      if (rewrite.before === rewrite.after) {
+        throw new Error(`writing rewrite "${rewrite.id}" did not change`);
+      }
+      if (actualStrings.get(rewrite.id) !== rewrite.after) {
+        throw new Error(
+          `writing rewrite "${rewrite.id}" does not match the authored string`,
         );
       }
     }

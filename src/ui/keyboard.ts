@@ -29,6 +29,7 @@ export type KeyboardAction =
   | { type: 'stopCurrent' }
   | { type: 'togglePalette' }
   | { type: 'openGoals' }
+  | { type: 'toggleMute' }
   | { type: 'undoRemove' };
 
 export function shortcutIsSuppressed(event: KeyboardLikeEvent): boolean {
@@ -62,10 +63,16 @@ export function keyboardActionFor(event: KeyboardLikeEvent): KeyboardAction | nu
   if (key === '3') return { type: 'setSpeed', speed: 4 };
   if (key === 'Escape') return { type: 'closePanel' };
   if (key === 'q') return { type: 'focusQueue' };
-  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+  if (
+    key === 'ArrowUp' ||
+    key === 'ArrowDown' ||
+    key === 'ArrowLeft' ||
+    key === 'ArrowRight'
+  ) {
     return {
       type: 'queueArrow',
-      direction: key === 'ArrowLeft' ? -1 : 1,
+      direction:
+        key === 'ArrowUp' || key === 'ArrowLeft' ? -1 : 1,
       moveCard: event.shiftKey === true,
     };
   }
@@ -74,6 +81,7 @@ export function keyboardActionFor(event: KeyboardLikeEvent): KeyboardAction | nu
   if (key === 'x') return { type: 'stopCurrent' };
   if (key === 'a') return { type: 'togglePalette' };
   if (key === 'g') return { type: 'openGoals' };
+  if (key === 'm') return { type: 'toggleMute' };
   if (key === 'u') return { type: 'undoRemove' };
   return null;
 }

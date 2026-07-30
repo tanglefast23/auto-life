@@ -1,5 +1,9 @@
 import type { PublishedQueueCard } from '../../application/snapshot';
-import { groupQueueForStrip } from '../queue-presenter';
+import {
+  engineIndexForVisualMove,
+  groupQueueForStrip,
+  queueVisualRows,
+} from '../queue-presenter';
 
 const card = (
   id: string,
@@ -102,4 +106,74 @@ test('a PINNED card retaining a block id is always rendered as an individual car
   expect(items).toEqual([
     expect.objectContaining({ kind: 'card', card: expect.objectContaining({ id: 'only' }) }),
   ]);
+});
+
+test('visual movement crosses a collapsed block without landing inside it', () => {
+  const queue = [
+    card('current', {
+      owner: 'PINNED',
+      source: 'player',
+      activityId: 'practice',
+    }),
+    card('loose-before', {
+      owner: 'PINNED',
+      source: 'player',
+      activityId: 'meal',
+    }),
+    card('wake-a', { blockId: 'wake#1', activityId: 'brush' }),
+    card('wake-b', { blockId: 'wake#1', activityId: 'meal' }),
+    card('loose-after', {
+      owner: 'PINNED',
+      source: 'player',
+      activityId: 'stretch',
+    }),
+  ];
+  const rows = queueVisualRows(
+    groupQueueForStrip(queue, 'current'),
+    new Set(),
+  );
+
+  expect(
+    engineIndexForVisualMove(
+      queue,
+      'current',
+      rows,
+      'loose-before',
+      1,
+    ),
+  ).toBe(3);
+  expect(
+    engineIndexForVisualMove(
+      queue,
+      'current',
+      rows,
+      'loose-after',
+      0,
+    ),
+  ).toBe(1);
+});
+
+test('Do next stays after the running card', () => {
+  const queue = [
+    card('current', {
+      owner: 'PINNED',
+      source: 'player',
+    }),
+    card('first'),
+    card('later'),
+  ];
+  const rows = queueVisualRows(
+    groupQueueForStrip(queue, 'current'),
+    new Set(),
+  );
+
+  expect(
+    engineIndexForVisualMove(
+      queue,
+      'current',
+      rows,
+      'later',
+      0,
+    ),
+  ).toBe(1);
 });

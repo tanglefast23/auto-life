@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Canvas } from '@shopify/react-native-skia';
 import { useGameStore } from './game-store';
 import { WorldScene } from '../render/WorldScene';
-import { solveScale, HUD_H, QUEUE_H } from '../render/scale';
+import { solveScale, HUD_H, QUEUE_W } from '../render/scale';
 import { Hud } from '../ui/Hud';
 import { QueueStrip, type QueueStripHandle } from '../ui/QueueStrip';
 import {
@@ -16,6 +22,16 @@ import {
 } from '../ui/FirstSessionUI';
 import { keyboardActionFor, type KeyboardLikeEvent } from '../ui/keyboard';
 import { useReducedMotionPreference } from '../ui/accessibility';
+import { firstSessionStrings } from '../ui/first-session-copy';
+import type { GameLoop, Speed } from './loop';
+import {
+  DEFAULT_APP_PREFERENCES,
+  type AppPreferences,
+} from './career-state';
+import type { ActivePreferenceTag } from '../ui/preference-tags';
+import { preferenceReaction } from '../ui/preference-tags';
+import { intentionStrings } from '../ui/intention-copy';
+import type { AutonomyMode } from '../sim/rules';
 
 /**
  * P3's screen: the composition root's view (master §4).
@@ -23,15 +39,41 @@ import { useReducedMotionPreference } from '../ui/accessibility';
  * Drives the loop from a single requestAnimationFrame, hard-pauses on backgrounding
  * (SPEC §5, C1), and lays the world out per §11.5's desktop scaling rule.
  *
- * P4 adds the semantic queue dock beneath the world. Persistence remains later work.
+ * P4 adds the semantic queue rail beside the world. Persistence remains later work.
  */
-export function GameScreen() {
+export interface GameScreenProps {
+  preferences?: AppPreferences;
+  onOpenPause?: () => void;
+  onToggleMute?: () => void;
+  openGoalsRequest?: number;
+  preferenceTags?: readonly ActivePreferenceTag[];
+  autonomy?: AutonomyMode;
+}
+
+export function GameScreen(props: GameScreenProps = {}) {
+  const loop = useGameStore((s) => s.loop);
+  if (loop === null) {
+    return <View style={styles.root} testID="game-not-hydrated" />;
+  }
+  return <HydratedGameScreen loop={loop} {...props} />;
+}
+
+function HydratedGameScreen({
+  loop,
+  preferences = DEFAULT_APP_PREFERENCES,
+  onOpenPause,
+  onToggleMute,
+  openGoalsRequest = 0,
+  preferenceTags = [],
+  autonomy = 'full-routine',
+}: { loop: GameLoop } & GameScreenProps) {
   const snapshot = useGameStore((s) => s.snapshot);
   const speed = useGameStore((s) => s.speed);
+  const fatalError = useGameStore((s) => s.fatalError);
+  const advanceFrame = useGameStore((s) => s.advanceFrame);
   const setSpeed = useGameStore((s) => s.setSpeed);
   const togglePause = useGameStore((s) => s.togglePause);
   const setSystemPaused = useGameStore((s) => s.setSystemPaused);
-  const loop = useGameStore((s) => s.loop);
   const alpha = useGameStore((s) => s.alpha);
   const undoToast = useGameStore((s) => s.undoToast);
   const insertActivity = useGameStore((s) => s.insertActivity);
@@ -41,20 +83,82 @@ export function GameScreen() {
   const undoLastRemove = useGameStore((s) => s.undoLastRemove);
   const observeWhyLine = useGameStore((s) => s.observeWhyLine);
   const observeForecastChange = useGameStore((s) => s.observeForecastChange);
+  const selectIntention = useGameStore((s) => s.selectIntention);
+  const addProtectedPractice = useGameStore(
+    (s) => s.addProtectedPractice,
+  );
   const chooseDecoration = useGameStore((s) => s.chooseDecoration);
+  const takeWrinkleAction = useGameStore(
+    (s) => s.takeWrinkleAction,
+  );
+  const chooseGoalReward = useGameStore(
+    (s) => s.chooseGoalReward,
+  );
+  const respondToLetter = useGameStore(
+    (s) => s.respondToLetter,
+  );
 
   const { width, height, fontScale } = useWindowDimensions();
   const dpr = typeof globalThis.devicePixelRatio === 'number' ? globalThis.devicePixelRatio : 1;
-  const hudTextScale = Math.max(1, Math.min(2, Number.isFinite(fontScale) ? fontScale : 1));
+  const hudTextScale =
+    Math.max(
+      0.75,
+      Math.min(2, Number.isFinite(fontScale) ? fontScale : 1),
+    ) * preferences.display.hudTextScale;
   const hudHeight = HUD_H * hudTextScale;
   const fit = useMemo(
-    () => solveScale({ width, height, devicePixelRatio: dpr, hudHeight }),
-    [width, height, dpr, hudHeight],
+    () =>
+      solveScale({
+        width,
+        height,
+        devicePixelRatio: dpr,
+        hudHeight,
+        fractionalScaling: preferences.display.fractionalScaling,
+      }),
+    [
+      width,
+      height,
+      dpr,
+      hudHeight,
+      preferences.display.fractionalScaling,
+    ],
   );
-  const reducedMotion = useReducedMotionPreference();
+  const reducedMotion = useReducedMotionPreference(
+    preferences.display.reducedMotion,
+  );
   const queueStripRef = useRef<QueueStripHandle>(null);
   const worldInteractionsRef = useRef<WorldInteractionsHandle>(null);
   const firstSessionRef = useRef<FirstSessionUIHandle>(null);
+  const letterPause = useRef<{
+    active: boolean;
+    resume: Exclude<Speed, 0> | null;
+  }>({ active: false, resume: null });
+
+  useEffect(() => {
+    if (openGoalsRequest <= 0) return;
+    firstSessionRef.current?.openGoals();
+  }, [openGoalsRequest]);
+
+  useEffect(() => {
+    letterPause.current = { active: false, resume: null };
+  }, [loop]);
+
+  useEffect(() => {
+    const due = snapshot?.session.letter.status === 'due';
+    if (due && !letterPause.current.active) {
+      letterPause.current = {
+        active: true,
+        resume: speed === 0 ? null : speed,
+      };
+      if (speed !== 0) setSpeed(0);
+      return;
+    }
+    if (!due && letterPause.current.active) {
+      const resume = letterPause.current.resume;
+      letterPause.current = { active: false, resume: null };
+      if (resume !== null) setSpeed(resume);
+    }
+  }, [setSpeed, snapshot?.session.letter.status, speed]);
 
   // The one clock in the app. Everything else is handed elapsed milliseconds.
   //
@@ -72,19 +176,24 @@ export function GameScreen() {
   useEffect(() => {
     let raf = 0;
     const frame = (now: number) => {
-      // Hidden-time presentation effects are elapsed once, in the visibility
-      // handler. Ignore any throttled RAF callbacks so that interval cannot be
-      // counted here and then counted again on resume.
-      if (frameClock.current.hiddenAt === null) {
-        const prev = frameClock.current.last;
-        frameClock.current.last = now;
-        loop.advance(prev === null ? 0 : now - prev);
+      try {
+        // Hidden-time presentation effects are elapsed once, in the visibility
+        // handler. Ignore any throttled RAF callbacks so that interval cannot be
+        // counted here and then counted again on resume.
+        if (frameClock.current.hiddenAt === null) {
+          const prev = frameClock.current.last;
+          frameClock.current.last = now;
+          advanceFrame(prev === null ? 0 : now - prev);
+        }
+      } finally {
+        // A simulation fault is caught and parked by the store. Keeping the
+        // driver alive prevents a fully painted but silently dead screen.
+        raf = requestAnimationFrame(frame);
       }
-      raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [loop]);
+  }, [advanceFrame]);
 
   // SPEC §5 / C1: no time passes while the tab is hidden.
   useEffect(() => {
@@ -134,6 +243,10 @@ export function GameScreen() {
           handled = worldInteractionsRef.current?.closeChoice() ?? false;
         }
         if (!handled) handled = queueStripRef.current?.closePanels() ?? false;
+        if (!handled && onOpenPause !== undefined) {
+          onOpenPause();
+          handled = true;
+        }
       } else if (action.type === 'focusQueue') {
         handled = queueStripRef.current?.focusQueue() ?? false;
       } else if (action.type === 'queueArrow') {
@@ -155,6 +268,9 @@ export function GameScreen() {
         handled = true;
       } else if (action.type === 'openGoals') {
         handled = firstSessionRef.current?.openGoals() ?? false;
+      } else if (action.type === 'toggleMute' && onToggleMute !== undefined) {
+        onToggleMute();
+        handled = true;
       } else if (action.type === 'undoRemove' && undoToast !== null) {
         handled = undoLastRemove(undoToast.receiptId);
       }
@@ -179,6 +295,8 @@ export function GameScreen() {
     };
   }, [
     loop,
+    onOpenPause,
+    onToggleMute,
     setSpeed,
     snapshot?.currentCardId,
     stopCurrent,
@@ -197,10 +315,22 @@ export function GameScreen() {
   }, [loop]);
 
   const view = snapshot?.render ?? null;
+  const preferenceBubble =
+    snapshot === null
+      ? null
+      : preferenceReaction(
+          snapshot.session.recap.completedActivityIds,
+          preferenceTags,
+        );
 
   return (
     <View style={styles.root} onTouchStart={() => loop.notePlayerInput()}>
-      <View style={[styles.stage, { height: fit.available.height, marginTop: hudHeight, marginBottom: QUEUE_H }]}>
+      <View
+        style={[
+          styles.stage,
+          { top: hudHeight, right: QUEUE_W },
+        ]}
+      >
         <View style={{ width: fit.width, height: fit.height }}>
           <Canvas style={StyleSheet.absoluteFill}>
             {view !== null && (
@@ -209,6 +339,7 @@ export function GameScreen() {
                 decorationIds={snapshot?.session.decorations.grantedIds}
                 alphaRef={alpha}
                 scale={fit.scale}
+                physicalPerArtPixel={fit.physicalPerArtPixel}
                 effectiveSpeed={loop.effectiveSpeed}
               />
             )}
@@ -224,11 +355,48 @@ export function GameScreen() {
         snapshot={snapshot}
         speed={speed}
         onSpeed={setSpeed}
+        onOpenPause={() => {
+          loop.notePlayerInput();
+          onOpenPause?.();
+        }}
+        onToggleMute={() => {
+          loop.notePlayerInput();
+          onToggleMute?.();
+        }}
+        muted={preferences.audio.muted}
         reducedMotion={reducedMotion}
+        nonColorUrgency={preferences.accessibility.nonColorUrgency}
+        screenReaderVerbosity={
+          preferences.accessibility.screenReaderVerbosity
+        }
       />
+      {preferenceBubble !== null && (
+        <View
+          accessibilityLabel={`${preferenceBubble.label}. ${
+            intentionStrings.preferenceBubbles[
+              preferenceBubble.kind
+            ]
+          }`}
+          accessibilityLiveRegion="polite"
+          style={styles.preferenceBubble}
+          testID={`preference-bubble:${preferenceBubble.kind}`}
+        >
+          <Text style={styles.preferenceBubbleTag}>
+            {preferenceBubble.label}
+          </Text>
+          <Text style={styles.preferenceBubbleText}>
+            {
+              intentionStrings.preferenceBubbles[
+                preferenceBubble.kind
+              ]
+            }
+          </Text>
+        </View>
+      )}
       <QueueStrip
         ref={queueStripRef}
         snapshot={snapshot}
+        topInset={hudHeight}
         undoToast={undoToast}
         onInsertActivity={insertActivity}
         onStopCurrent={stopCurrent}
@@ -238,14 +406,56 @@ export function GameScreen() {
         onWhyLineOpened={observeWhyLine}
         onForecastChangeObserved={observeForecastChange}
         reducedMotion={reducedMotion}
+        preferenceTags={preferenceTags}
       />
       {snapshot !== null && (
         <FirstSessionUI
           ref={firstSessionRef}
           session={snapshot.session}
+          presentationKey={loop}
           hudHeight={hudHeight}
           onChooseDecoration={chooseDecoration}
+          onTakeWrinkleAction={takeWrinkleAction}
+          onChooseGoalReward={chooseGoalReward}
+          onRespondToLetter={respondToLetter}
+          currentDay={snapshot.day}
+          autonomy={autonomy}
+          practicePoints100={Math.round(
+            snapshot.practicePoints * 100,
+          )}
+          dailyIntentionPrompt={
+            preferences.gameplay.dailyIntentionPrompt
+          }
+          canAddProtectedPractice={
+            snapshot.queue.filter((card) => card.source === 'player')
+              .length <= 8
+          }
+          onSelectIntention={selectIntention}
+          onAddProtectedPractice={() => {
+            addProtectedPractice();
+          }}
+          preferenceLabels={preferenceTags.map((tag) => tag.label)}
         />
+      )}
+      {fatalError !== null && (
+        <View
+          accessibilityLiveRegion="assertive"
+          accessibilityRole="alert"
+          style={styles.fatalOverlay}
+          testID="simulation-fatal-error"
+        >
+          <View style={styles.fatalPanel}>
+            <Text style={styles.fatalTitle}>
+              {firstSessionStrings.fatal.title}
+            </Text>
+            <Text style={styles.fatalCopy}>
+              {firstSessionStrings.fatal.body}
+            </Text>
+            <Text selectable style={styles.fatalDetail}>
+              {fatalError}
+            </Text>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -253,5 +463,76 @@ export function GameScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#2e2119', alignItems: 'center' },
-  stage: { alignItems: 'center', justifyContent: 'center' },
+  preferenceBubble: {
+    alignItems: 'center',
+    backgroundColor: '#faf1dc',
+    borderColor: '#2e2119',
+    borderRadius: 12,
+    borderWidth: 2,
+    gap: 2,
+    left: '50%',
+    marginLeft: -96,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    position: 'absolute',
+    top: 70,
+    width: 192,
+    zIndex: 19,
+  },
+  preferenceBubbleTag: {
+    color: '#5ca860',
+    fontFamily: 'monospace',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  preferenceBubbleText: {
+    color: '#2e2119',
+    fontFamily: 'monospace',
+    fontSize: 10,
+  },
+  stage: {
+    alignItems: 'center',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+  },
+  fatalOverlay: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    alignItems: 'center',
+    backgroundColor: 'rgba(46, 33, 25, 0.88)',
+    justifyContent: 'center',
+    padding: 24,
+    zIndex: 100,
+  },
+  fatalPanel: {
+    backgroundColor: '#f4e4c1',
+    borderColor: '#7d2f2f',
+    borderRadius: 8,
+    borderWidth: 2,
+    maxWidth: 480,
+    padding: 24,
+    width: '100%',
+  },
+  fatalTitle: {
+    color: '#4b211f',
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  fatalCopy: {
+    color: '#4b2e24',
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  fatalDetail: {
+    color: '#6d4334',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 12,
+  },
 });

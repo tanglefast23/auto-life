@@ -15,6 +15,11 @@ export interface QueueStripBlockItem {
 
 export type QueueStripItem = QueueStripCardItem | QueueStripBlockItem;
 
+export interface QueueVisualRow {
+  key: string;
+  cardIds: string[];
+}
+
 /**
  * UI-only block grouping from P4 Q3.
  *
@@ -52,6 +57,64 @@ export function groupQueueForStrip(
   }
 
   return items;
+}
+
+/** One visible rail row. Collapsed blocks remain one indivisible movement unit. */
+export function queueVisualRows(
+  items: readonly QueueStripItem[],
+  expandedBlockKeys: ReadonlySet<string>,
+): QueueVisualRow[] {
+  return items.flatMap((item) => {
+    if (item.kind === 'card') {
+      return [{ key: item.key, cardIds: [item.card.id] }];
+    }
+    if (expandedBlockKeys.has(item.key)) {
+      return item.cards.map((card) => ({
+        key: `card:${card.id}`,
+        cardIds: [card.id],
+      }));
+    }
+    return [{
+      key: item.key,
+      cardIds: item.cards.map((card) => card.id),
+    }];
+  });
+}
+
+/**
+ * Convert a final visual-row position to the engine's raw insertion index.
+ * The running card remains first, and a collapsed block can only be crossed as
+ * a whole—never split by a loose card.
+ */
+export function engineIndexForVisualMove(
+  queue: readonly Pick<PublishedQueueCard, 'id'>[],
+  currentCardId: string | null,
+  rows: readonly QueueVisualRow[],
+  cardId: string,
+  toRowIndex: number,
+): number | null {
+  if (!queue.some((card) => card.id === cardId)) return null;
+  const rest = queue.filter((card) => card.id !== cardId);
+  const rowsWithoutCard = rows.flatMap((row) => {
+    const cardIds = row.cardIds.filter((id) => id !== cardId);
+    return cardIds.length === 0
+      ? []
+      : [{ key: row.key, cardIds }];
+  });
+  const at = Math.max(
+    0,
+    Math.min(Math.trunc(toRowIndex), rowsWithoutCard.length),
+  );
+  let engineIndex = rest.length;
+  const targetId = rowsWithoutCard[at]?.cardIds[0];
+  if (targetId !== undefined) {
+    const found = rest.findIndex((card) => card.id === targetId);
+    if (found !== -1) engineIndex = found;
+  }
+  const currentIndex = currentCardId === null
+    ? -1
+    : rest.findIndex((card) => card.id === currentCardId);
+  return Math.max(currentIndex + 1, engineIndex);
 }
 
 const ACTIVITY_COPY: Record<string, { label: string; glyph: string }> = {

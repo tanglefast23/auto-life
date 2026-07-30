@@ -1,5 +1,6 @@
-import { newSession } from '../session';
+import { newDailyRecap, newSession } from '../session';
 import { advanceGame } from '../tick';
+import { content } from '../../sim/content';
 
 test('a completed activity accumulates into the day recap', () => {
   const r = advanceGame(newSession(), [{ type: 'activityCompleted', detail: 'breakfast', atMinute: 480 }]);
@@ -35,17 +36,11 @@ test('crossing the wake boundary starts a fresh recap for the new day', () => {
 
   const dayTwo = advanceGame(dayOne, [{ type: 'wakeBoundary', detail: '2', atMinute: 0 }]).session;
 
-  expect(dayTwo.recap).toEqual({
-    forDay: 2,
-    completedActivityIds: [],
-    missedAnchorIds: [],
-    practicePoints100: 0,
-  });
+  expect(dayTwo.recap).toEqual(newDailyRecap(2));
   expect(dayTwo.morningRecap).toEqual({
-    forDay: 1,
+    ...newDailyRecap(1),
     completedActivityIds: ['breakfast'],
     missedAnchorIds: ['morning-routine'],
-    practicePoints100: 0,
   });
 });
 
@@ -58,10 +53,13 @@ test('Goal 1 completes after three watched activities and one opened why-line', 
       { type: 'activityCompleted', detail: 'shower', atMinute: 460 },
     ],
     [{ type: 'whyLineOpened', cardId: 'wake-shower' }],
+    [],
+    undefined,
+    content,
   ).session;
 
-  expect(completed.goals['meet-you']).toEqual({
-    status: 'complete',
+  expect(completed.goals['meet-the-routine']).toEqual({
+    status: 'rewarded',
     counters: {
       activitiesCompleted: 3,
       whyLineOpened: 1,
@@ -76,23 +74,28 @@ test('Goal 2 completes only after a player edit and an observed forecast change'
     [],
     [],
     [{ type: 'insertPlayer', status: 'accepted', cardId: 'c1' }],
+    undefined,
+    content,
   ).session;
   expect(editOnly.goals['change-of-plans']?.status).toBe('active');
-  expect(editOnly.decorations.grantedIds).not.toContain('goal-plant');
+  expect(editOnly.decorations.grantedIds).not.toContain('bedroom-plant');
 
   const completed = advanceGame(
     editOnly,
     [],
     [{ type: 'forecastChangeObserved' }],
+    [],
+    undefined,
+    content,
   ).session;
   expect(completed.goals['change-of-plans']).toEqual({
-    status: 'complete',
+    status: 'rewarded',
     counters: {
       queueEdits: 1,
       forecastChangesSeen: 1,
     },
   });
-  expect(completed.decorations.grantedIds).toContain('goal-plant');
+  expect(completed.decorations.grantedIds).toContain('bedroom-plant');
 });
 
 test('the completed Day-1 package opens exactly one decoration choice', () => {

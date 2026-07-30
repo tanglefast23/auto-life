@@ -281,7 +281,7 @@ export const PracticeSchema = z
     maxCountedSessionsPerDay: z.number().int().positive().max(24),
     levels: z
       .array(z.number().int().positive())
-      .min(1)
+      .length(3)
       .refine((l) => l.every((v, i) => i === 0 || v > (l[i - 1] as number)), 'levels strictly increase'),
   })
   .refine(
@@ -330,3 +330,467 @@ export const ObjectsSchema = z
   });
 export type ObjectsConfig = z.infer<typeof ObjectsSchema>;
 export type ObjectDef = ObjectsConfig['objects'][number];
+
+// ---------- P5 game content (SPEC §§9, 12) ----------
+
+/** Stable authored IDs are save data. Keep them lowercase and URL-safe. */
+export const StableContentIdSchema = z
+  .string()
+  .regex(
+    /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/,
+    'content IDs must be lowercase kebab-case',
+  );
+
+/**
+ * Player copy is addressed as `file:leaf.path`. The file prefix keeps IDs
+ * stable even when two authored documents use the same leaf name.
+ */
+export const StringRefSchema = z
+  .string()
+  .regex(
+    /^[a-z][a-z0-9-]*:[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*$/,
+    'string references must use file:leaf.path',
+  );
+
+function addDuplicateIdIssues<T extends { id: string }>(
+  values: readonly T[],
+  owner: string,
+  ctx: z.RefinementCtx,
+): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value.id)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `duplicate ${owner} id "${value.id}"`,
+      });
+    }
+    seen.add(value.id);
+  }
+}
+
+const GoalConditionSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('activity-and-why'),
+    activityCompletions: z.number().int().positive(),
+  }),
+  z.strictObject({
+    kind: z.literal('queue-edit-and-forecast'),
+  }),
+  z.strictObject({
+    kind: z.literal('wrinkle-day'),
+    maxUrgentEvents: z.number().int().min(0),
+    sample: z.literal('midnight'),
+  }),
+  z.strictObject({
+    kind: z.literal('practice-level'),
+    level: z.number().int().min(1).max(3),
+  }),
+  z.strictObject({
+    kind: z.literal('intention-bias'),
+    deliberateSelection: z.literal(true),
+  }),
+  z.strictObject({
+    kind: z.literal('balanced-streak'),
+    days: z.number().int().positive(),
+    practiceSessionsPerDay: z.number().int().positive(),
+    barsAtLeast: z.number().min(0).max(100),
+    maxUrgentEvents: z.number().int().min(0),
+    sampleAtWakeOffset: WakeOffset,
+  }),
+  z.strictObject({
+    kind: z.literal('letter-accepted'),
+    earliestDay: z.number().int().positive(),
+  }),
+]);
+export type GoalCondition = z.infer<typeof GoalConditionSchema>;
+
+const GoalRewardSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    id: StableContentIdSchema,
+    kind: z.literal('journal-unlock'),
+    labelStringId: StringRefSchema,
+  }),
+  z.strictObject({
+    id: StableContentIdSchema,
+    kind: z.literal('decoration'),
+    labelStringId: StringRefSchema,
+    decorationIds: z.array(StableContentIdSchema).min(1),
+  }),
+  z.strictObject({
+    id: StableContentIdSchema,
+    kind: z.literal('idle-variant'),
+    labelStringId: StringRefSchema,
+    idleVariantId: StableContentIdSchema,
+    fallback: z.literal('next-available'),
+  }),
+  z.strictObject({
+    id: StableContentIdSchema,
+    kind: z.literal('routine-memory'),
+    labelStringId: StringRefSchema,
+  }),
+  z.strictObject({
+    id: StableContentIdSchema,
+    kind: z.literal('chapter-handoff'),
+    labelStringId: StringRefSchema,
+  }),
+]);
+export type GoalReward = z.infer<typeof GoalRewardSchema>;
+
+export const GoalsSchema = z
+  .strictObject({
+    rewards: z.array(GoalRewardSchema).min(1),
+    goals: z
+      .array(
+        z.strictObject({
+          id: StableContentIdSchema,
+          order: z.number().int().positive(),
+          titleStringId: StringRefSchema,
+          instructionStringId: StringRefSchema,
+          rewardId: StableContentIdSchema,
+          condition: GoalConditionSchema,
+          requiresAutonomy: z
+            .enum(['full-routine', 'any'])
+            .default('any'),
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    addDuplicateIdIssues(doc.rewards, 'reward', ctx);
+    addDuplicateIdIssues(doc.goals, 'goal', ctx);
+    const orders = new Set<number>();
+    for (const goal of doc.goals) {
+      if (orders.has(goal.order)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `duplicate goal order "${goal.order}"`,
+        });
+      }
+      orders.add(goal.order);
+    }
+  });
+export type GoalsConfig = z.infer<typeof GoalsSchema>;
+export type GoalDef = GoalsConfig['goals'][number];
+
+const IntentionPolicySchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('balanced') }),
+  z.strictObject({
+    kind: z.literal('take-it-easy'),
+    suppressAnchorId: StableContentIdSchema,
+    favorQuickVariants: z.literal(true),
+  }),
+  z.strictObject({
+    kind: z.literal('get-moving'),
+    suggestActivityId: StableContentIdSchema,
+    waiveSecondWorkoutCrossCost: z.literal(true),
+  }),
+  z.strictObject({
+    kind: z.literal('eat-properly'),
+    preferActivityId: StableContentIdSchema,
+    wellFedThreshold: z.number().min(0).max(100),
+  }),
+  z.strictObject({
+    kind: z.literal('practice-focus'),
+    suggestedActivityId: StableContentIdSchema,
+    protectContiguousBlock: z.literal(true),
+  }),
+]);
+
+const IntentionBiasTargetSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('any-completed-activity') }),
+  z.strictObject({
+    kind: z.literal('activity'),
+    activityIds: z.array(StableContentIdSchema).min(1),
+  }),
+  z.strictObject({
+    kind: z.literal('activity-tag'),
+    tag: z.literal('workout'),
+  }),
+]);
+
+export const IntentionsSchema = z
+  .strictObject({
+    defaultId: StableContentIdSchema,
+    intentions: z
+      .array(
+        z.strictObject({
+          id: StableContentIdSchema,
+          labelStringId: StringRefSchema,
+          descriptionStringId: StringRefSchema,
+          policy: IntentionPolicySchema,
+          biasTarget: IntentionBiasTargetSchema,
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    addDuplicateIdIssues(doc.intentions, 'intention', ctx);
+  });
+export type IntentionsConfig = z.infer<typeof IntentionsSchema>;
+export type IntentionDef = IntentionsConfig['intentions'][number];
+
+const WrinkleWindowSchema = z
+  .tuple([WakeOffset, WakeOffset])
+  .refine(([start, end]) => start < end, 'wrinkle window must be non-empty');
+
+const WrinkleEffectSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('visitor'),
+    activityId: StableContentIdSchema,
+    window: WrinkleWindowSchema,
+    durationMin: z.number().int().positive(),
+    anchorPrecedence: z.literal('none'),
+  }),
+  z.strictObject({
+    kind: z.literal('blocked-object'),
+    objectId: StableContentIdSchema,
+    window: WrinkleWindowSchema,
+    fallbackActivityId: StableContentIdSchema,
+    anchorPrecedence: z.literal('blocks-object-only'),
+  }),
+  z.strictObject({
+    kind: z.literal('timed-window'),
+    activityId: StableContentIdSchema,
+    window: WrinkleWindowSchema,
+    collidingAnchorId: StableContentIdSchema,
+    replacementTargetOffsets: z.tuple([WakeOffset, WakeOffset]),
+    anchorPrecedence: z.literal('wrinkle-shifts-anchor'),
+  }),
+  z.strictObject({
+    kind: z.literal('slowed-activity'),
+    activityTag: z.literal('workout'),
+    durationFactor: z.number().gt(1).max(4),
+    clearActivityId: StableContentIdSchema,
+    anchorPrecedence: z.literal('anchor-remains'),
+  }),
+  z.strictObject({
+    kind: z.literal('free-time'),
+    wakeOffsetMin: z.number().int().negative().min(-180),
+    energy: z.literal(100),
+    anchorPrecedence: z.literal('wake-only'),
+  }),
+  z.strictObject({
+    kind: z.literal('forced-substitution'),
+    targetActivityId: StableContentIdSchema,
+    nutritionDelta: z.number().int().positive().max(100),
+    countsAsMeal: z.literal(false),
+    anchorPrecedence: z.literal('replaces-wake-meal'),
+  }),
+  z.strictObject({
+    kind: z.literal('availability-gate'),
+    activityIds: z.array(StableContentIdSchema).min(1),
+    availableAtWakeOffset: WakeOffset,
+    anchorPrecedence: z.literal('gate-wins'),
+  }),
+  z.strictObject({
+    kind: z.literal('wake-modifier'),
+    energy: z.number().int().min(1).max(99),
+    anchorPrecedence: z.literal('wake-only'),
+  }),
+]);
+export type WrinkleEffect = z.infer<typeof WrinkleEffectSchema>;
+
+const WrinkleSuccessSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('queue-slot-free'),
+    window: WrinkleWindowSchema,
+    durationMin: z.number().int().positive(),
+  }),
+  z.strictObject({
+    kind: z.literal('activity-completed'),
+    activityId: StableContentIdSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('one-of-activities-completed'),
+    activityIds: z.array(StableContentIdSchema).min(1),
+  }),
+  z.strictObject({
+    kind: z.literal('anchor-rescheduled'),
+    anchorId: StableContentIdSchema,
+    allowedTargetOffsets: z.array(WakeOffset).min(1),
+  }),
+]);
+export type WrinkleSuccess = z.infer<typeof WrinkleSuccessSchema>;
+
+const WrinkleActionSchema = z.strictObject({
+  id: StableContentIdSchema,
+  kind: z.enum([
+    'keep-slot-free',
+    'reroute-or-reschedule',
+    'reschedule-anchor',
+    'schedule-recovery',
+    'use-free-time',
+    'plan-recovery',
+    'use-alternative',
+    'recover-energy',
+  ]),
+  labelStringId: StringRefSchema,
+});
+
+const WrinkleVariantSchema = z.strictObject({
+  id: StableContentIdSchema,
+  titleStringId: StringRefSchema,
+  introStringId: StringRefSchema,
+  successStringId: StringRefSchema,
+  failureStringId: StringRefSchema,
+  outcomeStringId: StringRefSchema,
+  playerAction: WrinkleActionSchema,
+});
+
+export const WrinklesSchema = z
+  .strictObject({
+    quietDayWeight: z.number().int().min(0),
+    noRepeatDays: z.number().int().positive(),
+    entries: z
+      .array(
+        z.strictObject({
+          id: StableContentIdSchema,
+          firstDay: z.number().int().positive(),
+          effect: WrinkleEffectSchema,
+          success: WrinkleSuccessSchema,
+          variants: z.array(WrinkleVariantSchema).min(1),
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    addDuplicateIdIssues(doc.entries, 'wrinkle', ctx);
+    const variantIds = new Set<string>();
+    const actionIds = new Set<string>();
+    for (const entry of doc.entries) {
+      for (const variant of entry.variants) {
+        if (variantIds.has(variant.id)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `duplicate wrinkle variant id "${variant.id}"`,
+          });
+        }
+        variantIds.add(variant.id);
+        if (actionIds.has(variant.playerAction.id)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `duplicate wrinkle action id "${variant.playerAction.id}"`,
+          });
+        }
+        actionIds.add(variant.playerAction.id);
+      }
+    }
+  });
+export type WrinklesConfig = z.infer<typeof WrinklesSchema>;
+export type WrinkleDef = WrinklesConfig['entries'][number];
+
+const StoryletSourceSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('wrinkle-outcome'),
+    wrinkleId: StableContentIdSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('idle-moment'),
+    activityId: StableContentIdSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('milestone'),
+    goalId: StableContentIdSchema,
+  }),
+]);
+
+export const StoryletsSchema = z
+  .strictObject({
+    storylets: z
+      .array(
+        z.strictObject({
+          id: StableContentIdSchema,
+          source: StoryletSourceSchema,
+          stringId: StringRefSchema,
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    addDuplicateIdIssues(doc.storylets, 'storylet', ctx);
+  });
+export type StoryletsConfig = z.infer<typeof StoryletsSchema>;
+
+const PreferenceMechanicSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('chronotype'),
+    value: z.enum(['early', 'owl']),
+  }),
+  z.strictObject({
+    kind: z.literal('preferred-workout'),
+    activityId: StableContentIdSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('food-mood'),
+    value: z.enum(['proper-meals', 'grazer']),
+  }),
+  z.strictObject({
+    kind: z.literal('idle-variant'),
+    idleVariantId: StableContentIdSchema,
+  }),
+]);
+
+const PreferenceOptionSchema = z.strictObject({
+  id: StableContentIdSchema,
+  labelStringId: StringRefSchema,
+  mechanic: PreferenceMechanicSchema,
+});
+
+export const IdentitySchema = z
+  .strictObject({
+    appearancePresets: z
+      .array(
+        z.strictObject({
+          id: StableContentIdSchema,
+          labelStringId: StringRefSchema,
+          paletteId: StableContentIdSchema,
+        }),
+      )
+      .length(4),
+    preferenceCategories: z
+      .array(
+        z.strictObject({
+          id: StableContentIdSchema,
+          labelStringId: StringRefSchema,
+          alwaysActive: z.boolean(),
+          options: z.array(PreferenceOptionSchema).min(2),
+        }),
+      )
+      .min(1),
+  })
+  .superRefine((doc, ctx) => {
+    addDuplicateIdIssues(doc.appearancePresets, 'appearance preset', ctx);
+    addDuplicateIdIssues(doc.preferenceCategories, 'preference category', ctx);
+    const optionIds = new Set<string>();
+    for (const category of doc.preferenceCategories) {
+      for (const option of category.options) {
+        if (optionIds.has(option.id)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `duplicate preference option id "${option.id}"`,
+          });
+        }
+        optionIds.add(option.id);
+      }
+    }
+  });
+export type IdentityConfig = z.infer<typeof IdentitySchema>;
+
+export const StringCatalogSchema = z
+  .strictObject({
+    ids: z.array(StringRefSchema).min(1),
+  })
+  .superRefine((doc, ctx) => {
+    const seen = new Set<string>();
+    for (const id of doc.ids) {
+      if (seen.has(id)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `duplicate string id "${id}"`,
+        });
+      }
+      seen.add(id);
+    }
+  });
+export type StringCatalog = z.infer<typeof StringCatalogSchema>;

@@ -6,6 +6,9 @@ import type { Speed } from '../application/loop';
 import { SPEEDS } from '../application/loop';
 import { BAR_COLOR, BAR_ICON, BAR_ORDER, bandFor, bandForDefault, type BandName } from './bands';
 import { formatClock } from './clock-format';
+import { practiceLevel } from '../sim/practice-level';
+import { fillGoalCopy, goalStrings } from './goal-copy';
+import { settingsStrings } from './settings-copy';
 
 /**
  * The HUD (SPEC §11.1, P3 T7).
@@ -32,13 +35,33 @@ export interface HudProps {
   snapshot: SimSnapshot | null;
   speed: Speed;
   onSpeed: (speed: Speed) => void;
+  onOpenPause?: () => void;
+  onToggleMute?: () => void;
+  muted?: boolean;
   reducedMotion?: boolean;
+  nonColorUrgency?: boolean;
+  screenReaderVerbosity?: 'brief' | 'full';
 }
 
 const SCALABLE_TEXT = {
   allowFontScaling: true,
   maxFontSizeMultiplier: 2,
 } as const;
+
+function accessibleBandName(band: BandName): string {
+  return band === 'tick' ? 'warning' : band;
+}
+
+function briefValueLabel(
+  label: string,
+  value: number,
+  band: BandName,
+): string {
+  const base = `${label} ${Math.round(value)}`;
+  return band === 'normal'
+    ? base
+    : `${base}, ${accessibleBandName(band)}`;
+}
 
 /**
  * A bar trough with its band rendered, not just computed.
@@ -75,9 +98,24 @@ function Bar({
   );
 }
 
-export function Hud({ snapshot, speed, onSpeed, reducedMotion = false }: HudProps) {
+export function Hud({
+  snapshot,
+  speed,
+  onSpeed,
+  onOpenPause,
+  onToggleMute,
+  muted = false,
+  reducedMotion = false,
+  nonColorUrgency = true,
+  screenReaderVerbosity = 'brief',
+}: HudProps) {
   const health = snapshot?.health ?? 0;
   const healthBand = bandForDefault(health, content.rates).band;
+  const practicePoints = snapshot?.practicePoints ?? 0;
+  const currentPracticeLevel = practiceLevel(
+    Math.round(practicePoints * 100),
+    content.practice.levels,
+  );
 
   // design.md §8 says the alert state PULSES. One shared driver for every bar, so the
   // animation cost is constant regardless of how many bars are in crisis.
@@ -106,7 +144,11 @@ export function Hud({ snapshot, speed, onSpeed, reducedMotion = false }: HudProp
           <Text
             {...SCALABLE_TEXT}
             accessible
-            accessibilityLabel={`Health ${Math.round(health)} of 100, ${healthBand}`}
+            accessibilityLabel={
+              screenReaderVerbosity === 'full'
+                ? `Health ${Math.round(health)} of 100, ${accessibleBandName(healthBand)}`
+                : briefValueLabel('Health', health, healthBand)
+            }
             testID="hud-health-value"
             style={styles.healthValue}
           >
@@ -129,14 +171,25 @@ export function Hud({ snapshot, speed, onSpeed, reducedMotion = false }: HudProp
         {BAR_ORDER.map((bar) => {
           const value = snapshot?.bars[bar] ?? 0;
           const style = bandFor(bar, value, content.rates);
-          const icon = style.alertGlyph ? BAR_ICON[bar].alert : BAR_ICON[bar].normal;
+          const icon =
+            nonColorUrgency && style.alertGlyph
+              ? BAR_ICON[bar].alert
+              : BAR_ICON[bar].normal;
           return (
             <View key={bar} style={styles.subRow}>
               <Text
                 {...SCALABLE_TEXT}
                 accessible
                 style={[styles.icon, style.band === 'alert' && styles.iconAlert]}
-                accessibilityLabel={`${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${style.band}`}
+                accessibilityLabel={
+                  screenReaderVerbosity === 'full'
+                    ? `${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${accessibleBandName(style.band)}`
+                    : briefValueLabel(
+                        BAR_ICON[bar].label,
+                        value,
+                        style.band,
+                      )
+                }
                 testID={`hud-bar:${bar}`}
               >
                 {icon}
@@ -158,16 +211,28 @@ export function Hud({ snapshot, speed, onSpeed, reducedMotion = false }: HudProp
         <Text
           {...SCALABLE_TEXT}
           accessible
-          accessibilityLabel={`Practice ${(snapshot?.practicePoints ?? 0).toFixed(0)} points`}
+          accessibilityLabel={fillGoalCopy(
+            goalStrings.ui.practiceAccessibility,
+            {
+              level: currentPracticeLevel,
+              points: practicePoints.toFixed(0),
+            },
+          )}
           testID="hud-practice"
           style={styles.practice}
         >
-          {`practice ${(snapshot?.practicePoints ?? 0).toFixed(0)}`}
+          {fillGoalCopy(goalStrings.ui.practiceSummary, {
+            level: currentPracticeLevel,
+            points: practicePoints.toFixed(0),
+          })}
         </Text>
       </View>
 
       {/* Top-right: clock block + speed controls (§11.1) */}
-      <View style={[styles.block, styles.clockBlock]}>
+      <View
+        style={[styles.block, styles.clockBlock]}
+        testID="hud-clock-block"
+      >
         <Text
           {...SCALABLE_TEXT}
           accessible
@@ -191,6 +256,34 @@ export function Hud({ snapshot, speed, onSpeed, reducedMotion = false }: HudProp
               <Text {...SCALABLE_TEXT} style={[styles.speedText, speed === s && styles.speedTextActive]}>{s === 0 ? '❚❚' : `${s}×`}</Text>
             </Pressable>
           ))}
+        </View>
+        <View style={styles.metaRow} testID="hud-meta-controls">
+          <Pressable
+            accessibilityLabel={settingsStrings.pause.open}
+            accessibilityRole="button"
+            onPress={onOpenPause}
+            style={styles.metaButton}
+            testID="open-pause-menu"
+          >
+            <Text {...SCALABLE_TEXT} style={styles.metaButtonText}>
+              ⚙
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={
+              muted
+                ? settingsStrings.settings.audio.unmuted
+                : settingsStrings.settings.audio.mute
+            }
+            accessibilityRole="button"
+            onPress={onToggleMute}
+            style={styles.metaButton}
+            testID="toggle-mute"
+          >
+            <Text {...SCALABLE_TEXT} style={styles.metaButtonText}>
+              {muted ? '🔇' : '♪'}
+            </Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -238,6 +331,11 @@ const styles = StyleSheet.create({
   practice: { fontFamily: 'monospace', fontSize: 10, color: GOLD, marginTop: 2 },
   clock: { fontFamily: 'monospace', fontSize: 13, color: INK, fontVariant: ['tabular-nums'] },
   speedRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+  },
   speedBtn: {
     minWidth: 44,
     minHeight: 44,
@@ -251,4 +349,20 @@ const styles = StyleSheet.create({
   speedBtnActive: { backgroundColor: INK },
   speedText: { fontFamily: 'monospace', fontSize: 11, color: INK },
   speedTextActive: { color: CREAM_LIGHT },
+  metaButton: {
+    alignItems: 'center',
+    backgroundColor: CREAM_LIGHT,
+    borderColor: INK,
+    borderRadius: 3,
+    borderWidth: 2,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  metaButtonText: {
+    color: INK,
+    fontFamily: 'monospace',
+    fontSize: 16,
+    fontWeight: '800',
+  },
 });

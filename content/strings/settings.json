@@ -1,0 +1,85 @@
+{
+  "pause": {
+    "open": "Pause menu",
+    "title": "Paused",
+    "resume": "Resume",
+    "settings": "Settings",
+    "goals": "Goals & Journal",
+    "newGame": "New Game",
+    "returnTitle": "Return to Title"
+  },
+  "settings": {
+    "title": "Settings",
+    "back": "Back",
+    "audio": {
+      "title": "Audio",
+      "master": "Master",
+      "music": "Music",
+      "sfx": "Sound effects",
+      "mute": "Mute everything",
+      "muted": "Sound muted.",
+      "unmuted": "Sound on."
+    },
+    "gameplay": {
+      "title": "Gameplay",
+      "defaultSpeed": "Default speed",
+      "sleepSkip": "Skip quiet night sleep",
+      "intentionPrompt": "Morning intention prompt",
+      "autonomy": "Autonomy",
+      "fullRoutine": "Full routine",
+      "essentialsOnly": "Essentials only",
+      "reactiveOnly": "Reactive only"
+    },
+    "display": {
+      "title": "Display",
+      "reducedMotion": "Reduced motion",
+      "system": "Use system setting",
+      "on": "On",
+      "off": "Off",
+      "hudScale": "HUD text size",
+      "fractionalScaling": "Allow fractional scaling"
+    },
+    "accessibility": {
+      "title": "Accessibility",
+      "nonColorUrgency": "Extra urgency shapes",
+      "verbosity": "Screen-reader detail",
+      "brief": "Brief",
+      "full": "Full"
+    },
+    "controls": {
+      "title": "Controls",
+      "reference": "Space pause · 1/2/3 speed · Esc menu · Q queue · arrows move · Enter card menu · Delete remove · X stop · A activities · G goals · M mute · U undo"
+    },
+    "sim": {
+      "title": "Sim",
+      "name": "Name",
+      "pronouns": "Pronouns",
+      "save": "Save identity"
+    },
+    "data": {
+      "title": "Data",
+      "lastSaved": "Last saved",
+      "neverSaved": "Not saved yet",
+      "reset": "Reset save"
+    },
+    "about": {
+      "title": "About",
+      "appVersion": "App version",
+      "engineVersion": "Engine version",
+      "credits": "Made by Joe and a small, stubborn sim."
+    }
+  },
+  "confirm": {
+    "newGameTitle": "Start a different life?",
+    "newGameBody": "Your current life stays safe until the new one is saved.",
+    "resetTitle": "Reset this save?",
+    "resetBody": "This starts identity setup and replaces the career after the new save is ready.",
+    "cancel": "Not now",
+    "continue": "Yes, start over"
+  },
+  "errors": {
+    "settingsSave": "That setting did not save. Try again.",
+    "careerSave": "This life did not save. It is still open here.",
+    "returnTitle": "The save did not finish, so the game stayed open."
+  }
+}

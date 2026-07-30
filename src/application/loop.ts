@@ -7,12 +7,37 @@ import {
   type SimSnapshot,
 } from '../sim/step';
 import type { ContentRegistry } from '../sim/content';
-import { dayNumber, minuteOfDay, targetsFor, TICKS_PER_DAY } from '../sim/clock';
+import {
+  dayNumber,
+  minuteOfDay,
+  morningCheckMinute,
+  targetsFor,
+  TICKS_PER_DAY,
+} from '../sim/clock';
 import { restoreSimState, type SimState } from '../sim/state';
-import { newSession, resetSession as resetGameSession, type SessionState } from '../game/session';
+import {
+  newSession,
+  restoreSession,
+  type GameObservation,
+  type SessionState,
+} from '../game/session';
 import { advanceGame, type GameAction } from '../game/tick';
+import { dealWrinkleForDay } from '../game/wrinkles';
+import { appendDailyStorylet } from '../game/storylets';
+import { offerLetterIfDue } from '../game/letter';
 import { ForecastCache } from './forecast-cache';
 import { composeSnapshot, type GameSnapshot } from './snapshot';
+import {
+  DEFAULT_SIM_RULES,
+  restoreSimRules,
+  type SimRules,
+} from '../sim/rules';
+import type { CareerPayload } from './career-state';
+import {
+  PrngSnapshotSchema,
+  PrngStreams,
+  type PrngSnapshot,
+} from '../sim/prng';
 
 /**
  * The live tick loop (master §4: `application/` owns it, and only it).
@@ -80,13 +105,30 @@ export function ticksToRun(accumulatorMs: number, elapsedMs: number, speed: Spee
 export interface LoopObserver {
   onSnapshot?: (snapshot: GameSnapshot) => void;
   onEvents?: (events: readonly DomainEvent[]) => void;
+  onBoundary?: (boundary: CompletedBoundary) => void;
   /** Lifecycle changes only; countdown frames do not force React re-renders. */
   onUndoToast?: (toast: UndoToast | null) => void;
+}
+
+export interface CompletedBoundary {
+  events: readonly DomainEvent[];
+  outcomes: readonly CommandOutcome[];
+  actions: readonly GameAction[];
+  observation: GameObservation;
+  /** A pure pre-sim game reducer announced today's saved wrinkle. */
+  wrinkleDealt?: boolean;
 }
 
 export interface LoopOptions {
   /** Product setting seam; live play defaults on, deterministic watched-day tools opt out. */
   sleepSkipEnabled?: boolean;
+  /** Announced mechanical truth shared by live step and forecast. */
+  simRules?: SimRules;
+  /** Called exactly once for each complete minute boundary. */
+  simRulesForBoundary?: (
+    sim: SimState,
+    session: SessionState,
+  ) => SimRules;
 }
 
 export interface UndoToast {
@@ -101,7 +143,12 @@ export interface UndoToast {
 export class GameLoop {
   private state: SimState;
   private readonly initialState: SimState;
-  private sessionState: SessionState = newSession();
+  private sessionState: SessionState;
+  private readonly initialSessionState: SessionState;
+  private prngState: PrngSnapshot;
+  private readonly initialPrngState: PrngSnapshot;
+  private readonly initialPending: Command[];
+  private readonly initialPendingActions: GameAction[];
   private readonly forecastCache = new ForecastCache();
   private commitmentRevision = 0;
   private accumulatorMs = 0;
@@ -117,15 +164,74 @@ export class GameLoop {
   private frozenAlpha = 0;
   private sleepSkipIdleMsValue = 0;
   private sleepSkipCandidateKey: string | null = null;
+  private simRules: SimRules;
+  private sleepSkipEnabledValue: boolean;
 
   constructor(
-    initial: SimState,
+    initial: SimState | CareerPayload,
     private readonly content: ContentRegistry,
     private readonly observer: LoopObserver = {},
     private readonly options: LoopOptions = {},
   ) {
-    this.initialState = restoreSimState(JSON.parse(JSON.stringify(initial)));
-    this.state = restoreSimState(JSON.parse(JSON.stringify(initial)));
+    const career =
+      'sim' in initial && 'game' in initial ? initial : null;
+    const initialSim = restoreSimState(
+      JSON.parse(JSON.stringify(career?.sim ?? initial)),
+    );
+    if (
+      career !== null &&
+      initialSim.removalReceipt !== null &&
+      !career.pendingCommands.some(
+        (command) =>
+          command.type === 'undoLastRemove' &&
+          command.receiptId === initialSim.removalReceipt?.id,
+      )
+    ) {
+      initialSim.removalReceipt = null;
+    }
+    this.simRules = restoreSimRules(
+      JSON.parse(
+        JSON.stringify(options.simRules ?? DEFAULT_SIM_RULES),
+      ),
+    );
+    this.sleepSkipEnabledValue = options.sleepSkipEnabled !== false;
+    this.initialState = restoreSimState(
+      JSON.parse(JSON.stringify(initialSim)),
+    );
+    this.state = restoreSimState(JSON.parse(JSON.stringify(initialSim)));
+    const restoredInitialSession = restoreSession(
+      JSON.parse(JSON.stringify(career?.game ?? newSession())),
+    );
+    const initialGame = offerLetterIfDue(
+      restoredInitialSession,
+      dayNumber(initialSim.clock.absoluteMinute),
+    );
+    this.initialSessionState = restoreSession(
+      JSON.parse(JSON.stringify(initialGame)),
+    );
+    this.sessionState = restoreSession(
+      JSON.parse(JSON.stringify(this.initialSessionState)),
+    );
+    this.initialPrngState = PrngSnapshotSchema.parse(
+      JSON.parse(
+        JSON.stringify(
+          career?.prng ?? PrngStreams.create(0).serialize(),
+        ),
+      ),
+    );
+    this.prngState = PrngSnapshotSchema.parse(
+      JSON.parse(JSON.stringify(this.initialPrngState)),
+    );
+    this.initialPending = JSON.parse(
+      JSON.stringify(career?.pendingCommands ?? []),
+    ) as Command[];
+    this.initialPendingActions = JSON.parse(
+      JSON.stringify(career?.pendingGameActions ?? []),
+    ) as GameAction[];
+    this.pending = JSON.parse(JSON.stringify(this.initialPending)) as Command[];
+    this.pendingActions = JSON.parse(
+      JSON.stringify(this.initialPendingActions),
+    ) as GameAction[];
     // The renderer must always have something to draw: the world exists at t=0, and a
     // game opened paused would otherwise show a blank screen until the first tick.
     this.lastSimSnapshot = buildSnapshot(this.state, content);
@@ -170,11 +276,62 @@ export class GameLoop {
     return this.state;
   }
 
+  /** Application-owned deterministic streams, exposed only for save composition. */
+  peekPrng(): PrngSnapshot {
+    return PrngSnapshotSchema.parse(
+      JSON.parse(JSON.stringify(this.prngState)),
+    );
+  }
+
+  /**
+   * One complete deterministic checkpoint. Presentation-only state such as
+   * interpolation, speed, open panels, and the Undo toast stays outside it.
+   */
+  exportCareerPayload(base: CareerPayload): CareerPayload {
+    const pending = this.pendingBoundaryWork;
+    return {
+      ...JSON.parse(JSON.stringify(base)) as CareerPayload,
+      sim: restoreSimState(JSON.parse(JSON.stringify(this.state))),
+      game: restoreSession(JSON.parse(JSON.stringify(this.sessionState))),
+      prng: this.peekPrng(),
+      pendingCommands: pending.commands,
+      pendingGameActions: pending.actions,
+    };
+  }
+
+  /** Accepted work waiting for the next complete minute boundary. */
+  get pendingBoundaryWork(): {
+    commands: Command[];
+    actions: GameAction[];
+  } {
+    return {
+      commands: JSON.parse(JSON.stringify(this.pending)) as Command[],
+      actions: JSON.parse(
+        JSON.stringify(this.pendingActions),
+      ) as GameAction[],
+    };
+  }
+
   setSpeed(speed: Speed): void {
     if (speed === this.speedValue) return; // idempotent: mashing a button must not stall the clock
     this.retimeTo(speed === 0 ? 0 : speed);
     this.speedValue = speed;
     this.rebuildAccumulator();
+    if (speed === 0) this.flushPlayerPausedCommands();
+  }
+
+  setSleepSkipEnabled(enabled: boolean): void {
+    this.sleepSkipEnabledValue = enabled;
+    this.syncSleepSkipCandidate();
+  }
+
+  /** Refresh announced policy and the forecast without advancing a minute. */
+  setSimRules(rules: SimRules): void {
+    this.simRules = restoreSimRules(
+      JSON.parse(JSON.stringify(rules)),
+    );
+    this.lastSnapshot = this.compose(this.lastSimSnapshot);
+    this.observer.onSnapshot?.(this.lastSnapshot);
   }
 
   /**
@@ -224,9 +381,10 @@ export class GameLoop {
     this.rebuildAccumulator();
   }
 
-  /** Queue a command for the next minute boundary (step() applies commands in stage 1). */
+  /** Queue a command for the next minute boundary, or apply it now during a player pause. */
   enqueue(command: Command): void {
     this.pending.push(command);
+    this.flushPlayerPausedCommands();
   }
 
   /** Queue a serializable UI observation for the next top-level game tick. */
@@ -252,6 +410,7 @@ export class GameLoop {
     this.undoToastState = null;
     this.observer.onUndoToast?.(null);
     this.pending.push({ type: 'undoLastRemove', receiptId });
+    this.flushPlayerPausedCommands();
     return true;
   }
 
@@ -273,14 +432,21 @@ export class GameLoop {
    */
   reset(): GameSnapshot {
     this.state = restoreSimState(JSON.parse(JSON.stringify(this.initialState)));
-    this.sessionState = resetGameSession();
+    this.sessionState = restoreSession(
+      JSON.parse(JSON.stringify(this.initialSessionState)),
+    );
+    this.prngState = PrngSnapshotSchema.parse(
+      JSON.parse(JSON.stringify(this.initialPrngState)),
+    );
     this.forecastCache.reset();
     this.commitmentRevision = 0;
     this.accumulatorMs = 0;
     this.speedValue = 1;
     this.pausedBySystem = false;
-    this.pending = [];
-    this.pendingActions = [];
+    this.pending = JSON.parse(JSON.stringify(this.initialPending)) as Command[];
+    this.pendingActions = JSON.parse(
+      JSON.stringify(this.initialPendingActions),
+    ) as GameAction[];
     this.undoToastState = null;
     this.observer.onUndoToast?.(null);
     this.droppedFrames = 0;
@@ -298,15 +464,22 @@ export class GameLoop {
   /** Advance by wall-clock milliseconds. Returns how many ticks actually ran. */
   advance(elapsedMs: number): number {
     this.elapsePresentationTime(elapsedMs);
+    if (this.isLetterDue()) return 0;
     const plan = ticksToRun(this.accumulatorMs, elapsedMs, this.effectiveSpeed);
     this.accumulatorMs = plan.accumulatorMs;
     if (plan.dropped) this.droppedFrames += 1;
-    for (let i = 0; i < plan.ticks; i++) this.runOneTick();
+    let watchedTicks = 0;
+    for (let i = 0; i < plan.ticks; i++) {
+      this.runOneTickInternal(true);
+      watchedTicks += 1;
+      if (this.isLetterDue()) break;
+    }
     const skippedTicks =
+      !this.isLetterDue() &&
       this.sleepSkipIdleMsValue >= SLEEP_SKIP_IDLE_MS
         ? this.skipNightToWake()
         : 0;
-    return plan.ticks + skippedTicks;
+    return watchedTicks + skippedTicks;
   }
 
   /**
@@ -321,8 +494,70 @@ export class GameLoop {
     this.elapseSleepSkipIdle(elapsedMs);
   }
 
+  /**
+   * A player pause freezes time, not planning. Apply queue commands through
+   * stage 1 only so the rail and forecast respond immediately while every
+   * time-bearing system remains unchanged. A system/background pause retains
+   * pending input for the next foreground boundary.
+   */
+  private flushPlayerPausedCommands(): void {
+    if (
+      this.speedValue !== 0 ||
+      this.pausedBySystem ||
+      this.isLetterDue() ||
+      this.pending.length === 0
+    ) {
+      return;
+    }
+    const commands = this.pending;
+    this.pending = [];
+    const result = step(
+      this.state,
+      commands,
+      this.content,
+      this.simRules,
+      { commandsOnly: true },
+    );
+    this.state = result.next;
+    this.applyCommandOutcomes(result.outcomes, true);
+    const observation = this.gameObservation();
+    this.sessionState = advanceGame(
+      this.sessionState,
+      result.events,
+      [],
+      result.outcomes,
+      observation,
+      this.content,
+      {
+        autonomy: this.simRules.autonomy,
+        practicePoints100: this.state.practice.points100,
+      },
+    ).session;
+    this.lastSimSnapshot = result.snapshot;
+    this.lastSnapshot = this.compose(result.snapshot);
+    this.syncSleepSkipCandidate();
+    this.observer.onBoundary?.({
+      events: result.events,
+      outcomes: result.outcomes,
+      actions: [],
+      observation,
+    });
+    if (result.events.length > 0) {
+      this.observer.onEvents?.(result.events);
+    }
+    this.observer.onSnapshot?.(this.lastSnapshot);
+  }
+
   /** Run exactly one tick regardless of timing — used by tests and by step-through debugging. */
   runOneTick(): GameSnapshot {
+    if (
+      this.sessionState.letter.status === 'due' &&
+      !this.pendingActions.some(
+        (action) => action.type === 'letterResponded',
+      )
+    ) {
+      return this.lastSnapshot;
+    }
     return this.runOneTickInternal(true).snapshot;
   }
 
@@ -336,7 +571,12 @@ export class GameLoop {
    */
   skipNightToWake(): number {
     this.syncSleepSkipCandidate();
-    if (this.sleepSkipCandidateKey === null) return 0;
+    if (
+      this.sleepSkipCandidateKey === null ||
+      this.isLetterDue()
+    ) {
+      return 0;
+    }
 
     const wakeTarget = targetsFor(this.state.chronotype, this.content.rates).wake;
     const now = minuteOfDay(this.state.clock.absoluteMinute);
@@ -345,16 +585,19 @@ export class GameLoop {
 
     const events: DomainEvent[] = [];
     let undoToastChanged = false;
+    let ticksRun = 0;
     for (let i = 0; i < ticksToWake; i++) {
       const tick = this.runOneTickInternal(false);
+      ticksRun += 1;
       events.push(...tick.events);
       undoToastChanged = undoToastChanged || tick.undoToastChanged;
+      if (this.isLetterDue()) break;
     }
 
     if (undoToastChanged) this.observer.onUndoToast?.(this.undoToastState);
     if (events.length > 0) this.observer.onEvents?.(events);
     this.observer.onSnapshot?.(this.lastSnapshot);
-    return ticksToWake;
+    return ticksRun;
   }
 
   private runOneTickInternal(publish: boolean): {
@@ -362,6 +605,18 @@ export class GameLoop {
     events: readonly DomainEvent[];
     undoToastChanged: boolean;
   } {
+    const prepared = dealWrinkleForDay(
+      this.sessionState,
+      this.prngState,
+      dayNumber(this.state.clock.absoluteMinute),
+      this.content,
+    );
+    const boundarySession = prepared.session;
+    if (this.options.simRulesForBoundary !== undefined) {
+      this.simRules = restoreSimRules(
+        this.options.simRulesForBoundary(this.state, boundarySession),
+      );
+    }
     const commands = [
       ...this.gameCommandsForCurrentTick(),
       ...this.pending,
@@ -369,22 +624,46 @@ export class GameLoop {
     this.pending = [];
     const actions = this.pendingActions;
     this.pendingActions = [];
-    const r = step(this.state, commands, this.content);
+    const r = step(this.state, commands, this.content, this.simRules);
     this.state = r.next;
+    this.prngState = prepared.prng;
     const undoToastChanged = this.applyCommandOutcomes(r.outcomes, publish);
+    const observation = this.gameObservation();
     // Phase 3 of the top-level tick (see game/tick.ts): fold this tick's events into the
     // session *before* publishing, so an observer never sees a snapshot whose session has
     // not caught up with it.
-    this.sessionState = advanceGame(
-      this.sessionState,
+    const advancedGame = advanceGame(
+      boundarySession,
       r.events,
       actions,
       r.outcomes,
+      observation,
+      this.content,
+      {
+        autonomy: this.simRules.autonomy,
+        practicePoints100: this.state.practice.points100,
+      },
     ).session;
+    const storylet = appendDailyStorylet(
+      advancedGame,
+      this.prngState,
+      r.events,
+      observation,
+      this.content,
+    );
+    this.sessionState = storylet.session;
+    this.prngState = storylet.prng;
     this.lastSimSnapshot = r.snapshot;
     this.lastSnapshot = this.compose(r.snapshot);
     this.ticksRun += 1;
     this.syncSleepSkipCandidate();
+    this.observer.onBoundary?.({
+      events: r.events,
+      outcomes: r.outcomes,
+      actions,
+      observation,
+      wrinkleDealt: prepared.changed,
+    });
     if (publish) {
       if (r.events.length > 0) this.observer.onEvents?.(r.events);
       this.observer.onSnapshot?.(this.lastSnapshot);
@@ -401,8 +680,39 @@ export class GameLoop {
       this.state,
       this.content,
       this.commitmentRevision,
+      this.simRules,
     );
     return composeSnapshot(snapshot, cached, this.sessionState);
+  }
+
+  private gameObservation(): GameObservation {
+    const currentActivityId = (() => {
+      if (this.state.current === null) return null;
+      if (this.state.current.type === 'activity') {
+        return this.state.current.dto.activityId;
+      }
+      if (this.state.current.type === 'sleep') return 'sleep';
+      return (
+        this.state.queue.find(
+          (card) => card.id === this.state.current?.cardId,
+        )?.activityId ?? null
+      );
+    })();
+    const currentMinuteOfDay = minuteOfDay(
+      this.state.clock.absoluteMinute,
+    );
+    return Object.freeze({
+      day: dayNumber(this.state.clock.absoluteMinute),
+      absoluteMinute: this.state.clock.absoluteMinute,
+      minuteOfDay: currentMinuteOfDay,
+      isMidnight: currentMinuteOfDay === 0,
+      isMorningCheck:
+        currentMinuteOfDay ===
+        morningCheckMinute(this.state.chronotype, this.content.rates),
+      bars: Object.freeze({ ...this.state.bars }),
+      currentActivityId,
+      urgentCount: this.state.events.urgentCount,
+    });
   }
 
   /**
@@ -457,7 +767,8 @@ export class GameLoop {
   }
 
   private sleepSkipKeyForCurrentState(): string | null {
-    if (this.options.sleepSkipEnabled === false) return null;
+    if (!this.sleepSkipEnabledValue) return null;
+    if (this.isLetterDue()) return null;
     if (this.state.current?.type !== 'sleep') return null;
 
     const wakeTarget = targetsFor(this.state.chronotype, this.content.rates).wake;
@@ -488,6 +799,10 @@ export class GameLoop {
     } else if (nextKey === null) {
       this.sleepSkipIdleMsValue = 0;
     }
+  }
+
+  private isLetterDue(): boolean {
+    return this.sessionState.letter.status === 'due';
   }
 
   private elapseSleepSkipIdle(elapsedMs: number): void {

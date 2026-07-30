@@ -1,4 +1,9 @@
-import { adjacencyMatches, step } from './step';
+import {
+  adjacencyMatches,
+  cardStartDecision,
+  step,
+  type CardStartDecision,
+} from './step';
 import { restoreSimState, type SimState } from './state';
 import { toDisplay } from './fixed';
 import { minuteOfDay, targetsFor, TICKS_PER_DAY } from './clock';
@@ -9,6 +14,7 @@ import {
 } from './content';
 import type { QueueCard, QueueReason } from './queue';
 import type { BarId } from './types';
+import { DEFAULT_SIM_RULES, type SimRules } from './rules';
 
 export interface ForecastEntry {
   cardId: string;
@@ -29,6 +35,11 @@ export interface ForecastAnnotation {
   capWaste: Partial<Record<BarId, number>>;
   /** Bonuses sampled by the real start path, attached to the card that earns them. */
   bonuses: ForecastBonus[];
+  /** Current announced wrinkle gate. Null means the card can begin normally. */
+  startConstraint?: Exclude<
+    CardStartDecision,
+    { kind: 'start' }
+  > | null;
 }
 
 type AdjacencyEffect =
@@ -68,7 +79,18 @@ export interface ForecastResult {
   barsAtHorizon: Record<BarId, number>;
 }
 
-function emptyAnnotation(card: QueueCard, content: ContentRegistry): ForecastAnnotation {
+function emptyAnnotation(
+  state: SimState,
+  card: QueueCard,
+  content: ContentRegistry,
+  rules: SimRules,
+): ForecastAnnotation {
+  const startConstraint = forecastStartConstraint(
+    state,
+    card,
+    content,
+    rules,
+  );
   return {
     cardId: card.id,
     activityId: card.activityId,
@@ -78,6 +100,21 @@ function emptyAnnotation(card: QueueCard, content: ContentRegistry): ForecastAnn
     effects: {},
     capWaste: {},
     bonuses: [],
+    ...(startConstraint === null ? {} : { startConstraint }),
+  };
+}
+
+function forecastStartConstraint(
+  state: SimState,
+  card: QueueCard,
+  content: ContentRegistry,
+  rules: SimRules,
+): NonNullable<ForecastAnnotation['startConstraint']> | null {
+  const decision = cardStartDecision(state, card, content, rules);
+  if (decision.kind === 'start') return null;
+  return {
+    ...decision,
+    source: { ...decision.source },
   };
 }
 
@@ -103,6 +140,13 @@ function freezeForecast(result: ForecastResult): ForecastResult {
       Object.freeze(bonus);
     }
     Object.freeze(annotation.bonuses);
+    if (
+      annotation.startConstraint !== null &&
+      annotation.startConstraint !== undefined
+    ) {
+      Object.freeze(annotation.startConstraint.source);
+      Object.freeze(annotation.startConstraint);
+    }
     Object.freeze(annotation);
   }
   Object.freeze(result.annotations);
@@ -224,7 +268,11 @@ function pinnedWakeChain(state: SimState): string[] {
  * live streams), so a forecast can never advance or spoil the real run's draws;
  * undealt wrinkles (P5) are absent by construction.
  */
-export function forecast(state: SimState, content: ContentRegistry): ForecastResult {
+export function forecast(
+  state: SimState,
+  content: ContentRegistry,
+  rules: SimRules = DEFAULT_SIM_RULES,
+): ForecastResult {
   // Deep-clone through the validator: guarantees we run on plain data, not aliases.
   let sim = restoreSimState(JSON.parse(JSON.stringify(state)));
   const wakeTarget = targetsFor(sim.chronotype, content.rates).wake;
@@ -237,10 +285,49 @@ export function forecast(state: SimState, content: ContentRegistry): ForecastRes
   const conflicts: ForecastResult['conflicts'] = [];
   const conflictSeen = new Set<string>();
   const annotations = new Map<string, ForecastAnnotation>();
-  const ensureAnnotation = (card: QueueCard): ForecastAnnotation => {
+  const ensureAnnotation = (
+    card: QueueCard,
+    atState: SimState = sim,
+  ): ForecastAnnotation => {
     const existing = annotations.get(card.id);
-    if (existing !== undefined) return existing;
-    const created = emptyAnnotation(card, content);
+    const startConstraint = forecastStartConstraint(
+      atState,
+      card,
+      content,
+      rules,
+    );
+    if (existing !== undefined) {
+      if (
+        existing.activityId !== card.activityId ||
+        (
+          existing.startConstraint == null &&
+          startConstraint !== null
+        )
+      ) {
+        const chosenConstraint =
+          existing.startConstraint ?? startConstraint;
+        const updated = {
+          cardId: existing.cardId,
+          activityId: card.activityId,
+          predictedStartMinute: existing.predictedStartMinute,
+          reason: existing.reason,
+          targetObjectId: objectForActivityIn(
+            content,
+            card.activityId,
+          ).id,
+          effects: existing.effects,
+          capWaste: existing.capWaste,
+          bonuses: existing.bonuses,
+          ...(chosenConstraint === null
+            ? {}
+            : { startConstraint: chosenConstraint }),
+        };
+        annotations.set(card.id, updated);
+        return updated;
+      }
+      return existing;
+    }
+    const created = emptyAnnotation(atState, card, content, rules);
     annotations.set(card.id, created);
     return created;
   };
@@ -249,12 +336,13 @@ export function forecast(state: SimState, content: ContentRegistry): ForecastRes
   for (let t = 0; t < horizonTicks; t++) {
     // The minute ABOUT TO RUN — snapshot.minuteOfDay is post-advance, one late
     // for a start that happens THIS tick (round-2 math finding).
+    const tickAbsoluteMinute = sim.clock.absoluteMinute;
     const tickMinute = minuteOfDay(sim.clock.absoluteMinute);
     const barsAtStart = { ...sim.bars };
     const stateAtStart = sim;
     for (const card of sim.queue) ensureAnnotation(card);
     const before = sim.current;
-    const r = step(sim, [], content);
+    const r = step(sim, [], content, rules);
     sim = r.next;
     for (const card of sim.queue) ensureAnnotation(card);
     const after = sim.current;
@@ -291,7 +379,12 @@ export function forecast(state: SimState, content: ContentRegistry): ForecastRes
           predictedStartMinute: tickMinute,
           effects,
           capWaste,
-          bonuses: bonusesAtStart(stateAtStart, after!, tickMinute, content),
+          bonuses: bonusesAtStart(
+            stateAtStart,
+            after!,
+            tickAbsoluteMinute,
+            content,
+          ),
         });
       }
     }
@@ -314,7 +407,7 @@ export function forecast(state: SimState, content: ContentRegistry): ForecastRes
   const simAtHorizon = sim;
   let atWake = sim;
   for (let t = horizonTicks; t < ticksToWake; t++) {
-    atWake = step(atWake, [], content).next;
+    atWake = step(atWake, [], content, rules).next;
   }
   const wakeResponsibleCardIds = pinnedWakeChain(atWake);
   const wakeConflicts: ForecastWakeConflict[] =

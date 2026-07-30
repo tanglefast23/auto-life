@@ -5,83 +5,620 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
   "chronotype": "baseline",
   "digest": {
     "bars": {
-      "energy": 100,
-      "hygiene": 59,
-      "movement": 78.93,
-      "nutrition": 54.53,
+      "energy": 33.25,
+      "hygiene": 65.08,
+      "movement": 94.17,
+      "nutrition": 82.53,
     },
-    "clock": 1860,
-    "fullStateSha256": "20c91a9fa7c887b75c2b02fa927cc340c1ae78fc1930362cb66d719f3b7ea842",
-    "queue": [],
+    "clock": 15840,
+    "dealtWrinkleMechanics": [
+      {
+        "day": 1,
+        "mechanic": "visitor",
+        "resolved": true,
+        "wrinkleId": "package-delivery",
+      },
+      {
+        "day": 4,
+        "mechanic": "slowed-activity",
+        "resolved": true,
+        "wrinkleId": "headache-day",
+      },
+      {
+        "day": 5,
+        "mechanic": "wake-modifier",
+        "resolved": true,
+        "wrinkleId": "rough-night",
+      },
+      {
+        "day": 6,
+        "mechanic": "timed-window",
+        "resolved": true,
+        "wrinkleId": "favorite-show",
+      },
+      {
+        "day": 7,
+        "mechanic": "availability-gate",
+        "resolved": true,
+        "wrinkleId": "empty-fridge",
+      },
+      {
+        "day": 9,
+        "mechanic": "blocked-object",
+        "resolved": true,
+        "wrinkleId": "repair-visit",
+      },
+      {
+        "day": 10,
+        "mechanic": "forced-substitution",
+        "resolved": true,
+        "wrinkleId": "burned-breakfast",
+      },
+      {
+        "day": 11,
+        "mechanic": "free-time",
+        "resolved": true,
+        "wrinkleId": "slept-great",
+      },
+    ],
+    "fullStateSha256": "141101f2b3b8b6a81c990b886c44e0fe6e03f7e2b67eb0a35f50034af6c3324e",
+    "identity": {
+      "activePreferenceCategoryIds": [
+        "chronotype",
+        "workout",
+      ],
+      "appearancePresetId": "morning-blue",
+      "foodMoodId": null,
+      "idlePreferenceId": null,
+      "name": "Alex",
+      "pronouns": {
+        "object": "them",
+        "possessive": "their",
+        "subject": "they",
+      },
+    },
+    "intentionDays": [
+      {
+        "day": 2,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 3,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 4,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 5,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 6,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 7,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 8,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 9,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+      {
+        "day": 10,
+        "followed": true,
+        "intentionId": "practice-focus",
+      },
+    ],
+    "queue": [
+      {
+        "activityId": "sleep",
+        "id": "c128",
+        "owner": "AUTO",
+        "source": "anchor",
+      },
+    ],
+    "reactiveBandExposure": [
+      {
+        "activityId": "snack",
+        "exposed": true,
+        "ruleId": "snack",
+      },
+      {
+        "activityId": "nap",
+        "exposed": true,
+        "ruleId": "nap",
+      },
+      {
+        "activityId": "sleep",
+        "exposed": true,
+        "ruleId": "urgentSleep",
+      },
+      {
+        "activityId": "shower",
+        "exposed": true,
+        "ruleId": "shower",
+      },
+      {
+        "activityId": "stretch",
+        "exposed": true,
+        "ruleId": "stretch",
+      },
+    ],
+    "rules": {
+      "key": "rules-v1-41a7ede9",
+      "revision": 0,
+    },
     "session": {
+      "calendarDays": [
+        {
+          "day": 1,
+          "midnightBars": {
+            "energy": 198000,
+            "hygiene": 396000,
+            "movement": 515600,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 591600,
+            "movement": 336000,
+            "nutrition": 565846,
+          },
+          "practiceSessions": 1,
+          "resolvedWrinkleId": "package-delivery",
+          "urgentEvents": 0,
+        },
+        {
+          "day": 2,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 377000,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 572400,
+            "movement": 449900,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": null,
+          "urgentEvents": 0,
+        },
+        {
+          "day": 3,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 377000,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 572400,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": null,
+          "urgentEvents": 0,
+        },
+        {
+          "day": 4,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 377000,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 572400,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": null,
+          "urgentEvents": 0,
+        },
+        {
+          "day": 5,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 377000,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 572400,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": null,
+          "urgentEvents": 0,
+        },
+        {
+          "day": 6,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 377000,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 572400,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": "favorite-show",
+          "urgentEvents": 0,
+        },
+        {
+          "day": 7,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 380600,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 576000,
+            "movement": 499300,
+            "nutrition": 549200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": "empty-fridge",
+          "urgentEvents": 0,
+        },
+        {
+          "day": 8,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 377000,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 572400,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": null,
+          "urgentEvents": 0,
+        },
+        {
+          "day": 9,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 379400,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 574800,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": "repair-visit",
+          "urgentEvents": 0,
+        },
+        {
+          "day": 10,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 380600,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 576000,
+            "movement": 499300,
+            "nutrition": 549200,
+          },
+          "practiceSessions": 2,
+          "resolvedWrinkleId": "burned-breakfast",
+          "urgentEvents": 0,
+        },
+        {
+          "day": 11,
+          "midnightBars": {
+            "energy": 199500,
+            "hygiene": 390500,
+            "movement": 565000,
+            "nutrition": 495200,
+          },
+          "morningBars": {
+            "energy": 540000,
+            "hygiene": 585900,
+            "movement": 499300,
+            "nutrition": 489200,
+          },
+          "practiceSessions": 3,
+          "resolvedWrinkleId": "slept-great",
+          "urgentEvents": 0,
+        },
+      ],
       "decorations": {
         "grantedIds": [
-          "goal-plant",
+          "bedroom-plant",
           "leafy-plant",
+          "wrinkle-keepsake",
+          "practice-poster",
         ],
       },
       "goals": {
+        "balanced-week": {
+          "counters": {
+            "consecutiveBalancedDays": 3,
+          },
+          "status": "rewarded",
+        },
         "change-of-plans": {
           "counters": {
             "forecastChangesSeen": 1,
             "queueEdits": 4,
           },
-          "status": "complete",
+          "status": "rewarded",
         },
-        "meet-you": {
+        "find-the-rhythm": {
+          "counters": {
+            "intentionBiasDays": 1,
+          },
+          "status": "rewarded",
+        },
+        "first-chord": {
+          "counters": {
+            "practiceLevel": 1,
+          },
+          "status": "rewarded",
+        },
+        "handle-the-wrinkle": {
+          "counters": {
+            "resolvedDaysWithoutUrgent": 1,
+          },
+          "status": "rewarded",
+        },
+        "holidays-over": {
+          "counters": {
+            "letterAccepted": 0,
+          },
+          "status": "active",
+        },
+        "meet-the-routine": {
           "counters": {
             "activitiesCompleted": 3,
             "whyLineOpened": 1,
           },
-          "status": "complete",
+          "status": "rewarded",
         },
+      },
+      "journal": {
+        "entries": [
+          {
+            "day": 1,
+            "id": "journal-0",
+            "minuteOfDay": 1439,
+            "sourceId": "package-on-counter",
+            "sourceKind": "wrinkle-outcome",
+            "stringId": "storylets:wrinkles.package",
+          },
+          {
+            "day": 2,
+            "id": "journal-1",
+            "minuteOfDay": 1439,
+            "sourceId": "window-light",
+            "sourceKind": "idle-moment",
+            "stringId": "storylets:idle.window",
+          },
+          {
+            "day": 3,
+            "id": "journal-2",
+            "minuteOfDay": 1439,
+            "sourceId": "first-chord-note",
+            "sourceKind": "milestone",
+            "stringId": "storylets:milestones.firstChord",
+          },
+          {
+            "day": 4,
+            "id": "journal-3",
+            "minuteOfDay": 1439,
+            "sourceId": "window-light",
+            "sourceKind": "idle-moment",
+            "stringId": "storylets:idle.window",
+          },
+          {
+            "day": 5,
+            "id": "journal-4",
+            "minuteOfDay": 1439,
+            "sourceId": "balanced-week-note",
+            "sourceKind": "milestone",
+            "stringId": "storylets:milestones.balancedWeek",
+          },
+          {
+            "day": 6,
+            "id": "journal-5",
+            "minuteOfDay": 1439,
+            "sourceId": "show-credits",
+            "sourceKind": "wrinkle-outcome",
+            "stringId": "storylets:wrinkles.favoriteShow",
+          },
+          {
+            "day": 7,
+            "id": "journal-6",
+            "minuteOfDay": 1439,
+            "sourceId": "window-light",
+            "sourceKind": "idle-moment",
+            "stringId": "storylets:idle.window",
+          },
+          {
+            "day": 8,
+            "id": "journal-7",
+            "minuteOfDay": 1439,
+            "sourceId": "quiet-couch",
+            "sourceKind": "idle-moment",
+            "stringId": "storylets:idle.couch",
+          },
+          {
+            "day": 9,
+            "id": "journal-8",
+            "minuteOfDay": 1439,
+            "sourceId": "repair-van-left",
+            "sourceKind": "wrinkle-outcome",
+            "stringId": "storylets:wrinkles.repair",
+          },
+          {
+            "day": 10,
+            "id": "journal-9",
+            "minuteOfDay": 1439,
+            "sourceId": "window-light",
+            "sourceKind": "idle-moment",
+            "stringId": "storylets:idle.window",
+          },
+          {
+            "day": 11,
+            "id": "journal-10",
+            "minuteOfDay": 1439,
+            "sourceId": "window-light",
+            "sourceKind": "idle-moment",
+            "stringId": "storylets:idle.window",
+          },
+        ],
+        "nextEntrySeq": 11,
+      },
+      "letter": {
+        "acceptedAtDay": null,
+        "lastOfferedDay": 8,
+        "nextOfferDay": 14,
+        "preparedPerformerBonusPercent": null,
+        "preparedPerformerLevel": null,
+        "promisedStartDay": null,
+        "status": "declined",
       },
       "morningRecap": {
         "completedActivityIds": [
+          "snack",
           "toilet",
-          "practice",
-          "shower",
+          "brush",
           "shower",
           "meal",
-          "package",
+          "practice",
+          "practice",
           "meal",
           "weights",
           "meal",
           "brush",
         ],
-        "forDay": 1,
+        "endingBars": {
+          "energy": 199500,
+          "hygiene": 380600,
+          "movement": 565000,
+          "nutrition": 495200,
+        },
+        "forDay": 10,
+        "goalProgressIds": [],
+        "journalEntryId": "journal-9",
+        "mealCount": 3,
         "missedAnchorIds": [],
-        "practicePoints100": 3105,
-      },
-      "observations": {
-        "forecastChangeObserved": true,
-        "whyLineOpened": true,
+        "practicePoints100": 6879,
+        "practiceSessions": 2,
+        "priorEndingBars": {
+          "energy": 199500,
+          "hygiene": 379400,
+          "movement": 565000,
+          "nutrition": 495200,
+        },
+        "rewardIds": [],
+        "wrinkleOutcomeId": "burned-breakfast",
       },
       "recap": {
-        "completedActivityIds": [],
-        "forDay": 2,
+        "completedActivityIds": [
+          "practice",
+          "toilet",
+          "brush",
+          "shower",
+          "meal",
+          "practice",
+          "practice",
+          "meal",
+          "weights",
+          "meal",
+          "brush",
+        ],
+        "endingBars": {
+          "energy": 199500,
+          "hygiene": 390500,
+          "movement": 565000,
+          "nutrition": 495200,
+        },
+        "forDay": 11,
+        "goalProgressIds": [],
+        "journalEntryId": "journal-10",
+        "mealCount": 3,
         "missedAnchorIds": [],
-        "practicePoints100": 0,
+        "practicePoints100": 8698,
+        "practiceSessions": 3,
+        "priorEndingBars": {
+          "energy": 199500,
+          "hygiene": 380600,
+          "movement": 565000,
+          "nutrition": 495200,
+        },
+        "rewardIds": [],
+        "wrinkleOutcomeId": "slept-great",
+      },
+      "routineMemory": {
+        "absentDaySentinel": 1000000,
+        "completedDays": [
+          {
+            "day": 9,
+            "firstCompletionPositionByActivity": {},
+          },
+          {
+            "day": 10,
+            "firstCompletionPositionByActivity": {},
+          },
+          {
+            "day": 11,
+            "firstCompletionPositionByActivity": {},
+          },
+        ],
       },
       "unlocks": {
         "journal": true,
-      },
-      "wrinkles": {
-        "choiceReadyId": null,
-        "firedIds": [
-          "package-delivery",
-        ],
-        "pendingId": null,
-        "resolvedIds": [
-          "package-delivery",
-        ],
+        "routineMemory": true,
       },
     },
     "suppression": {
       "brush": 545,
     },
   },
-  "engineVersion": 6,
+  "engineVersion": 8,
   "forecastAgreement": {
     "actualStart": 434,
     "cardId": "c1",
@@ -182,6 +719,394 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
         "decorationId": "leafy-plant",
         "type": "decorationChosen",
         "wrinkleId": "package-delivery",
+      },
+    },
+    {
+      "atMinute": 1860,
+      "kind": "action",
+      "value": {
+        "choiceId": "wrinkle-keepsake",
+        "goalId": "handle-the-wrinkle",
+        "type": "goalRewardChosen",
+      },
+    },
+    {
+      "atMinute": 2040,
+      "kind": "action",
+      "value": {
+        "day": 2,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 2040,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 2040,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 3480,
+      "kind": "action",
+      "value": {
+        "day": 3,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 3480,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 3480,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 4321,
+      "kind": "action",
+      "value": {
+        "actionId": "clear-headache",
+        "type": "wrinkleAction",
+        "wrinkleId": "headache-day",
+      },
+    },
+    {
+      "atMinute": 4321,
+      "kind": "command",
+      "value": {
+        "activityId": "nap",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 4920,
+      "kind": "action",
+      "value": {
+        "day": 4,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 4920,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 4920,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 5761,
+      "kind": "action",
+      "value": {
+        "actionId": "recover-after-rough-night",
+        "type": "wrinkleAction",
+        "wrinkleId": "rough-night",
+      },
+    },
+    {
+      "atMinute": 5761,
+      "kind": "command",
+      "value": {
+        "activityId": "nap",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 6360,
+      "kind": "action",
+      "value": {
+        "day": 5,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 6360,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 6360,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 7201,
+      "kind": "action",
+      "value": {
+        "actionId": "move-dinner",
+        "type": "wrinkleAction",
+        "wrinkleId": "favorite-show",
+      },
+    },
+    {
+      "atMinute": 7800,
+      "kind": "action",
+      "value": {
+        "day": 6,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 7800,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 7800,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 8641,
+      "kind": "action",
+      "value": {
+        "actionId": "use-snacks-until-delivery",
+        "type": "wrinkleAction",
+        "wrinkleId": "empty-fridge",
+      },
+    },
+    {
+      "atMinute": 8641,
+      "kind": "command",
+      "value": {
+        "activityId": "snack",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 9240,
+      "kind": "action",
+      "value": {
+        "day": 7,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 9240,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 9240,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 10080,
+      "kind": "action",
+      "value": {
+        "decision": "decline",
+        "type": "letterResponded",
+      },
+    },
+    {
+      "atMinute": 10680,
+      "kind": "action",
+      "value": {
+        "day": 8,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 10680,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 10680,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 11521,
+      "kind": "action",
+      "value": {
+        "actionId": "plan-around-repair",
+        "type": "wrinkleAction",
+        "wrinkleId": "repair-visit",
+      },
+    },
+    {
+      "atMinute": 11521,
+      "kind": "command",
+      "value": {
+        "activityId": "quickwash",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 12120,
+      "kind": "action",
+      "value": {
+        "day": 9,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 12120,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 12120,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 12961,
+      "kind": "action",
+      "value": {
+        "actionId": "recover-after-breakfast",
+        "type": "wrinkleAction",
+        "wrinkleId": "burned-breakfast",
+      },
+    },
+    {
+      "atMinute": 12961,
+      "kind": "command",
+      "value": {
+        "activityId": "snack",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 13560,
+      "kind": "action",
+      "value": {
+        "day": 10,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 13560,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 13560,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 14401,
+      "kind": "action",
+      "value": {
+        "actionId": "use-early-half-hour",
+        "type": "wrinkleAction",
+        "wrinkleId": "slept-great",
+      },
+    },
+    {
+      "atMinute": 14401,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 15000,
+      "kind": "action",
+      "value": {
+        "day": 11,
+        "deliberate": true,
+        "intentionId": "practice-focus",
+        "type": "intentionSelected",
+      },
+    },
+    {
+      "atMinute": 15000,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
+      },
+    },
+    {
+      "atMinute": 15000,
+      "kind": "command",
+      "value": {
+        "activityId": "practice",
+        "type": "insertPlayer",
       },
     },
   ],

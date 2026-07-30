@@ -1,0 +1,15 @@
+{
+  "wrinkles": {
+    "package": "The box sat by the kitchen counter.",
+    "repair": "The repair van left before lunch.",
+    "favoriteShow": "Watched the credits from the couch."
+  },
+  "idle": {
+    "couch": "Listened to the fridge hum from the couch.",
+    "window": "Counted two buses from the window."
+  },
+  "milestones": {
+    "firstChord": "The first clean chord rang out.",
+    "balancedWeek": "Three steady mornings filled one notebook page."
+  }
+}

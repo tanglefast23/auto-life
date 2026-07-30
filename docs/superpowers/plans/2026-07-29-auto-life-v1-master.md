@@ -40,8 +40,8 @@ This file does **not** lock speculative filenames or write placeholder P2–P6 c
 | A0 art-risk spike | authored after P2; must pass before the P3 plan is approved | **COMPLETED** — layer/anchor/offset strategy accepted with 3 documented simplifications; evidence/A0.md |
 | P3 placeholder world + HUD | `2026-07-30-p3-placeholder-world-hud.md` | **COMPLETED** — 4 adversarial loops (self / codex 5.6-sol max / self / codex 5.6-sol max); evidence/P3.md |
 | P4 queue UI + minimum first-session slice | `2026-07-30-p4-queue-ui-first-session.md` | **COMPLETED 2026-07-30** — T0–T12, post-phase audit fix, evidence/P4.md |
-| P5 remaining v1 game/content/settings/saves | author next from the completed P4 tree | **UNBLOCKED by Joe's explicit P4.5 timing amendment** |
-| P4.5 external playtest protocol | `2026-07-30-p4.5-external-playtest-protocol.md` | Criteria **FROZEN 2026-07-30 by Joe**; execution explicitly deferred until P5 exits |
+| P5 remaining v1 game/content/settings/saves | `2026-07-30-p5-v1-systems-settings-saves.md` | **COMPLETE 2026-07-30; local verify and post-P5 freeze green, evidence/P5.md** |
+| P4.5 external playtest protocol | `2026-07-30-p4.5-external-playtest-protocol.md` | Criteria **FROZEN 2026-07-30 by Joe**; Joe diagnostic and three fresh-friend sessions are now the next gate |
 | P6 final art/audio/juice/performance | authored only after P5 exits and P4.5 passes | blocked by the deferred fun gate |
 
 Writing detailed P2–P6 plans just in time is deliberate. A phase-index row alone is not the no-skip safeguard; the Definition of Ready and traceability rules below are.

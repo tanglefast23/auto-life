@@ -1,0 +1,72 @@
+{
+  "ui": {
+    "eyebrow": "TODAY'S WRINKLE",
+    "chipPrefix": "Today's wrinkle",
+    "announcement": "Today's wrinkle: {title}. {intro}",
+    "close": "Close"
+  },
+  "package": {
+    "title": "Package delivery",
+    "intro": "The box is due before lunch. Keep a clear spot in the morning.",
+    "action": "Keep time clear",
+    "success": "The box arrived without bumping the morning.",
+    "failure": "The courier had to wait at the door.",
+    "outcome": "The new decoration found a place."
+  },
+  "repair": {
+    "title": "Repair visit",
+    "intro": "The repair van is outside. The shower is closed until half past nine.",
+    "action": "Plan around the repair",
+    "success": "Clean and on time.",
+    "failure": "The blocked shower held up the morning.",
+    "outcome": "The repair van left before lunch."
+  },
+  "favoriteShow": {
+    "title": "Favorite show",
+    "intro": "The new episode starts at seven. Dinner needs another spot.",
+    "action": "Move dinner",
+    "success": "Dinner moved. The couch is free for seven.",
+    "failure": "Dinner ran through the opening scene.",
+    "outcome": "Watched the credits from the couch."
+  },
+  "headache": {
+    "title": "Headache day",
+    "intro": "A headache slows every workout. A nap clears it.",
+    "action": "Make room for a nap",
+    "success": "The nap cleared the headache.",
+    "failure": "The headache stayed through the workout.",
+    "outcome": "Closed the curtains and slept it off."
+  },
+  "sleptGreat": {
+    "title": "Slept great",
+    "intro": "Wide awake half an hour early. The morning is open.",
+    "action": "Use the spare half-hour",
+    "success": "The early half-hour went to Practice.",
+    "failure": "The spare half-hour slipped by.",
+    "outcome": "Played guitar before the kettle clicked."
+  },
+  "burnedBreakfast": {
+    "title": "Burned breakfast",
+    "intro": "Breakfast burned. It barely fills the gap.",
+    "action": "Plan something else to eat",
+    "success": "A snack covered the burned breakfast.",
+    "failure": "Breakfast stayed thin until lunch.",
+    "outcome": "Burned the toast. Ate it anyway."
+  },
+  "emptyFridge": {
+    "title": "Empty fridge",
+    "intro": "Meals are out until the delivery arrives at two. Snacks still work.",
+    "action": "Use snacks until delivery",
+    "success": "A snack carried the morning.",
+    "failure": "The empty fridge caught up before delivery.",
+    "outcome": "The grocery bags arrived after lunch."
+  },
+  "roughNight": {
+    "title": "Rough night",
+    "intro": "Morning starts tired. A well-placed nap can steady the day.",
+    "action": "Make room for a nap",
+    "success": "The nap put some spring back.",
+    "failure": "The short night dragged into evening.",
+    "outcome": "Made it through on a quiet afternoon nap."
+  }
+}

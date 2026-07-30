@@ -2,6 +2,7 @@ import { createRef } from 'react';
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from 'react-test-renderer';
 import { Animated, StyleSheet } from 'react-native';
 import type { PublishedQueueCard } from '../../application/snapshot';
+import { QUEUE_W } from '../../render/scale';
 import {
   QueueStrip,
   type QueueStripHandle,
@@ -146,7 +147,7 @@ function setup(
   const measureInWindow = jest.fn(
     (
       callback: (x: number, y: number, width: number, height: number) => void,
-    ) => callback(0, 700, 1366, 72),
+    ) => callback(1142, 148, QUEUE_W, 620),
   );
   let tree: ReactTestRenderer;
   act(() => {
@@ -223,12 +224,15 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof Animated.loop>);
 });
 
-test('mounts a 64 px current card with radial progress, Stop, upcoming glyphs, urgency, and predicted starts', () => {
+test('names the active activity beside its radial progress and Stop control', () => {
   const { tree, handlers } = setup();
   const current = tree.root.findByProps({ testID: 'queue-current-card' });
   const currentStyle = StyleSheet.flatten(current.props.style);
-  expect(currentStyle.width).toBe(64);
+  expect(currentStyle.flex).toBe(1);
   expect(currentStyle.height).toBe(64);
+  expect(
+    tree.root.findByProps({ testID: 'queue-current-label' }).props.children,
+  ).toBe('Practice');
   expect(tree.root.findByProps({ testID: 'queue-current-progress' }).props.accessibilityValue.now).toBe(50);
 
   press(current);
@@ -239,6 +243,61 @@ test('mounts a 64 px current card with radial progress, Stop, upcoming glyphs, u
   expect(tree.root.findByProps({ testID: 'queue-urgent:urgent-shower' })).toBeDefined();
   expect(tree.root.findByProps({ testID: 'queue-start:meal' }).props.children).toContain('07:30');
 
+  act(() => tree.unmount());
+});
+
+test('the queue is a right-side one-column rail with one visible task per row', () => {
+  const { tree } = setup();
+  const railStyle = StyleSheet.flatten(
+    tree.root.findByProps({ testID: 'queue-strip' }).props.style,
+  );
+  expect(railStyle).toMatchObject({
+    bottom: 0,
+    flexDirection: 'column',
+    right: 0,
+    top: 148,
+    width: QUEUE_W,
+  });
+  expect(
+    tree.root.findByProps({ testID: 'queue-scroll' }).props.horizontal,
+  ).not.toBe(true);
+  expect(
+    StyleSheet.flatten(
+      tree.root.findByProps({ testID: 'queue-scroll' }).props
+        .contentContainerStyle,
+    ).width,
+  ).toBe('100%');
+  for (const id of ['meal', 'urgent-shower']) {
+    expect(
+      StyleSheet.flatten(
+        tree.root.findByProps({ testID: `queue-card:${id}` }).props
+          .style,
+      ).flex,
+    ).toBe(1);
+    expect(
+      StyleSheet.flatten(
+        tree.root.findByProps({ testID: `queue-drag:${id}` }).props
+          .style,
+      ).flex,
+    ).toBe(1);
+  }
+  act(() => tree.unmount());
+});
+
+test('the idle current row fills the rail instead of collapsing to its label', () => {
+  const { tree } = setup({
+    snapshot: {
+      ...snapshot,
+      currentCardId: null,
+      currentProgress: null,
+    },
+  });
+  expect(
+    StyleSheet.flatten(
+      tree.root.findByProps({ testID: 'queue-current-idle' }).props
+        .style,
+    ).flex,
+  ).toBe(1);
   act(() => tree.unmount());
 });
 
@@ -267,9 +326,12 @@ test('every individual card menu exposes semantic move, do-next, remove, and det
   expect(tree.root.findByProps({ testID: 'queue-menu:meal' })).toBeDefined();
   expect(tree.root.findByProps({ testID: 'queue-menu:urgent-shower' })).toBeDefined();
 
-  press(tree.root.findByProps({ testID: 'queue-menu:meal' }));
+  press(tree.root.findByProps({ testID: 'queue-menu:urgent-shower' }));
   press(tree.root.findByProps({ testID: 'queue-action:move-earlier' }));
-  expect(handlers.onMoveCard).toHaveBeenLastCalledWith('meal', 0);
+  expect(handlers.onMoveCard).toHaveBeenLastCalledWith(
+    'urgent-shower',
+    1,
+  );
 
   press(tree.root.findByProps({ testID: 'queue-menu:meal' }));
   press(tree.root.findByProps({ testID: 'queue-action:move-later' }));
@@ -277,7 +339,14 @@ test('every individual card menu exposes semantic move, do-next, remove, and det
 
   press(tree.root.findByProps({ testID: 'queue-menu:meal' }));
   press(tree.root.findByProps({ testID: 'queue-action:do-next' }));
-  expect(handlers.onMoveCard).toHaveBeenLastCalledWith('meal', 0);
+  expect(handlers.onMoveCard).toHaveBeenLastCalledWith('meal', 1);
+
+  press(tree.root.findByProps({ testID: 'queue-menu:urgent-shower' }));
+  press(tree.root.findByProps({ testID: 'queue-action:move-later' }));
+  expect(handlers.onMoveCard).toHaveBeenLastCalledWith(
+    'urgent-shower',
+    4,
+  );
 
   press(tree.root.findByProps({ testID: 'queue-menu:meal' }));
   press(tree.root.findByProps({ testID: 'queue-action:details' }));
@@ -446,29 +515,110 @@ test('Practice exposes its consecutive-block advantage as a legible chip and det
   act(() => tree.unmount());
 });
 
+test('announced wrinkle gates show a non-color chip and a concrete Details line', () => {
+  const blocked = card('blocked-shower', 'shower', {
+    owner: 'PINNED',
+    source: 'player',
+    forecast: {
+      cardId: 'blocked-shower',
+      activityId: 'shower',
+      predictedStartMinute: null,
+      reason: null,
+      targetObjectId: 'shower',
+      effects: {},
+      capWaste: {},
+      bonuses: [],
+      conflicts: [],
+      wakeConflicts: [],
+      startConstraint: {
+        kind: 'wait',
+        reason: 'object-blocked',
+        untilMinute: 570,
+        targetId: 'shower',
+        source: {
+          wrinkleId: 'repair-visit',
+          variantId: 'repair-bathroom',
+          day: 2,
+        },
+      },
+    },
+  });
+  const rerouted = card('rerouted-shower', 'shower', {
+    forecast: {
+      cardId: 'rerouted-shower',
+      activityId: 'shower',
+      predictedStartMinute: 500,
+      reason: null,
+      targetObjectId: 'shower',
+      effects: {},
+      capWaste: {},
+      bonuses: [],
+      conflicts: [],
+      wakeConflicts: [],
+      startConstraint: {
+        kind: 'reroute',
+        reason: 'urgent-hygiene-fallback',
+        activityId: 'quickwash',
+        source: {
+          wrinkleId: 'repair-visit',
+          variantId: 'repair-bathroom',
+          day: 2,
+        },
+      },
+    },
+  });
+  const { tree } = setup({
+    snapshot: {
+      ...snapshot,
+      queue: [...queue, blocked, rerouted],
+    },
+  });
+
+  expect(
+    tree.root.findByProps({
+      testID: 'queue-start-constraint:blocked-shower',
+    }).props.children,
+  ).toBe('Blocked');
+  expect(
+    tree.root.findByProps({
+      testID: 'queue-start-constraint:rerouted-shower',
+    }).props.children,
+  ).toBe('Quick wash');
+
+  press(tree.root.findByProps({ testID: 'queue-menu:blocked-shower' }));
+  press(tree.root.findByProps({ testID: 'queue-action:details' }));
+  expect(
+    tree.root.findByProps({
+      testID: 'queue-start-constraint-detail:blocked-shower',
+    }).props.children,
+  ).toBe('Shower is blocked until 09:30.');
+
+  act(() => tree.unmount());
+});
+
 test('synthetic PanResponder events reorder, suppress click-through, and remove off-strip', () => {
   const reordered = setup();
   const drag = reordered.tree.root.findByProps({ testID: 'queue-drag:meal' });
   const cardNode = reordered.tree.root.findByProps({ testID: 'queue-card:meal' });
   const start = responderEvent({
-    previousX: 0,
-    currentX: 0,
-    previousY: 730,
-    currentY: 730,
+    previousX: 1200,
+    currentX: 1200,
+    previousY: 250,
+    currentY: 250,
     timestamp: 1,
   });
-  const moveRight = responderEvent({
-    previousX: 0,
-    currentX: 132,
-    previousY: 730,
-    currentY: 730,
+  const moveDown = responderEvent({
+    previousX: 1200,
+    currentX: 1200,
+    previousY: 250,
+    currentY: 312,
     timestamp: 2,
   });
 
   act(() => {
     drag.props.onResponderGrant(start);
-    drag.props.onResponderMove(moveRight);
-    drag.props.onResponderRelease(moveRight);
+    drag.props.onResponderMove(moveDown);
+    drag.props.onResponderRelease(moveDown);
     cardNode.props.onPress();
   });
 
@@ -482,17 +632,17 @@ test('synthetic PanResponder events reorder, suppress click-through, and remove 
   const removeDrag = removed.tree.root.findByProps({
     testID: 'queue-drag:meal',
   });
-  const moveAboveStrip = responderEvent({
-    previousX: 0,
-    currentX: 0,
-    previousY: 730,
-    currentY: 650,
+  const moveOutsideRail = responderEvent({
+    previousX: 1200,
+    currentX: 1100,
+    previousY: 250,
+    currentY: 250,
     timestamp: 2,
   });
   act(() => {
     removeDrag.props.onResponderGrant(start);
-    removeDrag.props.onResponderMove(moveAboveStrip);
-    removeDrag.props.onResponderRelease(moveAboveStrip);
+    removeDrag.props.onResponderMove(moveOutsideRail);
+    removeDrag.props.onResponderRelease(moveOutsideRail);
   });
   expect(removed.handlers.onRemoveCard).toHaveBeenCalledWith('meal');
   expect(removed.handlers.onMoveCard).not.toHaveBeenCalled();
@@ -503,17 +653,17 @@ test('a terminated responder cancels without moving, removing, or opening a menu
   const { tree, handlers } = setup();
   const drag = tree.root.findByProps({ testID: 'queue-drag:meal' });
   const start = responderEvent({
-    previousX: 0,
-    currentX: 0,
-    previousY: 730,
-    currentY: 730,
+    previousX: 1200,
+    currentX: 1200,
+    previousY: 250,
+    currentY: 250,
     timestamp: 1,
   });
   const move = responderEvent({
-    previousX: 0,
-    currentX: 132,
-    previousY: 730,
-    currentY: 730,
+    previousX: 1200,
+    currentX: 1200,
+    previousY: 250,
+    currentY: 312,
     timestamp: 2,
   });
   act(() => {
@@ -532,11 +682,15 @@ test('its imperative keyboard surface focuses, traverses, moves, opens, removes,
   const { tree, handlers } = setup({}, imperativeRef);
   expect(imperativeRef.current?.focusQueue()).toBe(true);
   expect(imperativeRef.current?.moveQueueFocus(1)).toBe(true);
+  expect(imperativeRef.current?.moveQueueFocus(1)).toBe(true);
 
   act(() => {
     expect(imperativeRef.current?.moveFocusedCard(-1)).toBe(true);
   });
-  expect(handlers.onMoveCard).toHaveBeenCalledWith('meal', 0);
+  expect(handlers.onMoveCard).toHaveBeenCalledWith(
+    'urgent-shower',
+    1,
+  );
 
   act(() => {
     expect(imperativeRef.current?.openFocusedMenu()).toBe(true);
@@ -549,7 +703,9 @@ test('its imperative keyboard surface focuses, traverses, moves, opens, removes,
   act(() => {
     expect(imperativeRef.current?.removeFocused()).toBe(true);
   });
-  expect(handlers.onRemoveCard).toHaveBeenCalledWith('meal');
+  expect(handlers.onRemoveCard).toHaveBeenCalledWith(
+    'urgent-shower',
+  );
 
   act(() => {
     imperativeRef.current?.togglePalette();

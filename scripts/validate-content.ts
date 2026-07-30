@@ -5,11 +5,7 @@ try {
   const { firstSessionStrings } = require('../src/ui/first-session-copy') as typeof import('../src/ui/first-session-copy');
   const { validateWritingReviews } = require('./validate-writing') as typeof import('./validate-writing');
   const reviews = validateWritingReviews();
-  const files = [
-    ...Object.keys(content),
-    'strings/queue',
-    'strings/first-session',
-  ];
+  const files = Object.keys(content);
   if (Object.keys(queueStrings).length === 0) throw new Error('queue strings are empty');
   if (Object.keys(firstSessionStrings).length === 0) {
     throw new Error('first-session strings are empty');

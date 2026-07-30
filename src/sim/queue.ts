@@ -101,6 +101,12 @@ export function canPlayerInsert(queue: readonly QueueCard[]): boolean {
   return playerCardCount(queue) < PLAYER_CARD_CAP;
 }
 
+/** Any queued card for an activity already represents a plan for that need. */
+export const hasCardFor = (
+  queue: readonly QueueCard[],
+  activityId: string,
+): boolean => queue.some((card) => card.activityId === activityId);
+
 export interface SuppressionMap {
   [activityId: string]: number; // suppressed-until absoluteMinute
 }

@@ -1,4 +1,4 @@
-import { HUD_H, QUEUE_H, solveScale, WORLD_H, WORLD_W } from '../scale';
+import { HUD_H, QUEUE_W, solveScale, WORLD_H, WORLD_W } from '../scale';
 
 /**
  * P3 T8 — SPEC §11.5's three verified desktop cases, plus the degradation path.
@@ -29,8 +29,8 @@ describe('SPEC §11.5 verified desktop cases', () => {
 
   test('UI is reserved before the world gets any space', () => {
     const s = solveScale({ width: 1920, height: 1080, devicePixelRatio: 1 });
-    expect(s.available.height).toBe(1080 - HUD_H - QUEUE_H);
-    expect(s.available.width).toBe(1920);
+    expect(s.available.height).toBe(1080 - HUD_H);
+    expect(s.available.width).toBe(1920 - QUEUE_W);
   });
 
   test('larger accessible HUD text reserves its real height before scaling the world', () => {
@@ -40,7 +40,8 @@ describe('SPEC §11.5 verified desktop cases', () => {
       devicePixelRatio: 1,
       hudHeight: HUD_H * 1.5,
     });
-    expect(s.available.height).toBe(900 - HUD_H * 1.5 - QUEUE_H);
+    expect(s.available.height).toBe(900 - HUD_H * 1.5);
+    expect(s.available.width).toBe(1366 - QUEUE_W);
   });
 });
 
@@ -80,10 +81,28 @@ describe('degradation, not crashes', () => {
     expect(Number.isFinite(s.width)).toBe(true);
   });
 
-  test('a viewport shorter than the reserved UI yields zero available height, not negative', () => {
-    const s = solveScale({ width: 800, height: HUD_H + QUEUE_H - 10, devicePixelRatio: 1 });
-    expect(s.available.height).toBe(0);
+  test('a viewport narrower than the reserved rail yields zero available width, not negative', () => {
+    const s = solveScale({ width: QUEUE_W - 10, height: 800, devicePixelRatio: 1 });
+    expect(s.available.width).toBe(0);
     expect(s.tooSmall).toBe(true);
+  });
+
+  test('fractional scaling fits a cramped viewport only when enabled', () => {
+    const viewport = {
+      width: QUEUE_W + 600,
+      height: HUD_H + 350,
+      devicePixelRatio: 2,
+    };
+    const exactOnly = solveScale(viewport);
+    const fractional = solveScale({
+      ...viewport,
+      fractionalScaling: true,
+    });
+    expect(exactOnly).toMatchObject({ scale: 1, tooSmall: true });
+    expect(fractional.tooSmall).toBe(false);
+    expect(fractional.exact).toBe(false);
+    expect(fractional.width).toBeLessThanOrEqual(viewport.width);
+    expect(fractional.height).toBeLessThanOrEqual(350);
   });
 
   test('a nonsense devicePixelRatio falls back to 1 rather than producing NaN', () => {

@@ -54,6 +54,7 @@
     "activities": "{count} activities finished",
     "meals": "{count} proper meals",
     "practice": "{points} Practice points",
+    "practiceSessions": "{count} counted Practice sessions",
     "activityLabel": "activities",
     "mealLabel": "meals",
     "practiceLabel": "Practice",
@@ -62,9 +63,25 @@
     "finishedHeading": "Finished",
     "noneFinished": "No activities finished.",
     "journalLine": "That little plan change stuck.",
+    "needsHeading": "Needs at midnight",
+    "needsFirstDay": "First day on record",
+    "needsCompared": "Compared with yesterday",
+    "needsUnavailable": "Not recorded",
+    "wrinkleHeading": "Wrinkle",
+    "wrinkleNone": "Quiet day",
+    "goalsHeading": "Goal progress",
+    "goalsNone": "No goal changed today.",
+    "rewardsHeading": "Rewards",
+    "rewardsNone": "No new reward today.",
+    "journalHeading": "Journal",
+    "journalNone": "Nothing written today.",
     "details": "Details",
     "less": "Less",
     "done": "Done",
     "announcement": "Morning recap ready for Day {day}."
+  },
+  "fatal": {
+    "title": "The clock stopped",
+    "body": "Reload the game to try again."
   }
 }
