@@ -7,7 +7,7 @@ import { renderObject } from '../../src/render/sprites/objects';
 import { DECORATION_SPRITES, renderDecoration } from '../../src/render/sprites/decorations';
 import { ICON_SPRITES, renderIcon } from '../../src/render/sprites/icons';
 import { LIGHTING_STATES, registerTiles, renderTile, TILE_SPRITES } from '../../src/render/sprites/tiles';
-import { blit, createBitmap, encodeIndexedPng, type Bitmap } from './png';
+import { blit, createBitmap, encodePng, type Bitmap } from './png';
 import { auditBitmap, formatReport, reportIsClean, type Track } from './validate-palette';
 
 /**
@@ -22,8 +22,21 @@ import { auditBitmap, formatReport, reportIsClean, type Track } from './validate
  * sets, and each renderer throws for an unauthored id rather than emitting a blank — so a
  * new object or activity in content fails the build instead of shipping as a grey square.
  *
- * Output is **indexed PNG** (design.md §2) and byte-reproducible, so `npm run art:check`
- * can diff the committed atlas against a fresh build and mean something.
+ * Output is byte-reproducible, so `npm run art:check` can diff the committed atlas against
+ * a fresh build and mean something.
+ *
+ * **Why RGBA and not indexed PNG (P6 T1, tested 2026-07-31).** design.md §2 asks for
+ * indexed PNG and P3 deferred it to this phase. `encodeIndexedPng` was written, its
+ * round-trip is proven in `art-gates.test.ts`, and Chrome decodes its output correctly
+ * (verified in the exported build: colour type 3, 1024×420, 15 KB versus 30 KB for RGBA).
+ * **CanvasKit does not.** `useImage` returned null forever, `WorldScene` rendered nothing,
+ * and the world was blank with no console error to explain it — the exact silent-blank
+ * failure mode P0's kill-gate exists to catch, reached from a different direction.
+ *
+ * So the encoder stays, tested and unused, and the atlas ships RGBA. This is a container
+ * change only: the palette validator enforces §2 membership on every pixel in CI, so no
+ * off-palette colour can ship either way. Owner for revisiting: **v1.1**, when the mobile
+ * pass re-examines the Skia version.
  */
 
 export const TILE = 32;
@@ -168,7 +181,7 @@ export function main(): void {
 
   const outDir = resolve(__dirname, '../../assets/generated');
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(resolve(outDir, 'atlas.png'), encodeIndexedPng(atlas));
+  writeFileSync(resolve(outDir, 'atlas.png'), encodePng(atlas));
   writeFileSync(resolve(outDir, 'atlas-index.json'), `${JSON.stringify(index, null, 2)}\n`);
 
   const names = Object.keys(index.sprites);
