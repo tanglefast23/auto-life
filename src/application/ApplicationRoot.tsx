@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { kv } from '../persistence/kv';
-import { content } from '../sim/content';
+import { content as gameContent } from '../sim/content';
 import {
   beginIdentity,
   bootApplication,
@@ -45,7 +45,10 @@ import { appShellStrings } from '../ui/app-shell-copy';
 import { CareerSaveController } from './save-controller';
 import { PauseSettings } from '../ui/PauseSettings';
 import { settingsStrings } from '../ui/settings-copy';
-import { SilentAudioBus } from './audio-bus';
+import { SilentAudioBus, type AudioBus } from './audio-bus';
+import { ExpoAudioBus } from './audio/expo-audio-bus';
+import { CueRouter } from './audio/cue-router';
+import { content } from '../sim/content';
 import { careerPreferenceTags } from '../ui/preference-tags';
 import type { GameLoop } from './loop';
 
@@ -70,8 +73,14 @@ function isHidden(): boolean {
  */
 export function ApplicationRoot({
   seedSource: injectedSeedSource,
+  audioBus: injectedAudioBus,
 }: {
   seedSource?: SeedSource;
+  /**
+   * Injection point for tests, which pass `SilentAudioBus` so a suite never has to stand
+   * up an audio device to exercise the settings or boot paths.
+   */
+  audioBus?: AudioBus;
 } = {}) {
   const [boot, setBoot] = useState<BootState>({
     status: 'loading-preferences',
@@ -122,14 +131,58 @@ export function ApplicationRoot({
   }, []);
   const cryptoSeedSource = useMemo(() => new CryptoSeedSource(), []);
   const seedSource = injectedSeedSource ?? cryptoSeedSource;
+  /**
+   * P6 T8: the real mixer replaces P5's deliberately silent one.
+   *
+   * P5 built every control against `SilentAudioBus` so the settings layer could be proven
+   * before a single sound existed. This is the swap it was built for — one constructor,
+   * and the sliders, mute, `M`, and persistence all keep working unchanged.
+   *
+   * `SilentAudioBus` stays exported and is still what tests inject, so a suite never has
+   * to stand up an audio device to exercise the settings path.
+   */
   const audioBus = useMemo(
-    () => new SilentAudioBus(preferences.preferences.audio),
-    [],
+    () => injectedAudioBus ?? new ExpoAudioBus(gameContent.audio, preferences.preferences.audio),
+    [injectedAudioBus],
+  );
+  const cueRouter = useMemo(
+    () => (audioBus instanceof ExpoAudioBus ? new CueRouter(audioBus, gameContent.audio) : null),
+    [audioBus],
   );
 
   useEffect(() => {
     audioBus.apply(preferences.preferences.audio);
   }, [audioBus, preferences.preferences.audio]);
+
+  /**
+   * Browser autoplay: Chrome — the frozen playtest browser — refuses playback before a
+   * user gesture. Without this the music never starts and, because a live voice is never
+   * restarted, it never recovers either: the whole session runs silent. One listener,
+   * removed after it fires.
+   */
+  useEffect(() => {
+    if (!(audioBus instanceof ExpoAudioBus)) return;
+    const unlock = () => audioBus.unlock();
+    for (const type of ['pointerdown', 'keydown', 'touchstart']) {
+      globalThis.addEventListener?.(type, unlock, { once: true });
+    }
+    return () => {
+      for (const type of ['pointerdown', 'keydown', 'touchstart']) {
+        globalThis.removeEventListener?.(type, unlock);
+      }
+    };
+  }, [audioBus]);
+
+  /** SPEC §14 QA line: no orphaned audio after tab close. */
+  useEffect(() => {
+    if (!(audioBus instanceof ExpoAudioBus)) return;
+    const teardown = () => audioBus.shutdown();
+    globalThis.addEventListener?.('pagehide', teardown);
+    return () => {
+      globalThis.removeEventListener?.('pagehide', teardown);
+      audioBus.shutdown();
+    };
+  }, [audioBus]);
 
   useEffect(() => {
     let active = true;

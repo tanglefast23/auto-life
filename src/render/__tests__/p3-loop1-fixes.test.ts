@@ -1,9 +1,12 @@
-import { advancePhase, characterSprite } from '../scene-layout';
+import atlasIndexJson from '../../../assets/generated/atlas-index.json';
+import { advancePhase, characterSprite, type AtlasIndex } from '../scene-layout';
 import { solveScale } from '../scale';
 
 /**
  * Regressions for adversarial pass 1 (P3 loop 1 of 4). Each test is a bug that existed.
  */
+
+const index = atlasIndexJson as AtlasIndex;
 
 describe('advancePhase survives hostile frame deltas', () => {
   test('a NaN delta does not poison the phase forever', () => {
@@ -43,10 +46,10 @@ describe('advancePhase survives hostile frame deltas', () => {
     const seen = new Set<string>();
     for (let i = 0; i < 200; i++) {
       p = advancePhase(p, 16, 1.5);
-      seen.add(characterSprite('walk', 'down', p));
+      seen.add(characterSprite(index, 'moss-green', 'walk', 'down', p));
     }
-    // Both frames must appear — proof the cycle is genuinely running.
-    expect(seen.size).toBe(2);
+    // Every frame must appear — proof the cycle is genuinely running.
+    expect(seen.size).toBe(4);
   });
 
   test('a stopped sim holds its frame (mSpeed 0 is not a bug)', () => {

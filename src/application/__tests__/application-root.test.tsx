@@ -4,6 +4,19 @@ const mockListeners = new Set<
 >();
 let mockFailNextSet = false;
 
+// ApplicationRoot owns the real audio bus, but these composition tests exercise boot,
+// save, and screen transitions. Keep Expo's native module outside that boundary.
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: () => ({
+    loop: false,
+    playing: false,
+    volume: 1,
+    play: jest.fn(),
+    pause: jest.fn(),
+    remove: jest.fn(),
+  }),
+}));
+
 jest.mock('../../persistence/kv', () => ({
   kv: {
     getItem: async (key: string) => mockValues.get(key) ?? null,

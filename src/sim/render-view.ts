@@ -1,4 +1,6 @@
 import { mSpeedAtStart } from './bars';
+import { bandFor } from '../ui/bands';
+import { toDisplay } from './fixed';
 import { objectForActivityIn, type ContentRegistry } from './content';
 import type { SimState } from './state';
 
@@ -24,11 +26,30 @@ export type Facing = 'up' | 'down' | 'left' | 'right';
  * What the body is doing, for sprite selection. Derived here rather than in the
  * renderer so two renderers cannot disagree about what "sitting" means.
  *
- * A0 authored `walk×4dir` and one seated frame, so P3's placeholder atlas maps
- * `stand` onto walk frame 0 and `sleep` onto the seated frame. The remaining poses
- * are P6's art (design.md §6 lists the full ~48-frame v1 bill).
+ * P3's placeholder atlas had nine frames, so it mapped `stand` onto walk frame 0 and
+ * `sleep` onto the seated frame. P6 authored design.md §6's full 48-frame bill, and the
+ * pose is now **declared per activity in `content/activities.json`** rather than switched
+ * on here — the renderer looks up authored frames by name and throws if they are missing,
+ * so an activity can no longer silently borrow another one's animation.
+ *
+ * `stand` still aliases walk frame 0, which is the one reuse that is deliberate.
  */
-export type Pose = 'walk' | 'stand' | 'sit' | 'sleep';
+export type Pose =
+  | 'walk'
+  | 'stand'
+  | 'sleep'
+  | 'nap'
+  | 'sit'
+  | 'eat'
+  | 'brush'
+  | 'shower'
+  | 'lift'
+  | 'run'
+  | 'stretch'
+  | 'practice'
+  | 'toilet'
+  | 'quickwash'
+  | 'idle';
 
 export interface TravelView {
   /** Full tile path, so the renderer can lerp between ticks rather than teleport. */
@@ -48,6 +69,15 @@ export interface RenderView {
   readonly activityProgress: number | null;
   /** SPEC §11.3 — walk/act tempo tracks this. */
   readonly mSpeed: number;
+  /**
+   * design.md §10: "tiredness is an animation state (droop frames), not a filter."
+   *
+   * The threshold is the Energy display band already tuned in `rates.json`. SPEC §11.1
+   * records why Energy carries its own bands — 20 at bedtime is designed, and the default
+   * <40 rule "would cry red every healthy evening" — so inventing a second tiredness
+   * number here would be a silent way to disagree with a decision the SPEC already made.
+   */
+  readonly droop: boolean;
 }
 
 /**
@@ -123,17 +153,27 @@ function deriveProgress(s: SimState, processedProgress: number | null): number |
 }
 
 /**
- * Pose from the running unit. `couch` owns nap and idle in objects.json, so "seated"
- * is read from the object rather than from a hard-coded activity list — the same
- * data-driven rule the engine uses everywhere else.
+ * Pose from the running unit, read from content.
+ *
+ * P3 derived this from the *object* (`obj.id === 'couch' ? 'sit' : 'stand'`), which was
+ * the best available rule when only two poses existed but could never express that eating
+ * and showering look different. Every activity now declares its own pose, so this is a
+ * lookup rather than a heuristic — and `validate-content` fails the build if a declared
+ * pose has no authored frames.
  */
 function derivePose(s: SimState, content: ContentRegistry): Pose {
   const cur = s.current;
   if (cur === null) return 'stand';
   if (cur.type === 'travel') return 'walk';
-  if (cur.type === 'sleep') return 'sleep';
-  const obj = objectForActivityIn(content, cur.dto.activityId);
-  return obj.id === 'couch' ? 'sit' : 'stand';
+  if (cur.type === 'sleep') return activityPose(content, 'sleep');
+  return activityPose(content, cur.dto.activityId);
+}
+
+function activityPose(content: ContentRegistry, activityId: string): Pose {
+  const activity = content.activities.activities.find((a) => a.id === activityId);
+  // An unknown activity id cannot be a pose decision — fall back to standing rather than
+  // throwing inside a render read-model that the live loop calls every tick.
+  return (activity?.pose as Pose | undefined) ?? 'stand';
 }
 
 /**
@@ -172,6 +212,7 @@ export function deriveRenderView(
     travel: travel === null ? null : { path: travel.path.map((pt) => ({ x: pt.x, y: pt.y })), elapsedTicks: travel.elapsedTicks, totalTicks: travel.totalTicks },
     activityProgress: deriveProgress(s, processedProgress),
     mSpeed: mSpeedAtStart(s.bars),
+    droop: bandFor('energy', toDisplay(s.bars.energy), content.rates).band !== 'normal',
   };
 }
 

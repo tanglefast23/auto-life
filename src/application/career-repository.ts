@@ -3,7 +3,7 @@ import type { ContentRegistry } from '../sim/content';
 import {
   AppPreferencesEnvelopeSchema,
   StoredCareerSchema,
-  migrateLegacyCareerFixture,
+  migrateKnownCareer,
   newAppPreferencesEnvelope,
   restoreCareerState,
   validateCareerContentRefs,
@@ -327,7 +327,7 @@ export class CareerRepository {
       if (current.success) {
         career = restoreCareerState(current.data);
       } else {
-        career = migrateLegacyCareerFixture(parsed, this.content);
+        career = migrateKnownCareer(parsed, this.content);
       }
       validateCareerContentRefs(career, this.content);
       return {

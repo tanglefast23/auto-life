@@ -136,7 +136,7 @@
       "kind": "timed",
       "object": "couch",
       "pose": "sit",
-      "baseMin": 30,
+      "baseMin": 15,
       "effects": {}
     },
     {

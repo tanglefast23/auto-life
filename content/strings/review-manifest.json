@@ -3,16 +3,18 @@
   "reviews": [
     {
       "file": "content/strings/queue.json",
-      "sha256": "cfac5f7b032fee4c8dc3da9774eae4c3e607012dea08f9256b0858d7b81f59fb",
-      "reviewedAt": "2026-07-30",
+      "sha256": "1bea563c2d16dd76004026532e0674c30afd9c505e9311a2bde26d316023f74f",
+      "reviewedAt": "2026-07-31",
       "humanizer": {
         "name": "humanizer",
         "version": "2.2.0",
-        "invocation": "Humanizer 2.2.0 full-batch pattern scan, read-aloud pass, anti-AI pass, and writing.md checklist after adding wrinkle start constraints."
+        "invocation": "Humanizer 2.2.0 full-batch pattern scan, read-aloud pass, anti-AI pass, and writing.md checklist after adding routine-plan explanations."
       },
       "stringIds": [
         "why.reactiveTrigger",
         "why.anchorWindow",
+        "why.routineNeed",
+        "why.routineFree",
         "why.wrinklePackage",
         "why.wrinkleFallback",
         "chips.conflict",
@@ -71,7 +73,7 @@
           "reason": "Replaced system language with the visible cause and result."
         }
       ],
-      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed for the complete queue batch; the new constraints are short, concrete, and non-technical."
+      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed for the complete queue batch; the routine lines are short, concrete, factual, and non-technical."
     },
     {
       "file": "content/strings/first-session.json",

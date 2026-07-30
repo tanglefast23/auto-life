@@ -62,4 +62,10 @@
  * immutable SimRules, calendar sampling, and pending-boundary work enter the
  * replay contract. Stable Goal 1 and reward IDs now match authored content.
  */
-export const ENGINE_VERSION = 8 as const;
+/**
+ * v9 (2026-07-31, rolling routine queue): full-routine autonomy continuously
+ * publishes five planned cards. Need maintenance begins below 80 and productive
+ * free time uses a neutral Read activity; completing the current card refills the
+ * fifth slot in the same tick. Existing v8 career envelopes migrate in place.
+ */
+export const ENGINE_VERSION = 9 as const;

@@ -76,11 +76,20 @@ export function evaluateReactive(
     const occupants = queue.filter((c) => groupOfActivity(c.activityId) === group);
     // An anchor block step or player card in the group (queued breakfast, pinned meal)
     // already handles the need — the corrective net must not double-book around it.
-    const handledOutsideReactive = occupants.some((c) => c.owner !== 'AUTO' || c.source !== 'reactive');
-    // Evict queued-unstarted reactive cards that lost to a superseder (Q5: urgent
-    // sleep replaces a queued nap — reactive occupants are replaceable, others never).
+    const handledOutsideReactive = occupants.some(
+      (c) =>
+        c.owner !== 'AUTO' ||
+        (c.source !== 'reactive' && c.source !== 'routine'),
+    );
+    // Evict queued-unstarted automatic corrections that lost to a superseder
+    // (Q5: Meal replaces a routine Snack; urgent Sleep replaces a queued Nap).
     for (const card of occupants) {
-      if (card.owner !== 'AUTO' || card.source !== 'reactive') continue;
+      if (
+        card.owner !== 'AUTO' ||
+        (card.source !== 'reactive' && card.source !== 'routine')
+      ) {
+        continue;
+      }
       if (card.activityId !== winner.activityId) evict.push(card.id);
     }
     if (handledOutsideReactive) continue;

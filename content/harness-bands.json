@@ -1,12 +1,12 @@
 {
-  "recordedAt": "2026-07-30, ENGINE_VERSION 6 (P4), unattended bands unchanged from v5; scripted-player golden added for queue commands and game-session state. Arrival-inclusive travel counting, seed 1234 (Q6 record-before-assert; anchors fire at target — lunch 13:00 / workout 17:30 / dinner 19:00 / bedtime 22:30 content target; measured: mc E90/N81.53/M83.22/H95.4, day-2 M74.98, recovery 79.77 at mc 540, travel 35 then 32/day, nutrition min 51.7)",
+  "recordedAt": "2026-07-31, ENGINE_VERSION 9 rolling routine queue, seed 1234. Current plus four upcoming cards stay visible; Read fills healthy free time and light Snack/Quick wash/Stretch maintenance begins below 80. Measured over seven unattended days: no urgent events or missed anchors, nutrition min 52.6, travel 101 then 120/day, 7 dinners, and 20.57 coarse meal-cap fill ticks/day.",
   "morningCheck": { "floor": 65, "fromDay": 2 },
   "urgentMax": 0,
   "anchorsMissedMax": 0,
-  "nutritionMinBand": [47, 53],
-  "mealCapWastePerDayMax": 12,
+  "nutritionMinBand": [50, 55],
+  "mealCapWastePerDayMax": 22,
   "dinnersMinPerWeek": 6,
-  "travelMinutesPerDayBand": [20, 50],
+  "travelMinutesPerDayBand": [95, 125],
   "neglect": { "movementBelow": 20, "withinDays": 3 },
   "recovery": { "healthFloorAtDay3MorningCheck": 75 }
 }

@@ -1,5 +1,6 @@
 import { scoreReactiveCard, URGENT_TIER } from './priority';
 import type { ReactiveConfig } from '../content-schemas';
+import { toDisplay } from '../fixed';
 import type { Bars } from '../types';
 import type { QueueCard } from '../queue';
 
@@ -83,10 +84,30 @@ export function sortReactivesAroundBlocks(
         const rule = cfg.rules.find(
           (r) => r.activity === card.activityId || r.supersededBelow?.activity === card.activityId,
         );
+        const routineReason =
+          card.reason?.kind === 'routinePlan'
+            ? card.reason
+            : null;
         // Q7/T2: urgency is a generic queue tier, not a side effect of having a
         // reactive rule. Wrinkle/visitor cards have no bar rule, but must still
         // outrank anchor blocks after this tick's sort and every later sort.
-        const key = rule ? scoreReactiveCard(card, rule, bars, cfg) : card.urgent ? URGENT_TIER : 0;
+        const key = card.urgent
+          ? rule
+            ? scoreReactiveCard(card, rule, bars, cfg)
+            : URGENT_TIER
+          : routineReason?.bar !== null &&
+              routineReason?.bar !== undefined
+            ? cfg.weights[routineReason.bar] *
+              (
+                (
+                  routineReason.threshold -
+                  toDisplay(bars[routineReason.bar])
+                ) /
+                routineReason.threshold
+              )
+            : rule
+              ? scoreReactiveCard(card, rule, bars, cfg)
+              : 0;
         units.push({
           cards: [card],
           sortKey: key,

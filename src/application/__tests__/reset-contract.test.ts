@@ -94,7 +94,11 @@ test('the final P4 reset contract restores every deterministic and presentation 
 
   loop.runOneTick();
   expect(
-    loop.peekState().queue.some((card) => card.activityId === 'snack'),
+    loop.peekState().queue.some(
+      (card) =>
+        card.activityId === 'snack' &&
+        card.source === 'player',
+    ),
   ).toBe(false);
   expect(loop.session.observations.forecastChangeObserved).toBe(false);
 });

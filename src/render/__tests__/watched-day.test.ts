@@ -39,7 +39,7 @@ function watchOneDay(speed: 1 | 2 | 4) {
     const snap = loop.snapshot!;
     // Sample mid-tick, where interpolation is actually doing work.
     phase = (phase + 0.37) % 1;
-    const q = buildCharacterQuad(snap.render, 0.5, phase);
+    const q = buildCharacterQuad(index, 'moss-green', snap.render, 0.5, phase);
     quads.push(q);
     sprites.add(q.sprite);
     labels.add(snap.currentLabel);

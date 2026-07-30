@@ -27,14 +27,41 @@ describe('the atlas covers everything the scene asks for', () => {
     }
   });
 
-  test('every character sprite the selector can produce exists', () => {
-    for (const pose of ['walk', 'stand', 'sit', 'sleep'] as const) {
-      for (const facing of ['up', 'down', 'left', 'right'] as const) {
-        for (const phase of [0, 0.6]) {
-          expect(() => lookup(index, characterSprite(pose, facing, phase))).not.toThrow();
+  test('every character sprite the selector can produce exists, in every appearance', () => {
+    const poses = [
+      'walk', 'stand', 'sleep', 'nap', 'sit', 'eat', 'brush', 'shower',
+      'lift', 'run', 'stretch', 'practice', 'toilet', 'quickwash', 'idle',
+    ] as const;
+    for (const paletteId of index.appearances) {
+      for (const pose of poses) {
+        for (const facing of ['up', 'down', 'left', 'right'] as const) {
+          for (const phase of [0, 0.6, 0.99]) {
+            for (const droop of [false, true]) {
+              expect(() =>
+                lookup(index, characterSprite(index, paletteId, pose, facing, phase, droop)),
+              ).not.toThrow();
+            }
+          }
         }
       }
     }
+  });
+
+  test('every authored idle variant resolves, and an unknown one falls back', () => {
+    for (const variant of ['window-gazing', 'slow-stretching', 'air-guitar']) {
+      const name = characterSprite(index, 'moss-green', 'idle', 'down', 0, false, variant);
+      expect(name).toBe(`char.moss-green.idle-${variant}-0`);
+      expect(() => lookup(index, name)).not.toThrow();
+    }
+    // A save may carry a variant from a later version; a flourish must not crash a career.
+    expect(characterSprite(index, 'moss-green', 'idle', 'down', 0, false, 'not-authored'))
+      .toBe('char.moss-green.idle-0');
+  });
+
+  test('an unauthored pose throws instead of silently reusing a walk frame', () => {
+    expect(() =>
+      characterSprite(index, 'moss-green', 'flying' as never, 'down', 0),
+    ).toThrow(/no frames for pose/);
   });
 
   test('a missing sprite fails loudly with a fix instruction, not silently', () => {
@@ -56,8 +83,10 @@ describe('tiles', () => {
 
   test('glyph→room mapping comes from content, so every glyph is accounted for', () => {
     const used = new Set(buildTileQuads(content.homeMap).map((q) => q.sprite));
-    for (const room of Object.keys(content.homeMap.rooms)) expect(used).toContain(`tile.${room}`);
-    expect(used).toContain('tile.wall');
+    for (const room of Object.keys(content.homeMap.rooms)) {
+      expect(used).toContain(`tile.${room}.day`);
+    }
+    expect(used).toContain('tile.wall.day');
   });
 
   test('an unknown glyph is a loud content error, not a blank tile', () => {
@@ -110,10 +139,10 @@ describe('run decorations', () => {
     ).toEqual([
       { sprite: 'decoration.leafy-plant', x: 648, y: 236 },
       { sprite: 'decoration.sunny-vase', x: 680, y: 236 },
-      { sprite: 'decoration.leafy-plant', x: 264, y: 44 },
-      { sprite: 'decoration.sunny-vase', x: 72, y: 268 },
-      { sprite: 'decoration.leafy-plant', x: 104, y: 268 },
-      { sprite: 'decoration.sunny-vase', x: 328, y: 44 },
+      { sprite: 'decoration.trailing-vine', x: 264, y: 44 },
+      { sprite: 'decoration.keepsake-box', x: 72, y: 268 },
+      { sprite: 'decoration.framed-print', x: 104, y: 268 },
+      { sprite: 'decoration.practice-poster', x: 328, y: 44 },
     ]);
   });
 });
@@ -126,10 +155,11 @@ describe('the character quad', () => {
     travel: null,
     activityProgress: null,
     mSpeed: 1,
+    droop: false,
   };
 
   test('stands feet-on-tile — the 48px sprite is lifted onto a 32px tile', () => {
-    const q = buildCharacterQuad(base, 0, 0);
+    const q = buildCharacterQuad(index, 'moss-green', base, 0, 0);
     expect(q.x).toBe(5 * TILE);
     expect(q.y).toBe(7 * TILE - (CHAR_H - TILE));
   });
@@ -160,9 +190,9 @@ describe('the character quad', () => {
         totalTicks: 1,
       },
     };
-    const start = buildCharacterQuad(travelling, 0, 0).x;
-    const mid = buildCharacterQuad(travelling, 0.3, 0).x;
-    const end = buildCharacterQuad(travelling, 1, 0).x;
+    const start = buildCharacterQuad(index, 'moss-green', travelling, 0, 0).x;
+    const mid = buildCharacterQuad(index, 'moss-green', travelling, 0.3, 0).x;
+    const end = buildCharacterQuad(index, 'moss-green', travelling, 1, 0).x;
     expect(start).toBe(0);
     expect(end).toBe(4 * TILE);
     expect(mid).toBeGreaterThan(start);
@@ -173,23 +203,34 @@ describe('the character quad', () => {
     expect(mid).toBeCloseTo(1.2 * TILE, 6);
   });
 
-  test('walking alternates two frames; standing pins frame 0', () => {
-    expect(characterSprite('walk', 'down', 0.0)).toBe('char.walk-down-0');
-    expect(characterSprite('walk', 'down', 0.7)).toBe('char.walk-down-1');
-    expect(characterSprite('stand', 'down', 0.7)).toBe('char.walk-down-0');
+  test('walking runs a four-frame cycle; standing pins frame 0', () => {
+    expect(characterSprite(index, 'moss-green', 'walk', 'down', 0.0)).toBe('char.moss-green.walk-down-0');
+    expect(characterSprite(index, 'moss-green', 'walk', 'down', 0.3)).toBe('char.moss-green.walk-down-1');
+    expect(characterSprite(index, 'moss-green', 'walk', 'down', 0.6)).toBe('char.moss-green.walk-down-2');
+    expect(characterSprite(index, 'moss-green', 'walk', 'down', 0.9)).toBe('char.moss-green.walk-down-3');
+    expect(characterSprite(index, 'moss-green', 'stand', 'down', 0.7)).toBe('char.moss-green.walk-down-0');
+  });
+
+  test('a tired sim droops instead of standing (design.md §10)', () => {
+    expect(characterSprite(index, 'moss-green', 'stand', 'down', 0, true))
+      .toBe('char.moss-green.stand-droop-0');
   });
 
   test('facing selects the direction sprite', () => {
     for (const facing of ['up', 'down', 'left', 'right'] as const) {
-      expect(characterSprite('walk', facing, 0)).toBe(`char.walk-${facing}-0`);
+      expect(characterSprite(index, 'moss-green', 'walk', facing, 0)).toBe(`char.moss-green.walk-${facing}-0`);
     }
   });
 
-  test('sitting and sleeping use the seated frame regardless of facing', () => {
+  test('sitting and sleeping now have their own frames, and are not each other', () => {
+    // P3 mapped both onto one seated frame, which is why a sleeping sim looked like a
+    // sitting one. They are separate poses in design.md §6's bill and must stay separate.
     for (const facing of ['up', 'down', 'left', 'right'] as const) {
-      expect(characterSprite('sit', facing, 0.3)).toBe('char.sit-down');
-      expect(characterSprite('sleep', facing, 0.9)).toBe('char.sit-down');
+      expect(characterSprite(index, 'moss-green', 'sit', facing, 0.3)).toMatch(/^char\.moss-green\.sit-\d$/);
+      expect(characterSprite(index, 'moss-green', 'sleep', facing, 0.9)).toMatch(/^char\.moss-green\.sleep-\d$/);
     }
+    expect(characterSprite(index, 'moss-green', 'sit', 'down', 0))
+      .not.toBe(characterSprite(index, 'moss-green', 'sleep', 'down', 0));
   });
 });
 

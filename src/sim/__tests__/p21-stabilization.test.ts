@@ -174,7 +174,7 @@ test('lunch enqueues at its 13:00 target, not the 12:00 window-open', () => {
   expect(atTarget.queue.filter((c) => c.blockId?.startsWith('lunch#')).length).toBeGreaterThan(0);
 });
 
-test('a day-5 steady-state trace runs on TARGET times (lunch 13:00, workout 17:30, dinner 19:00, bed 23:00)', () => {
+test('day-5 routine maintenance keeps meal and sleep anchors near their targets', () => {
   let s = fresh();
   const starts: Array<{ min: number; what: string }> = [];
   for (let t = 0; t < 5 * 1440; t++) {
@@ -191,14 +191,13 @@ test('a day-5 steady-state trace runs on TARGET times (lunch 13:00, workout 17:3
   const firstAfter = (what: string, minMin: number) => starts.find((x) => x.what === what && x.min >= minMin)?.min;
   const lunch = firstAfter('meal', 700); // ≥11:40
   const dinner = firstAfter('meal', 1100); // ≥18:20
-  const workout = firstAfter('weights', 900);
   const sleep = starts.find((x) => x.what === 'sleep')?.min;
   expect(lunch).toBeGreaterThanOrEqual(780); // 13:00+ (travel shifts start slightly later)
-  expect(lunch).toBeLessThanOrEqual(790);
-  expect(workout).toBeGreaterThanOrEqual(1050); // 17:30+
-  expect(workout).toBeLessThanOrEqual(1060);
+  expect(lunch).toBeLessThanOrEqual(800);
+  expect(starts.some((entry) => entry.what === 'stretch')).toBe(true);
+  expect(starts.some((entry) => entry.what === 'weights')).toBe(false);
   expect(dinner).toBeGreaterThanOrEqual(1140); // 19:00+
-  expect(dinner).toBeLessThanOrEqual(1150);
+  expect(dinner).toBeLessThanOrEqual(1170);
   expect(sleep).toBeGreaterThanOrEqual(1355); // brush at 22:30 target, sleep just after
   expect(sleep).toBeLessThanOrEqual(1380);
 });

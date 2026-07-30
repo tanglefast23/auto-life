@@ -151,8 +151,10 @@ test('a scripted first day completes both goals, keeps the chosen decoration, an
   ).toBeGreaterThanOrEqual(3);
 });
 
-test('filling free time with Practice materially cuts Day-1 idle minutes', () => {
-  const idleMinutes = (practiceCards: number): number => {
+test('automatic reading removes idle time while player-pinned Practice still wins', () => {
+  const dayResult = (
+    practiceCards: number,
+  ): { idleMinutes: number; practicePoints: number } => {
     const loop = new GameLoop(
       fresh(),
       content,
@@ -166,13 +168,17 @@ test('filling free time with Practice materially cuts Day-1 idle minutes', () =>
     for (let i = 0; i < TICKS_PER_DAY; i++) {
       if (loop.runOneTick().processed === 'idle') idle += 1;
     }
-    return idle;
+    return {
+      idleMinutes: idle,
+      practicePoints: loop.snapshot.practicePoints,
+    };
   };
 
-  const unattended = idleMinutes(0);
-  const playerFilled = idleMinutes(10);
+  const unattended = dayResult(0);
+  const playerFilled = dayResult(10);
 
-  // Measured on the frozen seed: 722 → 286. Keep this as a meaningful reduction
-  // rather than pinning tuning to exact minute counts that P4.5 may legitimately move.
-  expect(playerFilled).toBeLessThan(unattended * 0.7);
+  expect(unattended.idleMinutes).toBe(0);
+  expect(playerFilled.idleMinutes).toBe(0);
+  expect(unattended.practicePoints).toBe(0);
+  expect(playerFilled.practicePoints).toBeGreaterThan(0);
 });

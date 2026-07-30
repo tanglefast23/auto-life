@@ -24,6 +24,14 @@ export const QueueReasonSchema = z.discriminatedUnion('kind', [
     atMinute: z.number().int().min(0),
   }),
   z.strictObject({
+    kind: z.literal('routinePlan'),
+    /** Null means the productive free-time fallback, not a need correction. */
+    bar: BarIdSchema.nullable(),
+    threshold: z.number().min(0).max(100),
+    /** Absolute minute at which the planner authored this explanation. */
+    atMinute: z.number().int().min(0),
+  }),
+  z.strictObject({
     kind: z.literal('wrinkle'),
     wrinkleId: z.string().min(1),
   }),
@@ -41,7 +49,7 @@ export const QueueCardSchema = z.strictObject({
   activityId: z.string().min(1),
   owner: z.enum(['AUTO', 'PINNED']),
   urgent: z.boolean(),
-  source: z.enum(['anchor', 'reactive', 'player', 'wrinkle']),
+  source: z.enum(['anchor', 'reactive', 'routine', 'player', 'wrinkle']),
   reason: QueueReasonSchema.optional(),
   blockId: z.string().min(1).optional(),
   enqueuedTick: z.number().int().min(0),
@@ -54,6 +62,8 @@ export const QueueCardSchema = z.strictObject({
     ctx.addIssue({ code: 'custom', message: 'anchor cards require anchor-window reasons' });
   } else if (card.source === 'reactive' && card.reason !== undefined && card.reason.kind !== 'reactiveTrigger') {
     ctx.addIssue({ code: 'custom', message: 'reactive cards require reactive-trigger reasons' });
+  } else if (card.source === 'routine' && card.reason?.kind !== 'routinePlan') {
+    ctx.addIssue({ code: 'custom', message: 'routine cards require routine-plan reasons' });
   } else if (card.source === 'player' && card.reason !== undefined) {
     ctx.addIssue({ code: 'custom', message: 'player cards do not carry planner reasons' });
   }

@@ -59,7 +59,7 @@ test('fairness: unattended week holds every band', () => {
   }
 });
 
-test('the reactive snack never fires in an unattended week', () => {
+test('routine Snacks maintain Nutrition without creating an urgent crisis', () => {
   let s = fresh(77);
   const completions: string[] = [];
   for (let t = 0; t < 7 * 1440; t++) {
@@ -67,10 +67,11 @@ test('the reactive snack never fires in an unattended week', () => {
     s = r.next;
     for (const e of r.events) if (e.type === 'activityCompleted') completions.push(e.detail);
   }
-  expect(completions.filter((c) => c === 'snack')).toEqual([]);
+  expect(completions.filter((c) => c === 'snack').length).toBeGreaterThan(0);
+  expect(s.events.urgentCount).toBe(0);
 });
 
-test('neglect: with the workout anchor disabled, Movement falls below the band within 3 days (and the stretch net floors it — never a collapse)', () => {
+test('without the workout anchor, routine Stretch keeps Movement out of collapse', () => {
   const noWorkout: ContentRegistry = { ...content, anchors: { anchors: content.anchors.anchors.filter((a) => a.id !== 'workout') } };
   let s = fresh(1);
   let minMovement = 100;
@@ -78,8 +79,8 @@ test('neglect: with the workout anchor disabled, Movement falls below the band w
     s = step(s, [], noWorkout).next;
     minMovement = Math.min(minMovement, toDisplay(s.bars.movement));
   }
-  expect(minMovement).toBeLessThan(bands.neglect.movementBelow);
-  expect(minMovement).toBeGreaterThan(10); // the net holds — fail-soft, not free-fall
+  expect(minMovement).toBeGreaterThan(50);
+  expect(minMovement).toBeLessThan(70);
   expect(s.events.urgentCount).toBe(0); // Movement is never URGENT
 });
 

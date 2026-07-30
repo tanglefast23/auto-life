@@ -849,3 +849,64 @@ export const StringCatalogSchema = z
     }
   });
 export type StringCatalog = z.infer<typeof StringCatalogSchema>;
+
+// ---------- audio (SPEC §14; P6 T8) ----------
+
+/**
+ * One playable cue: which rendered asset, and how loud it was authored.
+ *
+ * `gain` is the cue's own level, multiplied by the player's channel and master sliders at
+ * playback. HFM's handover is explicit that loudness belongs in the asset when runtime
+ * volume is capped (docs/lessons-from-hero-football-manager.md §3.2), so this is the
+ * per-cue trim, not a second volume control.
+ */
+export const AudioCueSchema = z.strictObject({
+  assetId: z.string().min(1),
+  gain: z.number().min(0).max(1),
+});
+export type AudioCue = z.infer<typeof AudioCueSchema>;
+
+export const AudioSchema = z
+  .strictObject({
+    music: z.strictObject({
+      day: AudioCueSchema,
+      evening: AudioCueSchema,
+      /** Must equal `EVENING_START_MINUTE`; cross-checked in validate-content. */
+      crossfadeMinute: z.number().int().min(0).max(1439),
+      crossfadeMs: z.number().int().positive().max(30_000),
+    }),
+    /** SPEC §14: the Practice riff is level-dependent, L0–L3. */
+    practiceRiffs: z.array(z.strictObject({ level: z.number().int().min(0).max(3), ...AudioCueSchema.shape })).length(4),
+    ambience: z.strictObject({ room: AudioCueSchema, rain: AudioCueSchema }),
+    footsteps: z.record(FloorMaterialSchema, AudioCueSchema),
+    activityLoops: z.record(z.string().min(1), AudioCueSchema),
+    cues: z.strictObject({
+      queueInsert: AudioCueSchema,
+      queueRemove: AudioCueSchema,
+      queueComplete: AudioCueSchema,
+      adjacency: AudioCueSchema,
+      urgency: AudioCueSchema,
+      recap: AudioCueSchema,
+    }),
+  })
+  .superRefine((doc, ctx) => {
+    const levels = doc.practiceRiffs.map((r) => r.level).sort((a, b) => a - b);
+    if (levels.join(',') !== '0,1,2,3') {
+      ctx.addIssue({ code: 'custom', message: 'practiceRiffs must cover levels 0..3 exactly once' });
+    }
+  });
+export type AudioConfig = z.infer<typeof AudioSchema>;
+
+/** Every asset id the bank must contain, flattened. Used by the bill gate and the bus. */
+export function declaredAudioAssetIds(audio: AudioConfig): string[] {
+  return [
+    audio.music.day.assetId,
+    audio.music.evening.assetId,
+    ...audio.practiceRiffs.map((r) => r.assetId),
+    audio.ambience.room.assetId,
+    audio.ambience.rain.assetId,
+    ...Object.values(audio.footsteps).map((c) => c.assetId),
+    ...Object.values(audio.activityLoops).map((c) => c.assetId),
+    ...Object.values(audio.cues).map((c) => c.assetId),
+  ];
+}

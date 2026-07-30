@@ -218,10 +218,48 @@ test('known legacy data migrates before current strict parsing', async () => {
   expect(loaded).toMatchObject({
     status: 'loaded',
     career: {
-      engineVersion: 8,
+      engineVersion: 9,
       payload: {
         sim: {
           current: { type: 'travel', cardId: 'c0' },
+        },
+      },
+    },
+  });
+});
+
+test('engine v8 careers migrate without losing the saved queue', async () => {
+  const store = new FakeKvStore();
+  const prior = JSON.parse(JSON.stringify(freshCareer()));
+  prior.engineVersion = 8;
+  prior.payload.sim.engineVersion = 8;
+  prior.payload.sim.queue = [{
+    id: 'saved-v8-card',
+    activityId: 'meal',
+    owner: 'PINNED',
+    urgent: false,
+    source: 'player',
+    enqueuedTick: prior.payload.sim.clock.absoluteMinute,
+  }];
+  store.values.set(
+    CAREER_GENERATION_KEYS[0],
+    JSON.stringify(prior),
+  );
+
+  const loaded = await new CareerRepository(
+    store,
+    content,
+    'reader',
+  ).load();
+
+  expect(loaded).toMatchObject({
+    status: 'loaded',
+    career: {
+      engineVersion: 9,
+      payload: {
+        sim: {
+          engineVersion: 9,
+          queue: [{ id: 'saved-v8-card', activityId: 'meal' }],
         },
       },
     },

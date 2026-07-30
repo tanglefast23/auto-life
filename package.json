@@ -6,6 +6,7 @@
     "@expo/metro-runtime": "~57.0.7",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "~57.0.8",
+    "expo-audio": "~57.0.3",
     "expo-sqlite": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -44,8 +45,12 @@
     "export:web": "expo export --platform web && cp serve.json dist/serve.json",
     "serve:dist": "serve dist --listen 4173",
     "harness": "jest --runInBand --runTestsByPath src/sim/__tests__/harness/golden-week.test.ts src/sim/__tests__/harness/balance.test.ts",
-    "verify": "npm run validate:content && npm run art:check && npm run typecheck && npm test && npm run export:web",
-    "art:check": "npm run art:atlas && git diff --exit-code --stat -- assets/generated"
+    "verify": "npm run validate:content && npm run art:check && npm run audio:check && npm run art:bill && npm run typecheck && npm test && npm run export:web",
+    "art:check": "npm run art:atlas && git diff --exit-code --stat -- assets/generated",
+    "audio:bank": "tsx scripts/audio/build-bank.ts",
+    "audio:check": "npm run audio:bank && git diff --exit-code --stat -- assets/audio",
+    "art:review": "tsx scripts/art/build-review-sheet.ts",
+    "art:bill": "jest --runTestsByPath src/render/__tests__/bill.test.ts"
   },
   "private": true
 }

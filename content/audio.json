@@ -1,0 +1,120 @@
+{
+  "music": {
+    "day": {
+      "assetId": "music.day",
+      "gain": 0.9
+    },
+    "evening": {
+      "assetId": "music.evening",
+      "gain": 0.9
+    },
+    "crossfadeMinute": 1140,
+    "crossfadeMs": 4000
+  },
+  "practiceRiffs": [
+    {
+      "level": 0,
+      "assetId": "riff.l0",
+      "gain": 0.7
+    },
+    {
+      "level": 1,
+      "assetId": "riff.l1",
+      "gain": 0.75
+    },
+    {
+      "level": 2,
+      "assetId": "riff.l2",
+      "gain": 0.8
+    },
+    {
+      "level": 3,
+      "assetId": "riff.l3",
+      "gain": 0.9
+    }
+  ],
+  "ambience": {
+    "room": {
+      "assetId": "ambience.room",
+      "gain": 0.6
+    },
+    "rain": {
+      "assetId": "ambience.rain",
+      "gain": 0.8
+    }
+  },
+  "footsteps": {
+    "wood": {
+      "assetId": "footstep.wood",
+      "gain": 0.5
+    },
+    "tile": {
+      "assetId": "footstep.tile",
+      "gain": 0.5
+    },
+    "carpet": {
+      "assetId": "footstep.carpet",
+      "gain": 0.4
+    }
+  },
+  "activityLoops": {
+    "shower": {
+      "assetId": "loop.shower",
+      "gain": 0.7
+    },
+    "meal": {
+      "assetId": "loop.meal",
+      "gain": 0.6
+    },
+    "snack": {
+      "assetId": "loop.snack",
+      "gain": 0.6
+    },
+    "treadmill": {
+      "assetId": "loop.treadmill",
+      "gain": 0.7
+    },
+    "weights": {
+      "assetId": "loop.weights",
+      "gain": 0.6
+    },
+    "stretch": {
+      "assetId": "loop.stretch",
+      "gain": 0.5
+    },
+    "brush": {
+      "assetId": "loop.brush",
+      "gain": 0.6
+    },
+    "quickwash": {
+      "assetId": "loop.quickwash",
+      "gain": 0.6
+    }
+  },
+  "cues": {
+    "queueInsert": {
+      "assetId": "ui.queue.insert",
+      "gain": 0.8
+    },
+    "queueRemove": {
+      "assetId": "ui.queue.remove",
+      "gain": 0.8
+    },
+    "queueComplete": {
+      "assetId": "ui.queue.complete",
+      "gain": 0.7
+    },
+    "adjacency": {
+      "assetId": "ui.adjacency",
+      "gain": 0.9
+    },
+    "urgency": {
+      "assetId": "ui.urgency",
+      "gain": 0.85
+    },
+    "recap": {
+      "assetId": "ui.recap",
+      "gain": 0.75
+    }
+  }
+}
