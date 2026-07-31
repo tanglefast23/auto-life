@@ -21,6 +21,10 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Hermes compiler scratch, written by `expo export` (found by the P6 ship pass — it was
+# untracked and would have been swept in by the next `git add -A`)
+.hermes/
+
 # debug
 npm-debug.*
 yarn-debug.*
