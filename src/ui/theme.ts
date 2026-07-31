@@ -39,6 +39,16 @@ import {
  */
 export const PIXEL_EM = 8;
 
+/**
+ * The floor for anything a player is expected to read (design.md §4, P7).
+ *
+ * The desktop audit found 8px carrying queue names, predicted times, need values and the
+ * Practice counter — the single strongest prototype signal in the game. 8px is legal
+ * *Silkscreen*, which is why it survived five phases of review: the em grid says it is
+ * crisp, and crispness was the only property being checked.
+ */
+export const MIN_READABLE = 12;
+
 export const FONT = {
   /**
    * Two real faces, never one face plus synthetic bold. HFM's handover is explicit
@@ -52,14 +62,34 @@ export const FONT = {
   prose: 'System',
 } as const;
 
+/**
+ * Four sizes, two pixel weights, one sans face (design.md §4).
+ *
+ * `caption` is the P7 change and the only one that costs something. 12px cannot be
+ * Silkscreen — 12 is not a multiple of the 8px em, so it would anti-alias — so the
+ * metadata tier changes *face* rather than staying at an unreadable 8px. §4 already
+ * licenses a readable sans; P7 widens that licence from "longer than a sentence" to
+ * "anything below the pixel face's smallest legible step", which is the same rule
+ * applied honestly.
+ *
+ * The alternative was promoting all 8px metadata to 16px pixel type. That stays purely
+ * on-brand and doubles the height of every dense surface in the game — the queue rail
+ * and the four-need HUD grid do not survive it. Readability wins, and the pixel face
+ * keeps everything a player acts on.
+ */
 export const TYPE_SCALE = {
-  micro: { fontFamily: FONT.pixel, fontSize: 8, fontWeight: 'normal' },
+  caption: { fontFamily: FONT.prose, fontSize: 12, lineHeight: 16, fontWeight: 'normal' },
   body: { fontFamily: FONT.pixel, fontSize: 16, fontWeight: 'normal' },
   heading: { fontFamily: FONT.pixelBold, fontSize: 24, fontWeight: 'normal' },
   display: { fontFamily: FONT.pixelBold, fontSize: 32, fontWeight: 'normal' },
 } as const satisfies Record<string, TextStyle>;
 
 export type TypeStep = keyof typeof TYPE_SCALE;
+
+/** True for the steps that must stay on the em grid. `caption` is sans and must not. */
+export function isPixelStep(step: TypeStep): boolean {
+  return TYPE_SCALE[step].fontFamily !== FONT.prose;
+}
 
 /** Prose is the one place a non-pixel face is legal, and it gets exactly one size. */
 export const PROSE: TextStyle = {
@@ -89,9 +119,32 @@ export function crispSize(base: number, scale: number): number {
   return Math.max(PIXEL_EM, Math.round(wanted / PIXEL_EM) * PIXEL_EM);
 }
 
-/** A scaled type step, ready to spread into a `Text` style. */
+/**
+ * Scale a size that has no em grid to honour.
+ *
+ * The sans caption is free to land on 13 or 19px, so snapping it to multiples of 8 would
+ * throw away most of the slider's range for no benefit — and would round 12px *down* to
+ * 8px at the bottom of the range, reintroducing the exact unreadability P7 removes.
+ */
+function fluidSize(base: number, scale: number): number {
+  const safe = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  return Math.max(MIN_READABLE, Math.round(base * safe));
+}
+
+/**
+ * A scaled type step, ready to spread into a `Text` style.
+ *
+ * P5 shipped the `hudTextScale` preference and P6 wrote this function, but until P7
+ * **nothing called it** — `GameScreen` multiplied the reserved HUD *height* by the scale
+ * and never passed it to a font size, so the accessibility setting moved layout and left
+ * the text alone. Every HUD/queue surface now routes its sizes through here.
+ */
 export function scaledType(step: TypeStep, scale = 1): TextStyle {
   const spec = TYPE_SCALE[step];
+  if (!isPixelStep(step)) {
+    const fontSize = fluidSize(spec.fontSize, scale);
+    return { ...spec, fontSize, lineHeight: Math.round(fontSize * (4 / 3)) };
+  }
   return { ...spec, fontSize: crispSize(spec.fontSize, scale) };
 }
 

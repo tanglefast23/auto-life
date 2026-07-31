@@ -5,7 +5,7 @@ import { GameLoop } from '../../application/loop';
 import { content } from '../../sim/content';
 import { PrngStreams } from '../../sim/prng';
 import { newGameState } from '../../sim/state';
-import { PIXEL_EM } from '../theme';
+import { FONT, MIN_READABLE, PIXEL_EM } from '../theme';
 
 /**
  * "HUD text size" has to change the size of HUD text.
@@ -33,7 +33,12 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-function fontSizesAt(textScale: number): Map<string, number> {
+interface RenderedType {
+  fontSize: number;
+  fontFamily: string | undefined;
+}
+
+function typeAt(textScale: number): Map<string, RenderedType> {
   let tree: ReactTestRenderer;
   act(() => {
     tree = create(
@@ -46,15 +51,24 @@ function fontSizesAt(textScale: number): Map<string, number> {
       />,
     );
   });
-  const sizes = new Map<string, number>();
+  const sizes = new Map<string, RenderedType>();
   for (const node of tree!.root.findAllByType(Text)) {
     const testID = node.props.testID as string | undefined;
     if (testID === undefined) continue;
-    const flat = StyleSheet.flatten(node.props.style) as { fontSize?: number };
-    if (typeof flat.fontSize === 'number') sizes.set(testID, flat.fontSize);
+    const flat = StyleSheet.flatten(node.props.style) as {
+      fontSize?: number;
+      fontFamily?: string;
+    };
+    if (typeof flat.fontSize === 'number') {
+      sizes.set(testID, { fontSize: flat.fontSize, fontFamily: flat.fontFamily });
+    }
   }
   act(() => tree!.unmount());
   return sizes;
+}
+
+function fontSizesAt(textScale: number): Map<string, number> {
+  return new Map([...typeAt(textScale)].map(([id, t]) => [id, t.fontSize]));
 }
 
 test('a larger HUD text preference renders larger HUD text', () => {
@@ -84,10 +98,31 @@ test('HUD text never shrinks as the preference grows', () => {
 test('every scaled HUD size stays on the crisp pixel-font grid', () => {
   // design.md §13 rejects anti-aliased pixel type outright, so a scaled size that is not
   // a multiple of Silkscreen's 8 px em is a reject even though it is "bigger".
+  //
+  // P7 scopes this to the pixel face. It previously asserted the em rule over *every* HUD
+  // string, which was equivalent while the whole HUD was Silkscreen — but the 12 px tier
+  // is now sans precisely because 12 is not a multiple of the em, and holding sans to a
+  // grid it does not have would force the metadata tier back to an unreadable 8 px. The
+  // rule being enforced is "pixel type never anti-aliases", not "every number divides by 8".
   for (const scale of [0.75, 1, 1.25, 1.5]) {
-    for (const [testID, size] of fontSizesAt(scale)) {
-      expect(`${testID}@${scale}:${size % PIXEL_EM}`).toBe(`${testID}@${scale}:0`);
-      expect(size).toBeGreaterThanOrEqual(PIXEL_EM);
+    for (const [testID, { fontSize, fontFamily }] of typeAt(scale)) {
+      const isPixel = fontFamily === FONT.pixel || fontFamily === FONT.pixelBold;
+      if (isPixel) {
+        expect(`${testID}@${scale}:${fontSize % PIXEL_EM}`).toBe(`${testID}@${scale}:0`);
+        expect(fontSize).toBeGreaterThanOrEqual(PIXEL_EM * 2);
+      }
+    }
+  }
+});
+
+test('no HUD string renders below the readable floor at any preference', () => {
+  // The floor this replaces was `>= PIXEL_EM`, i.e. 8 px — the exact size the P7 audit
+  // failed the HUD for. A test that permits the defect it is meant to prevent is worse
+  // than no test, because it reads as coverage.
+  for (const scale of [0.75, 1, 1.25, 1.5]) {
+    for (const [testID, { fontSize }] of typeAt(scale)) {
+      expect(`${testID}@${scale}`).toBe(`${testID}@${scale}`);
+      expect(fontSize).toBeGreaterThanOrEqual(MIN_READABLE);
     }
   }
 });
