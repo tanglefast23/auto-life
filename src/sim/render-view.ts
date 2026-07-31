@@ -163,7 +163,14 @@ function deriveProgress(s: SimState, processedProgress: number | null): number |
  */
 function derivePose(s: SimState, content: ContentRegistry): Pose {
   const cur = s.current;
-  if (cur === null) return 'stand';
+  // SPEC §5: `if !current: startNext() or idle()`. Nothing running is the *only* thing
+  // the authored `idle` pose has ever meant — an `idle`-kind card never becomes current
+  // (`step.ts` removes it), so returning `stand` here left the 2-frame idle pose, all
+  // three idle variants, and `scene-layout.ts`'s `droop && idle` branch unreachable.
+  // Twenty baked sprites, no way in, and both a creation preference and Goal 4's entire
+  // reward resolving to nothing a player could see. Ruled render-only by Joe 2026-07-31:
+  // the gap between cards is where she idles, and no sim, save or planner state moves.
+  if (cur === null) return 'idle';
   if (cur.type === 'travel') return 'walk';
   if (cur.type === 'sleep') return activityPose(content, 'sleep');
   return activityPose(content, cur.dto.activityId);

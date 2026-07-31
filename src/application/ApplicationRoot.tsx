@@ -54,6 +54,7 @@ import {
   musicInputsFor,
   type CueView,
 } from './audio/cue-source';
+import { activeIdleVariantId } from '../game/idle-variant';
 import type { FloorMaterial } from '../sim/content-schemas';
 import type { CompletedBoundary } from './loop';
 import { content } from '../sim/content';
@@ -664,7 +665,11 @@ export function ApplicationRoot({
           preferenceTags={careerPreferenceTags(visibleCareer)}
           autonomy={visibleCareer.payload.autonomy}
           appearancePresetId={visibleCareer.payload.identity.appearancePresetId}
-          idleVariantId={visibleCareer.payload.identity.idlePreferenceId}
+          idleVariantId={activeIdleVariantId(
+            visibleCareer.payload.identity.idlePreferenceId,
+            visibleCareer.payload.game.goals,
+            content,
+          )}
           onFootstep={observeFootstep}
         />
         <View

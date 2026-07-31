@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { activeIdleVariantId } from '../game/idle-variant';
 import type { GameAction } from '../game/tick';
 import {
   SessionStateSchema,
@@ -465,7 +466,15 @@ export function deriveSimRules(
     intention,
     preferences: {
       foodMood: payload.identity.foodMoodId,
-      idleVariantId: payload.identity.idlePreferenceId,
+      // The *variant*, not the preference option that selects it. `foodMoodId` gets away
+      // with being passed straight through because its option id and mechanic value are
+      // spelled the same; `window-gazer` and `window-gazing` are not, and a field named
+      // `idleVariantId` holding an option id is what made every idle flourish undrawable.
+      idleVariantId: activeIdleVariantId(
+        payload.identity.idlePreferenceId,
+        payload.game.goals,
+        content,
+      ),
     },
     objectBlocks,
     activitySlowdowns,

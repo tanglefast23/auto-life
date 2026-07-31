@@ -167,6 +167,10 @@ describe('every motion reaches a surface', () => {
    */
   it.each([
     ['bubbleFor', /\bbubbleFor\(/],
+    // The same failure a third time: `idle-variant.ts` decides which flourish the sim
+    // wears, and the renderer was being handed a raw identity option id instead — so
+    // Goal 4's whole reward and both creation preferences resolved to no pose at all.
+    ['activeIdleVariantId', /\bactiveIdleVariantId\(/],
     ['CueRouter.onMinute', /\.onMinute\(/],
     ['CueRouter.onEvents', /\.onEvents\(/],
     ['CueRouter.onFootstep', /\.onFootstep\(/],
