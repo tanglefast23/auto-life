@@ -38,7 +38,7 @@ class MemoryStore implements KvStore {
 function baseCareer(): StoredCareer {
   return newCareerState({
     rootSeed: 7,
-    sim: newGameState('baseline', content.rates, 7, PrngStreams.create(7).serialize()),
+    sim: newGameState('baseline', content.rates, 7, content.perks),
     careerId: 'refs-career',
   });
 }

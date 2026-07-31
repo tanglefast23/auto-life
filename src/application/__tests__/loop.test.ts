@@ -10,7 +10,7 @@ import { DEFAULT_SIM_RULES } from '../../sim/rules';
  * untestable. Here it means bit-identical state.
  */
 
-const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = () => newGameState('baseline', content.rates, 1234, content.perks);
 const digest = (loop: GameLoop) => JSON.stringify(loop.peekState());
 
 test('SimRules are derived once per boundary and shared by the tick composition', () => {

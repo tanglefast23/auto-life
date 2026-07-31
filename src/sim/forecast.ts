@@ -375,7 +375,8 @@ export function forecast(
     const stateAtStart = sim;
     for (const card of sim.queue) ensureAnnotation(card);
     const before = sim.current;
-    const r = step(sim, [], content, rules);
+    // docs/08 §8.3: the lookahead never draws a check — it models every future roll as C.
+    const r = step(sim, [], content, rules, { forecast: true });
     sim = r.next;
     for (const card of sim.queue) ensureAnnotation(card);
     const after = sim.current;
@@ -443,7 +444,7 @@ export function forecast(
   const simAtHorizon = sim;
   let atWake = sim;
   for (let t = horizonTicks; t < ticksToWake; t++) {
-    atWake = step(atWake, [], content, rules).next;
+    atWake = step(atWake, [], content, rules, { forecast: true }).next;
   }
   const wakeResponsibleCardIds = pinnedWakeChain(atWake);
   const wakeConflicts: ForecastWakeConflict[] =

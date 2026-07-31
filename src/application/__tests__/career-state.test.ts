@@ -20,7 +20,7 @@ function freshCareer() {
     'early',
     content.rates,
     ROOT_SEED,
-    prng,
+    content.perks,
   );
   return newCareerState({
     rootSeed: ROOT_SEED,
@@ -126,14 +126,16 @@ test('forecasting consumes no live career stream', () => {
   expect(JSON.stringify(career.payload.prng)).toBe(before);
 });
 
-test('the canonical CareerState payload has a reviewed engine-v11 digest', () => {
+test('the canonical CareerState payload has a reviewed engine-v12 digest', () => {
   const digest = createHash('sha256')
     .update(canonicalCareerPayload(freshCareer().payload))
     .digest('hex');
   expect(digest).toBe(
-    // Moves only because the envelope stamps ENGINE_VERSION 11. Reviewed: the sole
-    // difference from the v10 digest is that number — no field was added or reshaped.
-    '5326fb396f370d6db56ee04fca58c648707fab9d6552a4dd2d95c50b91282275',
+    // Moves for ENGINE_VERSION 12 AND for four new SimState fields — `stats`,
+    // `statXpToday`, `perks` and `rollStream` (docs/08 §8.1). Reviewed: those four plus the
+    // version number are the whole difference from the v11 digest; nothing existing was
+    // reshaped, which is why v8–v11 envelopes transform forward by adding fields only.
+    'e488158ad3123a64f1cc833e8409e3dee7b42aa5353c05dd21f7332a08325f5e',
   );
 });
 

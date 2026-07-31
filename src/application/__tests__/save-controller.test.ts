@@ -56,7 +56,7 @@ function freshCareer(savedAtEpochMs = 0): StoredCareer {
   return {
     ...newCareerState({
       rootSeed: seed,
-      sim: newGameState('baseline', content.rates, seed, prng),
+      sim: newGameState('baseline', content.rates, seed, content.perks),
       prng,
     }),
     savedAtEpochMs,

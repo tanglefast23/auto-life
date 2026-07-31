@@ -214,6 +214,7 @@ function buildCareer(
     draft.chronotype,
     content.rates,
     draft.rootSeed,
+    content.perks,
   );
   if (
     secondCategory.id === 'workout' &&

@@ -1,0 +1,51 @@
+{
+  "families": [
+    {
+      "id": "approach",
+      "labelStringId": "character:families.approach",
+      "options": [
+        {
+          "id": "creative",
+          "labelStringId": "character:perks.creative",
+          "blurbStringId": "character:blurbs.creative",
+          "effects": [
+            { "kind": "rollShape", "shape": "advantage", "tag": "expressive" },
+            { "kind": "durationFactor", "percent": 115, "tag": "expressive" }
+          ]
+        },
+        {
+          "id": "methodical",
+          "labelStringId": "character:perks.methodical",
+          "blurbStringId": "character:blurbs.methodical",
+          "effects": [
+            { "kind": "rollShape", "shape": "advantage", "tag": "routine" },
+            { "kind": "durationFactor", "percent": 115, "tag": "routine" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "drive",
+      "labelStringId": "character:families.drive",
+      "options": [
+        {
+          "id": "perfectionist",
+          "labelStringId": "character:perks.perfectionist",
+          "blurbStringId": "character:blurbs.perfectionist",
+          "effects": [
+            { "kind": "rollOffset", "value": 2 },
+            { "kind": "durationFactor", "percent": 115 }
+          ]
+        },
+        {
+          "id": "easygoing",
+          "labelStringId": "character:perks.easygoing",
+          "blurbStringId": "character:blurbs.easygoing",
+          "effects": [
+            { "kind": "durationFactor", "percent": 85 }
+          ]
+        }
+      ]
+    }
+  ]
+}

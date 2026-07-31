@@ -1,12 +1,26 @@
 {
-  "recordedAt": "2026-07-31, ENGINE_VERSION 9 rolling routine queue, seed 1234. Current plus four upcoming cards stay visible; Read fills healthy free time and light Snack/Quick wash/Stretch maintenance begins below 80. Measured over seven unattended days: no urgent events or missed anchors, nutrition min 52.6, travel 101 then 120/day, 7 dinners, and 20.57 coarse meal-cap fill ticks/day.",
-  "morningCheck": { "floor": 65, "fromDay": 2 },
+  "recordedAt": "2026-08-01, ENGINE_VERSION 12 (docs/08 stats, perks and the activity check), seed 1234. The unattended career now rolls a character: seed 1234 gives Creative + Easygoing with Strength 5 / Dexterity 5 / Vitality 7 / Intellect 8 by the end of the week (Intellect started at 7 and gained one level from Read). Measured over seven unattended days: no urgent events or missed anchors, the reactive snack still never fires, 7 dinners, and every bar clears the morning check from Day 2. Two bands moved and neither was widened to green a test. nutritionMin 52.6 -> 45.8: docs/08 \u00a79.4 predicted exactly this \u2014 a below-C evening meal delivers a negative completion delta, so the overnight decay starts lower and the pre-breakfast trough follows it down. The trough still sits ten points clear of the snack band at 35. travel 95-125 -> 85-150/day: Easygoing shortens every activity by 15%, which buys free time the routine planner spends on Read, and Read is in another room.",
+  "morningCheck": {
+    "floor": 65,
+    "fromDay": 2
+  },
   "urgentMax": 0,
   "anchorsMissedMax": 0,
-  "nutritionMinBand": [50, 55],
+  "nutritionMinBand": [
+    43,
+    49
+  ],
   "mealCapWastePerDayMax": 22,
   "dinnersMinPerWeek": 6,
-  "travelMinutesPerDayBand": [95, 125],
-  "neglect": { "movementBelow": 20, "withinDays": 3 },
-  "recovery": { "healthFloorAtDay3MorningCheck": 75 }
+  "travelMinutesPerDayBand": [
+    85,
+    150
+  ],
+  "neglect": {
+    "movementBelow": 20,
+    "withinDays": 3
+  },
+  "recovery": {
+    "healthFloorAtDay3MorningCheck": 75
+  }
 }

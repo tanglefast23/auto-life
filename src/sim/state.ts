@@ -9,8 +9,10 @@ import {
 } from './queue';
 import { ENGINE_VERSION } from './version';
 import { initialAbsoluteMinute, initialBars } from './initial-state';
-import type { RatesConfig } from './content-schemas';
+import type { PerksConfig, RatesConfig } from './content-schemas';
 import { BarIdSchema } from './content-schemas';
+import { RollStreamSchema, rollNewCharacter } from './roll';
+import { StatsStateSchema, StatXpTodaySchema, emptyStatXpToday } from './stats';
 import type { Bars, Chronotype } from './types';
 
 /**
@@ -59,6 +61,19 @@ export const SimStateSchema = z.strictObject({
   lastMealCompletedAt: z.number().int().nullable(),
   napEffectiveUsesToday: z.number().int().min(0),
   preferredWorkout: z.enum(['weights', 'treadmill']),
+  /**
+   * Who this person is, mechanically (docs/08).
+   *
+   * In `SimState` rather than `IdentityState` for the same reason `chronotype` and
+   * `preferredWorkout` are: the engine reads them inside a tick and the golden replay has
+   * to see them. The stream record is here for a sharper reason still — `step()` takes no
+   * PRNG, and the five career-envelope streams are drawn in `game/` at boundaries the
+   * application can see, while an activity check happens inside stage 3 where it cannot.
+   */
+  stats: StatsStateSchema,
+  statXpToday: StatXpTodaySchema,
+  perks: z.array(z.string().min(1)),
+  rollStream: RollStreamSchema,
   practice: z.strictObject({
     points100: z.number().int().min(0),
     sessionsCountedToday: z.number().int().min(0),
@@ -87,12 +102,18 @@ export function restoreSimState(raw: unknown): SimState {
   return SimStateSchema.parse(raw);
 }
 
+/**
+ * `perksConfig` replaces the old unused `_legacyPrng` parameter: the roll stream that used
+ * to be a career-envelope concern now lives here (docs/08 §8.1), so the one thing a fresh
+ * SimState still cannot derive on its own is which perk ids exist to draw from.
+ */
 export function newGameState(
   chronotype: Chronotype,
   cfg: RatesConfig,
-  _rootSeed: number,
-  _legacyPrng?: PrngSnapshot,
+  rootSeed: number,
+  perksConfig: PerksConfig,
 ): SimState {
+  const character = rollNewCharacter(rootSeed, perksConfig, cfg);
   return {
     engineVersion: ENGINE_VERSION,
     chronotype,
@@ -110,6 +131,10 @@ export function newGameState(
     lastMealCompletedAt: null,
     napEffectiveUsesToday: 0,
     preferredWorkout: 'weights',
+    stats: character.stats,
+    statXpToday: emptyStatXpToday(),
+    perks: character.perks,
+    rollStream: character.rollStream,
     practice: {
       points100: 0,
       sessionsCountedToday: 0,

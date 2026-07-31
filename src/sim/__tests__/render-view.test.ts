@@ -13,7 +13,7 @@ import type { SimState } from '../state';
  */
 
 const fresh = (): SimState =>
-  newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+  newGameState('baseline', content.rates, 1234, content.perks);
 
 /** Advance until a predicate holds, returning the state and snapshot at that point. */
 function advanceUntil(pred: (r: ReturnType<typeof step>) => boolean, maxTicks = 2000) {

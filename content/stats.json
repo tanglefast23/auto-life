@@ -1,0 +1,8 @@
+{
+  "stats": [
+    { "id": "strength",  "labelStringId": "character:stats.strength",  "blurbStringId": "character:blurbs.strength" },
+    { "id": "dexterity", "labelStringId": "character:stats.dexterity", "blurbStringId": "character:blurbs.dexterity" },
+    { "id": "vitality",  "labelStringId": "character:stats.vitality",  "blurbStringId": "character:blurbs.vitality" },
+    { "id": "intellect", "labelStringId": "character:stats.intellect", "blurbStringId": "character:blurbs.intellect" }
+  ]
+}

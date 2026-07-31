@@ -99,6 +99,21 @@ export interface CueBoundary {
 }
 
 /**
+ * Which of the three grade cues a grade earns (docs/08 §11.4).
+ *
+ * Derived from the letter rather than looked up, so this module stays pure and content-free
+ * like the rest of the file. `content/grades.json` carries the same `band` for the UI's
+ * colour, and `cue-source.test.ts` asserts the two agree across all fifteen grades — a
+ * duplicated rule is only safe when something checks it.
+ */
+export function gradeBandOf(gradeId: string): 'high' | 'mid' | 'low' {
+  const letter = gradeId.charAt(0).toLowerCase();
+  if (letter === 'a' || letter === 'b') return 'high';
+  if (letter === 'c') return 'mid';
+  return 'low';
+}
+
+/**
  * The cue events one watched minute produced.
  *
  * Ordering is start → engine events → queue verbs, so a card that starts and completes
@@ -137,9 +152,24 @@ export function domainCueEvents(
     cues.push({ kind: 'recap-shown' });
   }
 
+  // docs/08 §11.4: a graded completion carries its band, so the router can play the grade
+  // instead of the generic settle. `activityGraded` is emitted immediately after the
+  // completion it belongs to, so pairing them by activity id is unambiguous within a tick.
+  const gradeBands = new Map<string, 'high' | 'mid' | 'low'>();
+  for (const event of boundary.events) {
+    if (event.type !== 'activityGraded') continue;
+    const [activityId = '', gradeId = ''] = event.detail.split(':');
+    gradeBands.set(activityId, gradeBandOf(gradeId));
+  }
+
   for (const event of boundary.events) {
     if (event.type === 'activityCompleted') {
-      cues.push({ kind: 'activity-completed', activityId: event.detail });
+      const graded = gradeBands.get(event.detail);
+      cues.push({
+        kind: 'activity-completed',
+        activityId: event.detail,
+        ...(graded !== undefined ? { graded } : {}),
+      });
     } else if (event.type === 'urgent') {
       cues.push({ kind: 'urgent-raised' });
     } else if (event.type === 'adjacencyGranted') {

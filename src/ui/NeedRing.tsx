@@ -1,8 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { BAR_COLOR, BAR_ICON, type BandName } from './bands';
 import type { BarId } from '../sim/types';
+import { MOTION } from '../render/motion';
 import { local } from './layout';
 import { FONT, scaledType, theme } from './theme';
+import { squashInterpolation, useMotionRun } from './use-motion';
 
 /**
  * A need as a ring that empties, not a bar that shrinks (P8 UI pass).
@@ -36,6 +38,14 @@ export interface NeedRingProps {
   size?: number;
   /** The effective HUD text scale. The glyph is HUD text and must answer to it. */
   textScale?: number;
+  /**
+   * The third beat of docs/08 §11.1: the ring this grade fed, popping as the delta lands.
+   *
+   * A key rather than a boolean, so two grades in a row on the same bar each get their own
+   * pop instead of the second one being read as "already popping". Null means no pop.
+   */
+  popKey?: string | null;
+  reducedMotion?: boolean;
 }
 
 /** How many wedges remain lit at this value. Rounds up, so 1% is never an empty ring. */
@@ -62,15 +72,21 @@ export function NeedRing({
   alertGlyph,
   size = RING_SIZE,
   textScale = 1,
+  popKey = null,
+  reducedMotion = false,
 }: NeedRingProps) {
+  // The pop is decoration: under reduced motion the ring simply arrives at its new value,
+  // which is the state change SPEC §11.6 promises to keep.
+  const popDriver = useMotionRun(MOTION.barPop, reducedMotion, popKey);
+  const popScale = popKey === null ? 1 : squashInterpolation(MOTION.barPop, popDriver, reducedMotion);
   const lit = litWedges(value);
   const color = BAR_COLOR[bar];
   const wedgeH = size / 2;
   const wedgeW = Math.max(3, Math.round(size / 7));
 
   return (
-    <View
-      style={[styles.root, { width: size, height: size }]}
+    <Animated.View
+      style={[styles.root, { width: size, height: size }, { transform: [{ scale: popScale }] }]}
       testID={`need-ring:${bar}`}
     >
       {Array.from({ length: WEDGES }, (_, i) => (
@@ -120,7 +136,7 @@ export function NeedRing({
           {alertGlyph ? BAR_ICON[bar].alert : BAR_ICON[bar].normal}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

@@ -14,6 +14,8 @@ import {
   PrngStreams,
   type PrngSnapshot,
 } from '../sim/prng';
+import { rollNewCharacter } from '../sim/roll';
+import { emptyStatXpToday } from '../sim/stats';
 import {
   SimStateSchema,
   restoreSimState,
@@ -555,6 +557,7 @@ function validateSimContentRefs(
     activityIds: ReadonlySet<string>;
     anchorIds: ReadonlySet<string>;
     wrinkleIds: ReadonlySet<string>;
+    perkIds: ReadonlySet<string>;
   },
 ): void {
   const requireActivity = (activityId: string, where: string): void => {
@@ -609,6 +612,13 @@ function validateSimContentRefs(
     ...Object.keys(sim.anchorMutationGenerations),
   ]) {
     requireAnchor(anchorId, 'anchor ledger');
+  }
+  // A perk id is a content reference like any other: a renamed perk must fail the load
+  // loudly rather than silently becoming a character with one fewer trait.
+  for (const perkId of sim.perks) {
+    if (!known.perkIds.has(perkId)) {
+      throw new Error(`career references unknown perk "${perkId}"`);
+    }
   }
 }
 
@@ -737,6 +747,9 @@ export function validateCareerContentRefs(
     activityIds,
     anchorIds: new Set(content.anchors.anchors.map((anchor) => anchor.id)),
     wrinkleIds,
+    perkIds: new Set(
+      content.perks.families.flatMap((family) => family.options.map((option) => option.id)),
+    ),
   });
   for (const action of payload.pendingGameActions) {
     if (
@@ -792,14 +805,37 @@ const LegacyFixtureSchema = z.looseObject({
  * one line deciding it had been left behind. A bump that does not change the envelope
  * belongs on this list, and a bump that does needs its own branch above.
  */
-export const STAMP_FORWARD_ENGINE_VERSIONS = [8, 9, 10] as const;
+export const STAMP_FORWARD_ENGINE_VERSIONS = [] as const satisfies readonly number[];
+
+/**
+ * Engine versions whose envelope predates the docs/08 character fields.
+ *
+ * These need a **transform**, not a stamp-forward, and the distinction is the invariant the
+ * constant above documents: v12 adds four `SimState` fields, so an untransformed v11 save
+ * fails `SimStateSchema`'s strict parse. They still reach the present in one hop — only the
+ * list they travel on changed.
+ */
+export const PRE_ROLL_ENGINE_VERSIONS = [8, 9, 10, 11] as const;
+
+/**
+ * Every version `migrateKnownCareer` accepts, however it gets there.
+ *
+ * The coverage gate reads this rather than either list on its own: what a player cares
+ * about is whether their save loads, not which branch loaded it. Splitting the lists in
+ * v12 must not quietly halve what that gate checks.
+ */
+export const MIGRATABLE_ENGINE_VERSIONS = [
+  ...STAMP_FORWARD_ENGINE_VERSIONS,
+  ...PRE_ROLL_ENGINE_VERSIONS,
+] as const satisfies readonly number[];
 
 const StampForwardCareerSchema = z.looseObject({
   schemaVersion: z.literal(1),
-  engineVersion: z.literal(STAMP_FORWARD_ENGINE_VERSIONS),
+  engineVersion: z.literal(PRE_ROLL_ENGINE_VERSIONS),
   payload: z.looseObject({
+    rootSeed: Uint32Schema,
     sim: z.looseObject({
-      engineVersion: z.literal(STAMP_FORWARD_ENGINE_VERSIONS),
+      engineVersion: z.literal(PRE_ROLL_ENGINE_VERSIONS),
     }),
   }),
 });
@@ -826,6 +862,13 @@ export function migrateLegacyCareerFixture(
   const prng = PrngSnapshotSchema.parse(simRecord.prng);
   delete simRecord.prng;
   simRecord.engineVersion = ENGINE_VERSION;
+  // The synthetic v6/v7 fixtures predate docs/08 too, and get the same treatment as a real
+  // v8–v11 envelope: the character a fresh career on this seed would have rolled.
+  const character = rollNewCharacter(legacy.rootSeed, content.perks, content.rates);
+  simRecord.stats = character.stats;
+  simRecord.statXpToday = emptyStatXpToday();
+  simRecord.perks = character.perks;
+  simRecord.rollStream = character.rollStream;
   const sim = restoreSimState(simRecord);
   const career = newCareerState({
     rootSeed: legacy.rootSeed,
@@ -846,21 +889,54 @@ export function migrateKnownCareer(
   raw: unknown,
   content: ContentRegistry,
 ): StoredCareer {
-  const stampForward = StampForwardCareerSchema.safeParse(raw);
-  if (!stampForward.success) {
+  const preRoll = StampForwardCareerSchema.safeParse(raw);
+  if (!preRoll.success) {
     return migrateLegacyCareerFixture(raw, content);
   }
-  const career = restoreCareerState({
-    ...stampForward.data,
-    engineVersion: ENGINE_VERSION,
-    payload: {
-      ...stampForward.data.payload,
-      sim: {
-        ...stampForward.data.payload.sim,
-        engineVersion: ENGINE_VERSION,
-      },
-    },
-  });
+  const career = restoreCareerState(
+    migrateToV12(preRoll.data, content),
+  );
   validateCareerContentRefs(career, content);
   return career;
+}
+
+/**
+ * v8–v11 → v12: give an existing career the character it always had.
+ *
+ * The roll stream is created from the career's own `rootSeed` by the standard
+ * `(rootSeed ^ salt) >>> 0` formula with `calls: 0` — nothing is replayed and no draw count
+ * is inferred, exactly as P5's PRNG relocation did. Stats and perks are then drawn from
+ * that fresh stream, so a migrated career gets **precisely what a new career on the same
+ * seed would have rolled**. Seeding everyone at a flat 5 with no perks would have been the
+ * cheaper lie: a perk is part of who someone is, not something they acquired at a version
+ * boundary.
+ *
+ * `statXpToday` starts at 0, so a career migrated mid-day gets a fresh cap — the only
+ * direction that error can point is generous. An activity already running keeps no `roll`
+ * (the field is optional), so it completes ungraded: one activity, once, at the boundary.
+ */
+function migrateToV12(
+  data: z.infer<typeof StampForwardCareerSchema>,
+  content: ContentRegistry,
+): unknown {
+  const character = rollNewCharacter(
+    data.payload.rootSeed,
+    content.perks,
+    content.rates,
+  );
+  return {
+    ...data,
+    engineVersion: ENGINE_VERSION,
+    payload: {
+      ...data.payload,
+      sim: {
+        ...data.payload.sim,
+        engineVersion: ENGINE_VERSION,
+        stats: character.stats,
+        statXpToday: emptyStatXpToday(),
+        perks: character.perks,
+        rollStream: character.rollStream,
+      },
+    },
+  };
 }

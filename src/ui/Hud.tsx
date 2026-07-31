@@ -65,6 +65,11 @@ export interface HudProps {
    * viewport; when absent each block falls back to its historical corner.
    */
   regions?: Pick<Regions, 'status' | 'temporal'>;
+  /**
+   * The grade currently landing, if any (docs/08 §11.1) — its bars pop, the others do not.
+   * Keyed by card id so a second grade on the same bar animates again.
+   */
+  gradePop?: { key: string; bars: readonly BarId[] } | null;
 }
 
 /** Turn a region rectangle into absolute insets. */
@@ -178,6 +183,7 @@ export function Hud({
   reducedMotion = false,
   nonColorUrgency = true,
   screenReaderVerbosity = 'brief',
+  gradePop = null,
   textScale = 1,
   regions,
 }: HudProps) {
@@ -289,6 +295,8 @@ export function Hud({
                     alertGlyph={nonColorUrgency && style.alertGlyph}
                     size={type.ringSize}
                     textScale={textScale}
+                    popKey={gradePop !== null && gradePop.bars.includes(bar) ? gradePop.key : null}
+                    reducedMotion={reducedMotion}
                   />
                   <Text
                     {...SCALABLE_TEXT}

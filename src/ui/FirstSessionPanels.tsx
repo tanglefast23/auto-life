@@ -5,6 +5,8 @@ import { useMotionRun } from './use-motion';
 import type { DailyRecap, SessionState } from '../game/session';
 import type { AutonomyMode } from '../sim/rules';
 import { content } from '../sim/content';
+import { CharacterPanel } from './CharacterPanel';
+import type { CharacterView } from '../sim/step';
 import type {
   GoalDef,
   IntentionDef,
@@ -88,6 +90,7 @@ export function GoalsPanel({
   intentionDef,
   autonomy,
   practicePoints100,
+  character,
   canAddProtectedPractice,
   onChooseIntention,
   onAddProtectedPractice,
@@ -100,6 +103,8 @@ export function GoalsPanel({
   intentionDef: IntentionDef | null;
   autonomy: AutonomyMode;
   practicePoints100: number;
+  /** docs/08 §11.3: the four stats and two traits live in FOCUS, never in the HUD. */
+  character?: CharacterView;
   canAddProtectedPractice: boolean;
   onChooseIntention: () => void;
   onAddProtectedPractice?: () => void;
@@ -156,6 +161,7 @@ export function GoalsPanel({
         contentContainerStyle={styles.goalsList}
         style={styles.goalsScroll}
       >
+        {character !== undefined && <CharacterPanel character={character} />}
         <Text
           accessible
           accessibilityLabel={fillGoalCopy(

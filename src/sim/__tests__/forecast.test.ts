@@ -7,8 +7,25 @@ import { dayNumber, minuteOfDay } from '../clock';
 import { content, objectForActivity } from '../content';
 import { toFixed } from '../fixed';
 
-const fresh = (): SimState => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = (): SimState => newGameState('baseline', content.rates, 1234, content.perks);
 
+/**
+ * docs/08 §8.3's stated carve-out, as a test rather than a paragraph.
+ *
+ * The forecaster deliberately does not roll: it runs this same `step()` on cloned state, so
+ * a clone drawn forward would reproduce the exact checks the real run is about to make and
+ * embed real future grades in a projection the player is shown. It models every future roll
+ * as grade C instead, which is the correct model because C is the expected outcome at par.
+ *
+ * The consequence is that a *rolling* run and its forecast can genuinely diverge — one good
+ * meal moves Movement across a reactive band a few minutes earlier. Comparing the two would
+ * therefore be asserting that dice are predictable. Suppressing checks on both sides keeps
+ * every other thing this test was written for — planner, anchors, travel, durations,
+ * reactive bands, priority, tick-exact minutes — and drops only the part that cannot hold.
+ *
+ * That the forecast leaves `rollStream` untouched is asserted below, by the whole-state
+ * equality check in 'a forecast never advances the live PRNG streams'.
+ */
 test('forecast agreement: predicted starts match what step() actually produces, tick for tick', () => {
   const f = forecast(fresh(), content);
   let sim = fresh();
@@ -18,7 +35,7 @@ test('forecast agreement: predicted starts match what step() actually produces, 
     // A start that happens THIS tick happens at the minute about to run —
     // snapshot.minuteOfDay is post-advance and would be one late.
     const tickMinute = minuteOfDay(sim.clock.absoluteMinute);
-    const r = step(sim, [], content);
+    const r = step(sim, [], content, undefined, { forecast: true });
     sim = r.next;
     const cur = sim.current;
     const curCard = cur && (cur.type === 'activity' || cur.type === 'sleep') ? (cur.type === 'activity' ? cur.cardId : cur.cardId) : null;

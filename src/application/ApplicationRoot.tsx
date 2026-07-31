@@ -218,6 +218,11 @@ export function ApplicationRoot({
     cueRouter?.onFootstep(material);
   };
 
+  /** docs/08 §11.4: the bar beat, on the same presentation-driven path as a footstep. */
+  const observeBarPop = () => {
+    cueRouter?.onBarPop();
+  };
+
   // Read through refs by the hydrate effect below. Listing them in its deps instead would
   // make an audio identity change re-hydrate the career, which is a very expensive way to
   // rebuild a music bed.
@@ -671,6 +676,7 @@ export function ApplicationRoot({
             content,
           )}
           onFootstep={observeFootstep}
+          onBarPop={observeBarPop}
         />
         <View
           accessibilityLiveRegion="polite"

@@ -7,7 +7,7 @@ import { content, objectForActivity, type ContentRegistry } from '../content';
 import { dayNumber } from '../clock';
 import type { QueueCard } from '../queue';
 
-const fresh = (): SimState => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = (): SimState => newGameState('baseline', content.rates, 1234, content.perks);
 
 const card = (over: Partial<QueueCard> & { id: string; activityId: string }): QueueCard => ({
   owner: 'AUTO',
@@ -97,6 +97,9 @@ test('a swapped content registry actually changes behavior (no module-global sha
   shower.baseMin = 40; // doubled from 20
   const run = (registry: ContentRegistry) => {
     const s = fresh();
+    // No perks: this test is about which registry the engine reads, and a rolled
+    // Easygoing (×0.85 duration, docs/08 §5.2) would move the tick counts underneath it.
+    s.perks = [];
     consumeAnchors(s);
     s.clock.absoluteMinute = 420 + 200;
     s.bars = healthyBars();
@@ -125,6 +128,9 @@ test('a synthetic pair authored ONLY in content fires with zero engine knowledge
   } as ContentRegistry['adjacency']['pairs'][number]);
   const run = (registry: ContentRegistry) => {
     const s = fresh();
+    // No perks: this test is about which registry the engine reads, and a rolled
+    // Easygoing (×0.85 duration, docs/08 §5.2) would move the tick counts underneath it.
+    s.perks = [];
     consumeAnchors(s);
     s.clock.absoluteMinute = 420 + 200;
     s.bars = healthyBars();

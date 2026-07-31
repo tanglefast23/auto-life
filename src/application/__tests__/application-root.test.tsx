@@ -227,7 +227,7 @@ describe('ApplicationRoot boot composition', () => {
     const prng = PrngStreams.create(seed).serialize();
     const career = newCareerState({
       rootSeed: seed,
-      sim: newGameState('baseline', content.rates, seed, prng),
+      sim: newGameState('baseline', content.rates, seed, content.perks),
       prng,
     });
     mockValues.set(
@@ -454,7 +454,7 @@ describe('ApplicationRoot drives the cue router', () => {
     const prng = PrngStreams.create(seed).serialize();
     const career = newCareerState({
       rootSeed: seed,
-      sim: newGameState('baseline', content.rates, seed, prng),
+      sim: newGameState('baseline', content.rates, seed, content.perks),
       prng,
     });
     mockValues.set(

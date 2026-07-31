@@ -107,4 +107,25 @@
  * A career with no food preference is unchanged, so v8–v10 envelopes still stamp forward
  * in place.
  */
-export const ENGINE_VERSION = 11 as const;
+/**
+ * v12 (2026-08-01, docs/08): stats, perks, and the activity check.
+ *
+ * Every activity that produces something now resolves a `d20` at start, lands a letter
+ * grade at completion, and delivers the difference as one signed instant delta. `SimState`
+ * gains four fields — `stats`, `statXpToday`, `perks` and `rollStream` — which is what makes
+ * this a transform migration rather than a stamp-forward.
+ *
+ * The stream record lives in `SimState` rather than beside the five in the career envelope,
+ * and that is not a preference. `step()` takes no PRNG; the five have been
+ * application-owned since v8 and are drawn in `game/` at boundaries the application can
+ * see, while an activity start happens inside stage 3 where it cannot. The first draft of
+ * the spec specified a sixth envelope stream and was rejected on exactly this.
+ *
+ * The forecaster is explicitly forbidden from drawing (`StepOptions.forecast`). It runs the
+ * same `step()` on cloned state, so a clone drawn forward reproduces the exact rolls the
+ * real run is about to make — the projection would have embedded real future grades, and
+ * SPEC §7.5's rule is that undealt randomness is treated as absent.
+ *
+ * Both goldens re-recorded; `content/harness-bands.json` re-derived.
+ */
+export const ENGINE_VERSION = 12 as const;

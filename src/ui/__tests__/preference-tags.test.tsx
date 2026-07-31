@@ -21,7 +21,7 @@ function career() {
     rootSeed: seed,
     identity: defaultIdentity(),
     prng,
-    sim: newGameState('early', content.rates, seed, prng),
+    sim: newGameState('early', content.rates, seed, content.perks),
   });
 }
 

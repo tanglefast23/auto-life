@@ -3,6 +3,7 @@ import { fillDelta, ratePerMinuteFixed, toFixed, toDisplay } from './fixed';
 import { isWellFedAtStart, mSpeedAtStart } from './bars';
 import { BarIdSchema, type ActivityDef, type RatesConfig, type TimedActivityDef } from './content-schemas';
 import { assertValidBars, type BarContribution } from './bar-deltas';
+import { gradeDeltaFixed, type ResolvedRoll } from './roll';
 import { type BarId, type Bars } from './types';
 
 /**
@@ -27,6 +28,15 @@ export interface ActiveTimedActivity {
     effectiveUse: boolean;
     /** Practice-only: full award multiplier frozen at start (§6.6). */
     pointsMultiplier?: number;
+    /**
+     * The activity check, frozen at start like every other multiplier (docs/08 §6.4).
+     *
+     * Absent on ungraded activities, and absent on an activity that was already running
+     * when a v11 save migrated — that one completes ungraded, once, at the version
+     * boundary. Because it is state rather than a coin flipped at completion, a
+     * save/reload mid-activity replays the same die.
+     */
+    roll?: ResolvedRoll;
   };
 }
 
@@ -93,19 +103,39 @@ export function crossedWakeBoundary(
 export interface StartOptions {
   /** Whether this start counts as an effective use (nap rule); default true. */
   effectiveUse?: boolean;
+  /** The resolved check for a graded activity (docs/08 §6.4). Absent = ungraded. */
+  roll?: ResolvedRoll;
+  /** Perk duration factors, as integer percents. */
+  durationPercents?: readonly number[];
 }
 
 /**
  * Intrinsic duration at the bars' current Energy speed. Sleep windows and idle
  * units do not have a speed-scaled finite duration.
  *
- * Shared by activity start and the P4 queue DTO so the UI never reimplements —
- * and eventually drifts from — the engine's integer-exact ceiling.
+ * Shared by activity start, the P4 queue DTO and the forecaster so the UI never
+ * reimplements — and eventually drifts from — the engine's integer-exact ceiling.
+ *
+ * `durationPercents` carries the perk duration factors (docs/08 §5.2). They fold into the
+ * SAME expression rather than being applied afterwards, because two ceilings disagree with
+ * one by a tick, and three callers have to produce the same number. Worst magnitude is
+ * 1440 × 600000 × 115 × 115 ≈ 1.14e13, comfortably inside the safe-integer range.
  */
-export function activityDurationTicksAtCurrentSpeed(def: ActivityDef, bars: Bars): number | null {
+export function activityDurationTicksAtCurrentSpeed(
+  def: ActivityDef,
+  bars: Bars,
+  durationPercents: readonly number[] = [],
+): number | null {
   if (def.kind === 'sleepWindow' || def.kind === 'idle') return null;
-  const denom = 300_000 + bars.energy;
-  return Math.max(1, Math.floor((def.baseMin * 600_000 + denom - 1) / denom));
+  let numerator = def.baseMin * 600_000;
+  let denominator = 300_000 + bars.energy;
+  for (const percent of durationPercents) {
+    if (!Number.isInteger(percent) || percent <= 0) throw new Error('duration percents must be positive integers');
+    numerator *= percent;
+    denominator *= 100;
+  }
+  if (!Number.isSafeInteger(numerator)) throw new Error('duration arithmetic exceeds safe integer range');
+  return Math.max(1, Math.floor((numerator + denominator - 1) / denominator));
 }
 
 /** Start = a sampler: everything duration- or bonus-relevant is captured once, here. */
@@ -132,7 +162,7 @@ export function startTimedActivity(
   // in critic round 3 from the git-archived pre-fix expression, energyFixed 0..600000 x baseMin 1..132) — e.g. baseMin 17
   // at Energy 18.00 → 26 instead of 25). mSpeed = (300000 + energyFixed) / 600000,
   // so duration = ceil(baseMin × 600000 / (300000 + energyFixed)), exactly.
-  const durationTicks = activityDurationTicksAtCurrentSpeed(def, bars);
+  const durationTicks = activityDurationTicksAtCurrentSpeed(def, bars, options.durationPercents);
   if (durationTicks === null) throw new Error(`timed activity "${def.id}" has no finite duration`);
 
   // Explicit rounding rule, computed IN INTEGERS so it is exactly decimal
@@ -165,8 +195,35 @@ export function startTimedActivity(
     fillStartTick,
     effectTotalsFixed,
     suppressPassiveEnergy: (def.suppressPassiveEnergyWhenEffective ?? false) && effectiveUse,
-    sampled: { mSpeed, wellFed, effectiveUse },
+    sampled: { mSpeed, wellFed, effectiveUse, ...(options.roll !== undefined ? { roll: options.roll } : {}) },
   };
+}
+
+/**
+ * The grade's contribution, pushed at completion (docs/08 §6.4).
+ *
+ * Positive totals only, and only what the grade adds or removes on top of the fill the
+ * activity already delivered. The source is keyed by card id because
+ * `applyBarContributions` throws on a duplicate source and an adjacency `barDelta` can land
+ * on the same commit.
+ */
+export function gradeContribution(
+  active: ActiveTimedActivity,
+  cardId: string,
+): BarContribution | null {
+  const roll = active.sampled.roll;
+  if (roll === undefined) return null;
+  const deltas: Partial<Record<BarId, number>> = {};
+  for (const [bar, total] of Object.entries(active.effectTotalsFixed)) {
+    const value = total as number;
+    // Cross-effects and any negative total are never graded — the same rule §6.5's
+    // well-fed bonus follows. A bad workout does not also make you hungrier.
+    if (value <= 0) continue;
+    const delta = gradeDeltaFixed(value, roll.multiplier100);
+    if (delta !== 0) deltas[bar as BarId] = delta;
+  }
+  if (Object.keys(deltas).length === 0) return null;
+  return { source: `grade:${cardId}`, deltas };
 }
 
 /** Untrusted-restore validator for the save-bound DTO (mirrors the PRNG snapshot schema). */
@@ -189,6 +246,16 @@ export const ActiveTimedActivitySchema = z
       effectiveUse: z.boolean(),
       // Practice-only (§6.6 start-sampling): the full points multiplier is frozen at start.
       pointsMultiplier: z.number().positive().optional(),
+      roll: z
+        .strictObject({
+          natural: z.number().int().min(1).max(20),
+          shape: z.enum(['plain', 'advantage', 'disadvantage']),
+          modifier: z.number().int(),
+          gradeId: z.string().min(1),
+          band: z.enum(['high', 'mid', 'low']),
+          multiplier100: z.number().int().min(1).max(1000),
+        })
+        .optional(),
     }),
   })
   .refine((a) => a.elapsedTicks < a.durationTicks, 'elapsedTicks must be below durationTicks')

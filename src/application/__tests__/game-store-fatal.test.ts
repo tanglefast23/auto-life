@@ -20,7 +20,7 @@ describe('simulation faults', () => {
           'baseline',
           content.rates,
           1234,
-          prng,
+          content.perks,
         ),
         prng,
       }),

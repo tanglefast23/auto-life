@@ -5,6 +5,7 @@ import type { CommandOutcome, DomainEvent } from '../../sim/step';
 import type { DomainCueEvent } from '../audio/cue-router';
 import {
   domainCueEvents,
+  gradeBandOf,
   musicInputsFor,
   type CueBoundary,
   type CueView,
@@ -297,4 +298,40 @@ describe('every cue the router can route is one the game can raise', () => {
       .matchAll(/\{ kind: '([a-z-]+)'/g);
     expect([...declared].map((m) => m[1]).sort()).toEqual([...ROUTED_KINDS].sort());
   });
+});
+
+// ---- docs/08 §11.4: the grade cue ----
+
+test('the audio band derived from a grade letter agrees with the band content authors', () => {
+  // The rule is duplicated on purpose — cue-source stays content-free — so this is what
+  // makes the duplication safe rather than a drift waiting to happen.
+  for (const grade of content.grades.grades) {
+    expect(gradeBandOf(grade.id)).toBe(grade.band);
+  }
+});
+
+test('a graded completion plays the grade instead of the generic settle, never both', () => {
+  const cues = domainCueEvents(
+    view({ currentCardId: 'c1', currentActivityId: 'meal', running: true }),
+    view({ currentCardId: 'c1', currentActivityId: 'meal', running: true }),
+    {
+      events: [
+        { type: 'activityCompleted', detail: 'meal', atMinute: 500 },
+        { type: 'activityGraded', detail: 'meal:b-plus', atMinute: 500 },
+      ],
+      outcomes: [],
+    },
+  );
+  const completions = cues.filter((c) => c.kind === 'activity-completed');
+  expect(completions).toHaveLength(1);
+  expect(completions[0]).toEqual({ kind: 'activity-completed', activityId: 'meal', graded: 'high' });
+});
+
+test('an ungraded completion still carries no band, so it keeps the settle cue', () => {
+  const cues = domainCueEvents(
+    view({ currentCardId: 'c1', currentActivityId: 'toilet', running: true }),
+    view({ currentCardId: 'c1', currentActivityId: 'toilet', running: true }),
+    { events: [{ type: 'activityCompleted', detail: 'toilet', atMinute: 500 }], outcomes: [] },
+  );
+  expect(cues).toContainEqual({ kind: 'activity-completed', activityId: 'toilet' });
 });

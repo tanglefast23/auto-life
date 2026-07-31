@@ -1,0 +1,56 @@
+{
+  "stats": {
+    "strength": "Strength",
+    "dexterity": "Dexterity",
+    "vitality": "Vitality",
+    "intellect": "Intellect"
+  },
+  "families": {
+    "approach": "Approach",
+    "drive": "Drive"
+  },
+  "perks": {
+    "creative": "Creative",
+    "methodical": "Methodical",
+    "perfectionist": "Perfectionist",
+    "easygoing": "Easygoing"
+  },
+  "blurbs": {
+    "strength": "Lifting, running, carrying things.",
+    "dexterity": "Cooking, and anything fiddly.",
+    "vitality": "Getting the most out of rest and a wash.",
+    "intellect": "Focus, and how much practice sticks.",
+    "creative": "Takes longer over cooking and practice, and does them better.",
+    "methodical": "Takes longer over the daily upkeep, and does it better.",
+    "perfectionist": "Better at everything, and takes longer over it.",
+    "easygoing": "Gets through the day faster."
+  },
+  "grades": {
+    "aPlus": "A+",
+    "a": "A",
+    "aMinus": "A-",
+    "bPlus": "B+",
+    "b": "B",
+    "bMinus": "B-",
+    "cPlus": "C+",
+    "c": "C",
+    "cMinus": "C-",
+    "dPlus": "D+",
+    "d": "D",
+    "dMinus": "D-",
+    "fPlus": "F+",
+    "f": "F",
+    "fMinus": "F-"
+  },
+  "panel": {
+    "title": "Character",
+    "perksTitle": "Traits",
+    "level": "Lv",
+    "toNext": "to next"
+  },
+  "roll": {
+    "rolled": "Rolled",
+    "advantage": "adv",
+    "disadvantage": "dis"
+  }
+}

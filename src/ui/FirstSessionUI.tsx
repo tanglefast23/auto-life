@@ -31,6 +31,7 @@ import {
 import { goalStrings } from './goal-copy';
 import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
 import { GUTTER, LAYER, type Rect, type Regions } from './layout';
+import type { CharacterView } from '../sim/step';
 import { NoticeColumn, type NoticeItem } from './NoticeColumn';
 
 export interface FirstSessionUIProps {
@@ -51,6 +52,8 @@ export interface FirstSessionUIProps {
   currentDay?: number;
   autonomy?: AutonomyMode;
   practicePoints100?: number;
+  /** docs/08 §11.3: passed through to the goals panel, which owns the FOCUS region. */
+  character?: CharacterView;
   dailyIntentionPrompt?: boolean;
   canAddProtectedPractice?: boolean;
   onSelectIntention?: (intentionId: string) => void;
@@ -97,6 +100,7 @@ export const FirstSessionUI = forwardRef<
     currentDay = session.recap.forDay,
     autonomy = 'full-routine',
     practicePoints100 = 0,
+    character,
     dailyIntentionPrompt = true,
     canAddProtectedPractice = true,
     onSelectIntention,
@@ -392,6 +396,7 @@ export const FirstSessionUI = forwardRef<
           intentionDef={intentionDef}
           autonomy={autonomy}
           practicePoints100={practicePoints100}
+          character={character}
           canAddProtectedPractice={canAddProtectedPractice}
           onChooseIntention={() => setIntentionOpen(true)}
           onAddProtectedPractice={onAddProtectedPractice}

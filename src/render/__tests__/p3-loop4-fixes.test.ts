@@ -11,7 +11,7 @@ import { bandFor } from '../../ui/bands';
  * Every test below is a defect that existed and was reproduced before being fixed.
  */
 
-const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = () => newGameState('baseline', content.rates, 1234, content.perks);
 
 describe('BLOCKER: pause carries normalised progress, not raw milliseconds', () => {
   test('pause then a speed change does not run unseen ticks', () => {
