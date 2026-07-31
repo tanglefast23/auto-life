@@ -161,33 +161,6 @@ export function WorldScene({
       transforms: quads.map((q) => Skia.RSXform(1, 0, q.x, q.y)),
     };
   }, [lighting]);
-  const fade = useSharedValue(1);
-  const firstLighting = useRef(true);
-  // The outgoing room is only *mounted* while the fade runs. Leaving it mounted would
-  // double the 350-quad static buffer for every frame of the day to serve a transition
-  // that happens twice — the sort of always-on cost a perf pass then has to hunt for.
-  const [crossfading, setCrossfading] = useState(false);
-  useEffect(() => {
-    const motion = resolveMotion(MOTION.lightingCrossfade, { reducedMotion });
-    if (firstLighting.current || motion.durationMs === 0) {
-      firstLighting.current = false;
-      fade.value = 1;
-      setCrossfading(false);
-      return;
-    }
-    fade.value = 0;
-    setCrossfading(true);
-    const started = Date.now();
-    const id = setInterval(() => {
-      const t = motionProgress(motion, Date.now() - started);
-      fade.value = t;
-      if (t >= 1) {
-        clearInterval(id);
-        setCrossfading(false);
-      }
-    }, 32);
-    return () => clearInterval(id);
-  }, [lighting, reducedMotion, fade]);
 
   // Rebuilt only when the career's appearance changes, i.e. once on load.
   const chars = useMemo(() => characterLookup(appearance), [appearance]);
@@ -222,6 +195,34 @@ export function WorldScene({
     const r = charRectTable[charSprite.value] ?? charRectTable[0]!;
     val.setXYWH(r[0]!, r[1]!, r[2]!, r[3]!);
   });
+
+  const fade = useSharedValue(1);
+  const firstLighting = useRef(true);
+  // The outgoing room is only *mounted* while the fade runs. Leaving it mounted would
+  // double the 350-quad static buffer for every frame of the day to serve a transition
+  // that happens twice — the sort of always-on cost a perf pass then has to hunt for.
+  const [crossfading, setCrossfading] = useState(false);
+  useEffect(() => {
+    const motion = resolveMotion(MOTION.lightingCrossfade, { reducedMotion });
+    if (firstLighting.current || motion.durationMs === 0) {
+      firstLighting.current = false;
+      fade.value = 1;
+      setCrossfading(false);
+      return;
+    }
+    fade.value = 0;
+    setCrossfading(true);
+    const started = Date.now();
+    const id = setInterval(() => {
+      const t = motionProgress(motion, Date.now() - started);
+      fade.value = t;
+      if (t >= 1) {
+        clearInterval(id);
+        setCrossfading(false);
+      }
+    }, 32);
+    return () => clearInterval(id);
+  }, [lighting, reducedMotion, fade]);
 
   // ONE RAF for the component's lifetime.
   //
