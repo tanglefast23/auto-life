@@ -51,6 +51,7 @@ import { CueRouter } from './audio/cue-router';
 import { content } from '../sim/content';
 import { careerPreferenceTags } from '../ui/preference-tags';
 import type { GameLoop } from './loop';
+import { theme } from '../ui/theme';
 
 function writerId(): string {
   const cryptoValue = globalThis.crypto as
@@ -569,6 +570,8 @@ export function ApplicationRoot({
           preferences={preferences.preferences}
           preferenceTags={careerPreferenceTags(visibleCareer)}
           autonomy={visibleCareer.payload.autonomy}
+          appearancePresetId={visibleCareer.payload.identity.appearancePresetId}
+          idleVariantId={visibleCareer.payload.identity.idlePreferenceId}
         />
         <View
           accessibilityLiveRegion="polite"
@@ -672,7 +675,7 @@ export function ApplicationRoot({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#2e2119',
+    backgroundColor: theme.color.ink,
   },
   srOnly: {
     height: 1,

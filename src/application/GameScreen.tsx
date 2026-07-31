@@ -32,6 +32,7 @@ import type { ActivePreferenceTag } from '../ui/preference-tags';
 import { preferenceReaction } from '../ui/preference-tags';
 import { intentionStrings } from '../ui/intention-copy';
 import type { AutonomyMode } from '../sim/rules';
+import { FONT, TYPE_SCALE, theme } from '../ui/theme';
 
 /**
  * P3's screen: the composition root's view (master §4).
@@ -48,6 +49,10 @@ export interface GameScreenProps {
   openGoalsRequest?: number;
   preferenceTags?: readonly ActivePreferenceTag[];
   autonomy?: AutonomyMode;
+  /** Which baked appearance the career rolled (P6 T5). */
+  appearancePresetId?: string;
+  /** Active idle variant: an identity preference, or Goal 4's air-guitar reward. */
+  idleVariantId?: string | null;
 }
 
 export function GameScreen(props: GameScreenProps = {}) {
@@ -66,6 +71,8 @@ function HydratedGameScreen({
   openGoalsRequest = 0,
   preferenceTags = [],
   autonomy = 'full-routine',
+  appearancePresetId,
+  idleVariantId = null,
 }: { loop: GameLoop } & GameScreenProps) {
   const snapshot = useGameStore((s) => s.snapshot);
   const speed = useGameStore((s) => s.speed);
@@ -337,6 +344,10 @@ function HydratedGameScreen({
               <WorldScene
                 view={view}
                 decorationIds={snapshot?.session.decorations.grantedIds}
+                paletteId={appearancePresetId}
+                idleVariantId={idleVariantId}
+                minuteOfDay={snapshot?.minuteOfDay}
+                reducedMotion={reducedMotion}
                 alphaRef={alpha}
                 scale={fit.scale}
                 physicalPerArtPixel={fit.physicalPerArtPixel}
@@ -462,11 +473,11 @@ function HydratedGameScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#2e2119', alignItems: 'center' },
+  root: { flex: 1, backgroundColor: theme.color.ink, alignItems: 'center' },
   preferenceBubble: {
     alignItems: 'center',
-    backgroundColor: '#faf1dc',
-    borderColor: '#2e2119',
+    backgroundColor: theme.color.creamLight,
+    borderColor: theme.color.ink,
     borderRadius: 12,
     borderWidth: 2,
     gap: 2,
@@ -480,15 +491,14 @@ const styles = StyleSheet.create({
     zIndex: 19,
   },
   preferenceBubbleTag: {
-    color: '#5ca860',
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    color: theme.color.leaf,
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   preferenceBubbleText: {
-    color: '#2e2119',
-    fontFamily: 'monospace',
-    fontSize: 10,
+    color: theme.color.ink,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   stage: {
     alignItems: 'center',
@@ -510,8 +520,8 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   fatalPanel: {
-    backgroundColor: '#f4e4c1',
-    borderColor: '#7d2f2f',
+    backgroundColor: theme.color.creamBase,
+    borderColor: theme.color.redShadow,
     borderRadius: 8,
     borderWidth: 2,
     maxWidth: 480,
@@ -519,19 +529,19 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   fatalTitle: {
-    color: '#4b211f',
-    fontSize: 22,
-    fontWeight: '700',
+    color: theme.color.ink,
+    fontSize: TYPE_SCALE.heading.fontSize,
+    fontFamily: FONT.pixelBold,
     marginBottom: 12,
   },
   fatalCopy: {
-    color: '#4b2e24',
-    fontSize: 16,
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 22,
   },
   fatalDetail: {
-    color: '#6d4334',
-    fontSize: 13,
+    color: theme.color.terracottaShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 18,
     marginTop: 12,
   },

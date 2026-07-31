@@ -1,3 +1,4 @@
+import { FONT, TYPE_SCALE, theme } from '../ui/theme';
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Canvas, Group, Rect, useCanvasRef } from '@shopify/react-native-skia';
@@ -81,7 +82,7 @@ export function ProofScreen() {
   return (
     <View style={styles.root}>
       <Canvas ref={canvasRef} style={styles.canvas}>
-        <Rect x={16} y={16} width={96} height={96} color="#bc6b42" />
+        <Rect x={16} y={16} width={96} height={96} color={theme.color.terracotta} />
         {/* P3 T2: Atlas draws in the SAME canvas, so the single-canvas capture guard
             above still holds while proving the drawAtlas path on exported web. */}
         <Group transform={[{ translateY: 120 }]}>
@@ -96,7 +97,7 @@ export function ProofScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f2e4c2', gap: 8 },
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.creamBase, gap: 8 },
   canvas: { width: 700, height: 220 },
-  line: { fontFamily: 'monospace', fontSize: 14, color: '#2e2119' },
+  line: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: theme.color.ink },
 });

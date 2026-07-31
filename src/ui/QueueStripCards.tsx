@@ -1,3 +1,4 @@
+import { theme } from './theme';
 import { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
@@ -31,8 +32,8 @@ import {
 
 type QueueStyles = Record<string, any>;
 
-const BLUE = '#5b95c0';
-const CREAM_SHADOW = '#d9c493';
+const BLUE = theme.color.water;
+const CREAM_SHADOW = theme.color.creamShadow;
 
 export function CurrentCard({
   card,
