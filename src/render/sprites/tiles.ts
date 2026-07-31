@@ -1,7 +1,15 @@
 import { createBitmap, type Bitmap } from '../../../scripts/art/png';
 import { paintShapes, type Shape } from '../sprite-spec';
 import type { FloorMaterial } from '../../sim/content-schemas';
-import { DUSK_PLUM, GREY, LANTERN_GOLD, WOOD } from '../palette';
+import {
+  CREAM_BASE,
+  CREAM_LIGHT,
+  CREAM_SHADOW,
+  DUSK_PLUM,
+  GREY,
+  LANTERN_GOLD,
+  WOOD,
+} from '../palette';
 import { rect } from './parts';
 
 /**
@@ -40,11 +48,13 @@ interface TileRamp {
  */
 const MATERIAL_RAMP: Record<FloorMaterial, Record<Lighting, TileRamp>> = {
   wood: {
-    day: { base: WOOD.light, seam: WOOD.base, detail: WOOD.base },
+    // HFM's cream-first canvas: wood is carried by the plank seams and warm inlay,
+    // instead of turning most of the screen into one heavy brown field.
+    day: { base: CREAM_BASE, seam: CREAM_SHADOW, detail: WOOD.light },
     evening: { base: DUSK_PLUM.base, seam: WOOD.shadow, detail: DUSK_PLUM.shadow },
   },
   tile: {
-    day: { base: GREY.light, seam: GREY.base, detail: GREY.base },
+    day: { base: CREAM_LIGHT, seam: GREY.light, detail: GREY.base },
     evening: { base: DUSK_PLUM.light, seam: GREY.shadow, detail: DUSK_PLUM.shadow },
   },
   carpet: {
@@ -55,7 +65,7 @@ const MATERIAL_RAMP: Record<FloorMaterial, Record<Lighting, TileRamp>> = {
 
 /** Walls are structure, not floor: one ramp, dimmed the same way. */
 const WALL_RAMP: Record<Lighting, TileRamp> = {
-  day: { base: WOOD.shadow, seam: WOOD.shadow, detail: WOOD.base },
+  day: { base: CREAM_SHADOW, seam: GREY.shadow, detail: CREAM_BASE },
   evening: { base: DUSK_PLUM.shadow, seam: DUSK_PLUM.shadow, detail: DUSK_PLUM.base },
 };
 

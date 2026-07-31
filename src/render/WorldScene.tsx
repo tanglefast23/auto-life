@@ -31,6 +31,8 @@ import {
   characterSprite,
   DECORATION_PLACEMENTS,
   floorMaterialAt,
+  HERO_DRAW_SCALE,
+  heroDrawOrigin,
   lookup,
   snapToPhysicalPixel,
   TILE,
@@ -209,8 +211,9 @@ export function WorldScene({
     };
   }, [decorationIds]);
 
-  const charX = useSharedValue(view.position.x * TILE);
-  const charY = useSharedValue(view.position.y * TILE - (CHAR_H - TILE));
+  const initialHeroOrigin = heroDrawOrigin(view.position.x, view.position.y);
+  const charX = useSharedValue(initialHeroOrigin.x);
+  const charY = useSharedValue(initialHeroOrigin.y);
   const charSprite = useSharedValue(0);
   const ringProgress = useSharedValue(0);
   const ringX = useSharedValue(0);
@@ -222,7 +225,7 @@ export function WorldScene({
 
   const charTransforms = useRSXformBuffer(1, (val) => {
     'worklet';
-    val.set(1, 0, charX.value, charY.value);
+    val.set(HERO_DRAW_SCALE, 0, charX.value, charY.value);
   });
 
   const charRectTable = chars.rects;
@@ -412,9 +415,9 @@ export function WorldScene({
       charSprite.value = indexOf[quad.sprite] ?? 0;
       // §11.1: progress ring over the sim. Centred above the head.
       ringProgress.value = v.activityProgress ?? 0;
-      ringX.value = drawX + CHAR_W / 2;
+      ringX.value = drawX + (CHAR_W * HERO_DRAW_SCALE) / 2;
       ringY.value = drawY - 6;
-      bubbleX.value = drawX + CHAR_W - 2;
+      bubbleX.value = drawX + CHAR_W * HERO_DRAW_SCALE - 2;
       bubbleY.value = drawY;
       raf = requestAnimationFrame(frame);
     };

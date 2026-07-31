@@ -13,7 +13,7 @@ import type { RecoveryBlob } from '../application/career-repository';
 import { appShellStrings } from './app-shell-copy';
 import { identityString } from './identity-copy';
 import { settingsStrings } from './settings-copy';
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
 
 interface ButtonProps {
   label: string;
@@ -241,7 +241,14 @@ export function IdentityShell({
                   selected && styles.choiceSelected,
                 ]}
               >
-                <Text style={styles.choiceText}>{option.label}</Text>
+                <Text
+                  style={[
+                    styles.choiceText,
+                    selected && styles.choiceTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -444,61 +451,57 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: theme.color.ink,
+    backgroundColor: theme.color.creamBase,
     justifyContent: 'center',
     padding: 24,
   },
   scrollRoot: {
     alignItems: 'center',
-    backgroundColor: theme.color.ink,
+    backgroundColor: theme.color.creamBase,
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
   panel: {
-    backgroundColor: theme.color.creamBase,
-    borderColor: theme.color.terracottaShadow,
-    borderRadius: 10,
-    borderWidth: 2,
+    ...CHROME.panel,
     maxWidth: 560,
-    padding: 28,
+    padding: 24,
     width: '100%',
   },
   eyebrow: {
-    color: theme.color.terracottaShadow,
+    color: theme.color.waterShadow,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
-    letterSpacing: 1.5,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   title: {
-    color: theme.color.woodShadow,
-    fontSize: TYPE_SCALE.display.fontSize,
-    fontFamily: FONT.pixelBold,
+    color: theme.color.ink,
+    ...TYPE_SCALE.display,
     marginTop: 6,
   },
   body: {
-    color: theme.color.terracottaShadow,
+    color: theme.color.ink,
+    fontFamily: FONT.prose,
     fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 24,
     marginBottom: 22,
     marginTop: 10,
   },
   label: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: 8,
     marginTop: 16,
   },
   input: {
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.woodLight,
-    borderRadius: 6,
-    borderWidth: 1,
+    ...CHROME.field,
     color: theme.color.ink,
+    fontFamily: FONT.prose,
     fontSize: TYPE_SCALE.body.fontSize,
-    minHeight: 48,
-    paddingHorizontal: 12,
   },
   choiceRow: {
     flexDirection: 'row',
@@ -506,27 +509,25 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   choice: {
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.woodLight,
-    borderRadius: 6,
-    borderWidth: 2,
-    minHeight: 44,
+    ...CHROME.secondaryButton,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   choiceSelected: {
-    borderColor: theme.color.leafShadow,
-    borderWidth: 3,
+    ...CHROME.selectedControl,
   },
   choiceText: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
+  choiceTextSelected: { color: theme.color.creamLight },
   appearance: {
-    borderColor: theme.color.woodLight,
-    borderRadius: 6,
-    borderWidth: 2,
+    borderColor: theme.color.ink,
+    borderRadius: 4,
+    borderWidth: 3,
+    borderBottomWidth: 5,
     height: 52,
     width: 52,
   },
@@ -536,33 +537,30 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: theme.color.creamBase,
-    borderRadius: 99,
+    ...CHROME.chip,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   tagText: {
-    color: theme.color.plumShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   button: {
+    ...CHROME.neutralButton,
     alignItems: 'center',
-    backgroundColor: theme.color.leafShadow,
-    borderColor: theme.color.plumShadow,
-    borderRadius: 6,
-    borderWidth: 2,
     justifyContent: 'center',
     marginTop: 14,
     minHeight: 48,
     paddingHorizontal: 18,
   },
   buttonSecondary: {
-    backgroundColor: theme.color.creamBase,
-    borderColor: theme.color.wood,
+    ...CHROME.secondaryButton,
   },
   buttonPressed: {
-    transform: [{ translateY: 1 }],
+    borderTopWidth: 2,
+    transform: [{ translateY: 2 }],
   },
   buttonDisabled: {
     opacity: 0.45,
@@ -571,9 +569,11 @@ const styles = StyleSheet.create({
     color: theme.color.creamLight,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   buttonTextSecondary: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
   },
   error: {
     color: theme.color.redShadow,
@@ -592,10 +592,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   notice: {
-    backgroundColor: theme.color.creamBase,
-    borderColor: theme.color.leafShadow,
-    borderRadius: 8,
-    borderWidth: 2,
+    ...CHROME.card,
     left: 24,
     maxWidth: 360,
     padding: 16,
@@ -604,12 +601,14 @@ const styles = StyleSheet.create({
     zIndex: 200,
   },
   noticeTitle: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   noticeBody: {
-    color: theme.color.terracottaShadow,
+    color: theme.color.ink,
+    fontFamily: FONT.prose,
     fontSize: TYPE_SCALE.body.fontSize,
     marginTop: 6,
   },

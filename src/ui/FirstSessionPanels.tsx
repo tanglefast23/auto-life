@@ -279,7 +279,12 @@ export function GoalsPanel({
               ]}
               testID={`goal-filter:${filter}`}
             >
-              <Text style={styles.goalFilterText}>
+              <Text
+                style={[
+                  styles.goalFilterText,
+                  goalFilter === filter && styles.goalFilterTextSelected,
+                ]}
+              >
                 {goalStrings.ui.filters[filter]}
               </Text>
             </Pressable>

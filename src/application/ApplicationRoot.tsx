@@ -774,7 +774,7 @@ export function ApplicationRoot({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: theme.color.ink,
+    backgroundColor: theme.color.creamBase,
   },
   srOnly: {
     height: 1,

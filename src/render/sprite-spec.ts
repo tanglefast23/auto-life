@@ -193,7 +193,7 @@ export function deriveSlim(frame: BodyFrame): BodyFrame {
 }
 
 /** Flatten to a silhouette in flat Ink — design.md §6's readability test. */
-export function silhouette(bmp: Bitmap, ink = '#2e2119'): Bitmap {
+export function silhouette(bmp: Bitmap, ink = '#241f2e'): Bitmap {
   const { r, g, b } = hexToRgb(ink);
   const out = createBitmap(bmp.width, bmp.height);
   for (let i = 0; i < bmp.width * bmp.height; i++) {

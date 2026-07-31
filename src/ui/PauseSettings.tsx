@@ -15,7 +15,7 @@ import type { AutonomyMode } from '../sim/rules';
 import { ENGINE_VERSION } from '../sim/version';
 import { APP_VERSION } from '../application/app-version';
 import { settingsStrings } from './settings-copy';
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
 
 type Page = 'pause' | 'settings';
 type Confirmation = 'new-game' | 'reset' | null;
@@ -140,7 +140,14 @@ function Options<T extends string | number>({
               option.value === value && styles.optionSelected,
             ]}
           >
-            <Text style={styles.optionText}>{option.label}</Text>
+            <Text
+              style={[
+                styles.optionText,
+                option.value === value && styles.optionTextSelected,
+              ]}
+            >
+              {option.label}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -676,7 +683,7 @@ export function PauseSettings({
 const styles = StyleSheet.create({
   overlay: {
     alignItems: 'center',
-    backgroundColor: 'rgba(46, 33, 25, 0.9)',
+    backgroundColor: 'rgba(36, 31, 46, 0.9)',
     bottom: 0,
     justifyContent: 'center',
     left: 0,
@@ -687,10 +694,7 @@ const styles = StyleSheet.create({
     zIndex: 200,
   },
   panel: {
-    backgroundColor: theme.color.creamBase,
-    borderColor: theme.color.woodShadow,
-    borderRadius: 8,
-    borderWidth: 2,
+    ...CHROME.panel,
     gap: 10,
     maxWidth: 520,
     padding: 24,
@@ -698,23 +702,20 @@ const styles = StyleSheet.create({
   },
   settingsPanel: {
     alignSelf: 'center',
-    backgroundColor: theme.color.creamBase,
-    borderColor: theme.color.woodShadow,
-    borderRadius: 8,
-    borderWidth: 2,
+    ...CHROME.panel,
     gap: 16,
     maxWidth: 760,
     padding: 24,
     width: '100%',
   },
   title: {
-    color: theme.color.woodShadow,
-    fontSize: TYPE_SCALE.display.fontSize,
-    fontFamily: FONT.pixelBold,
+    color: theme.color.ink,
+    ...TYPE_SCALE.display,
     marginBottom: 10,
   },
   body: {
-    color: theme.color.terracottaShadow,
+    color: theme.color.ink,
+    fontFamily: FONT.prose,
     fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 24,
     marginBottom: 8,
@@ -725,40 +726,40 @@ const styles = StyleSheet.create({
     fontFamily: FONT.pixelBold,
   },
   action: {
+    ...CHROME.neutralButton,
     alignItems: 'center',
-    backgroundColor: theme.color.leafShadow,
-    borderColor: theme.color.plumShadow,
-    borderRadius: 5,
-    borderWidth: 2,
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
   actionSecondary: {
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.terracottaShadow,
+    ...CHROME.secondaryButton,
   },
   actionText: {
     color: theme.color.creamLight,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   actionTextSecondary: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
   },
-  pressed: { opacity: 0.75 },
+  pressed: { borderTopWidth: 2, transform: [{ translateY: 2 }] },
   disabled: { opacity: 0.45 },
   section: {
-    borderColor: theme.color.terracottaLight,
-    borderTopWidth: 1,
+    borderColor: theme.color.grey,
+    borderTopWidth: 2,
     gap: 10,
     paddingTop: 14,
   },
   sectionTitle: {
-    color: theme.color.woodShadow,
+    color: theme.color.waterShadow,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   row: {
     alignItems: 'center',
@@ -767,7 +768,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   rowLabel: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     flexShrink: 1,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
@@ -775,19 +776,25 @@ const styles = StyleSheet.create({
   toggle: {
     alignItems: 'center',
     backgroundColor: theme.color.grey,
-    borderColor: theme.color.terracottaShadow,
-    borderRadius: 99,
+    borderColor: theme.color.ink,
+    borderRadius: 4,
     borderWidth: 2,
+    borderBottomWidth: 4,
     justifyContent: 'center',
     minHeight: 44,
     minWidth: 72,
     paddingHorizontal: 12,
   },
-  toggleOn: { backgroundColor: theme.color.leafShadow },
+  toggleOn: {
+    backgroundColor: theme.color.water,
+    borderBottomColor: theme.color.waterShadow,
+    borderTopColor: theme.color.waterLight,
+  },
   toggleText: {
     color: theme.color.creamLight,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   optionBlock: { gap: 8 },
   optionRow: {
@@ -796,66 +803,59 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   option: {
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.woodLight,
-    borderRadius: 5,
-    borderWidth: 2,
+    ...CHROME.secondaryButton,
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 12,
   },
   optionSelected: {
-    borderColor: theme.color.leafShadow,
-    borderWidth: 3,
+    ...CHROME.selectedControl,
   },
   optionText: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
+  optionTextSelected: { color: theme.color.creamLight },
   levelControls: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
   },
   smallButton: {
+    ...CHROME.secondaryButton,
     alignItems: 'center',
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.terracottaShadow,
-    borderRadius: 5,
-    borderWidth: 2,
     height: 44,
     justifyContent: 'center',
     width: 44,
   },
   smallButtonText: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.heading.fontSize,
     fontFamily: FONT.pixelBold,
   },
   levelValue: {
-    color: theme.color.woodShadow,
+    color: theme.color.ink,
     fontVariant: ['tabular-nums'],
     minWidth: 48,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.woodLight,
-    borderRadius: 5,
-    borderWidth: 1,
+    ...CHROME.field,
     color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     minHeight: 48,
     paddingHorizontal: 12,
   },
   reference: {
-    color: theme.color.terracottaShadow,
+    color: theme.color.ink,
+    fontFamily: FONT.prose,
     fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 21,
   },
   srStatus: {
-    color: theme.color.terracottaShadow,
+    color: theme.color.ink,
     fontSize: TYPE_SCALE.body.fontSize,
     minHeight: 18,
   },

@@ -63,7 +63,7 @@ Relationship panel (hearts, discovered-tag chips, `?` slots, next-step hint) · 
 
 ## 7. Art scope (largest art version — per design.md)
 
-4 candidates: layered chibis + **portraits** (the one place portraits enter the game; palette-locked, layer-composed for v6 reuse) · restaurant scene · wedding dressing of the park scene · nursery object set + baby sprite (3 sizes, care animations) · ring/gift icons · gallery frames · household-queue chrome. Portrait consistency is the art risk — design.md's portrait recipe is binding; fallback is chibi-only close-ups.
+4 candidates: layered HFM heroic-chibis + **portraits** (the one place portraits enter the game; palette-locked, layer-composed for v6 reuse) · restaurant scene · wedding dressing of the park scene · nursery object set + baby sprite (3 sizes, care animations) · ring/gift icons · gallery frames · household-queue chrome. Each candidate gets one caricature move that breaks the facial thirds and the same rest/joy/effort/focus/awkward/tired expression grammar as the v1 hero; a generic dot face fails. Portrait consistency is the art risk—design.md's portrait recipe is binding; fallback is chibi-only close-ups.
 
 ## 8. Content budget & cut line
 

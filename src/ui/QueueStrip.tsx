@@ -1,4 +1,4 @@
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
 import {
   forwardRef,
   useEffect,
@@ -108,7 +108,6 @@ const INK = theme.color.ink;
 const RED = theme.color.red;
 const RED_LIGHT = theme.color.redLight;
 const BLUE = theme.color.water;
-const BLUE_LIGHT = theme.color.waterLight;
 const PLUM = theme.color.plum;
 
 export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
@@ -732,6 +731,19 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
   },
 );
 
+/**
+ * The rail's card unit, shared by the running card and every upcoming row.
+ *
+ * Upcoming cards used to be 56 while the running card was 64, and the 8px gap was not
+ * cosmetic: a 56px card spends 2px on its top border, 4px on its bottom border and 3px of
+ * padding each side, leaving **44px** of content for a stack that needs **48** — the glyph
+ * row (14) + the pixel-bold label (18) + the start time (16). With `overflow: 'hidden'` on
+ * the card, the label lost the difference and rendered with its bottom cut off mid-glyph.
+ * 64 restores a 52px budget, and one constant keeps the running and upcoming units from
+ * drifting apart again.
+ */
+const CARD_H = 64;
+
 const styles = StyleSheet.create({
   root: {
     position: 'absolute',
@@ -747,24 +759,21 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   currentSlot: {
-    height: 64,
+    height: CARD_H,
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
   },
   currentCard: {
+    ...CHROME.card,
     flex: 1,
-    height: 64,
+    height: CARD_H,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
     paddingHorizontal: 6,
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 5,
+    paddingVertical: 3,
   },
   idleCard: {
     backgroundColor: CREAM_SHADOW,
@@ -834,7 +843,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cardUnit: {
-    height: 56,
+    height: CARD_H,
     flexDirection: 'row',
     alignItems: 'stretch',
     minWidth: '100%',
@@ -870,25 +879,18 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.gold,
   },
   expandedBlock: {
+    ...CHROME.panel,
     flexDirection: 'column',
     alignItems: 'stretch',
     gap: 4,
-    backgroundColor: CREAM_SHADOW,
-    borderWidth: 2,
-    borderColor: theme.color.woodShadow,
-    borderRadius: 5,
     padding: 4,
     width: '100%',
   },
   collapseButton: {
+    ...CHROME.secondaryButton,
     width: '100%',
-    minHeight: 44,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 4,
+    paddingHorizontal: 8,
   },
   collapseText: {
     color: INK,
@@ -896,12 +898,9 @@ const styles = StyleSheet.create({
     fontFamily: FONT.pixelBold,
   },
   upcomingCard: {
+    ...CHROME.card,
     flex: 1,
-    height: 56,
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
+    height: CARD_H,
     borderTopLeftRadius: 5,
     borderBottomLeftRadius: 5,
     paddingHorizontal: 5,
@@ -910,14 +909,14 @@ const styles = StyleSheet.create({
   },
   urgentCard: { borderColor: RED },
   /**
-   * design.md §10's completion poof. Centred on the 56px card unit and drawn outside the
+   * design.md §10's completion poof. Centred on the card unit and drawn outside the
    * card's own clip, in `MOTION.poof.color` rather than a restated hex so the table
    * remains the single source for what the motion looks like.
    */
   poof: {
     position: 'absolute',
     left: '50%',
-    top: 28,
+    top: CARD_H / 2,
     zIndex: 3,
   },
   poofPuff: {
@@ -976,16 +975,13 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   menuButton: {
+    ...CHROME.secondaryButton,
     minWidth: 44,
-    minHeight: 44,
-    height: 56,
+    height: CARD_H,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: CREAM_SHADOW,
-    borderWidth: 2,
     borderLeftWidth: 0,
-    borderBottomWidth: 4,
-    borderColor: INK,
+    paddingHorizontal: 0,
     borderTopRightRadius: 5,
     borderBottomRightRadius: 5,
   },
@@ -995,13 +991,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   blockCard: {
+    ...CHROME.card,
     flex: 1,
-    height: 56,
+    height: CARD_H,
     justifyContent: 'center',
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
     borderTopLeftRadius: 5,
     borderBottomLeftRadius: 5,
     paddingHorizontal: 7,
@@ -1023,39 +1016,31 @@ const styles = StyleSheet.create({
     fontFamily: FONT.pixelBold,
   },
   paletteToggle: {
+    ...CHROME.neutralButton,
     width: '100%',
     minWidth: 44,
     minHeight: 54,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: BLUE_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 5,
+    paddingHorizontal: 8,
     marginTop: 4,
   },
   palettePlus: {
-    color: INK,
+    color: CREAM_LIGHT,
     fontSize: TYPE_SCALE.heading.fontSize,
     fontFamily: FONT.pixelBold,
     lineHeight: 22,
   },
   paletteCount: {
-    color: INK,
+    color: CREAM_LIGHT,
     ...TYPE_SCALE.caption,
     fontVariant: ['tabular-nums'],
   },
   controlDisabled: { opacity: 0.4 },
   popover: {
+    ...CHROME.panel,
     position: 'absolute',
     bottom: 8,
     right: QUEUE_W - 3,
-    backgroundColor: CREAM_BASE,
-    borderWidth: 3,
-    borderBottomWidth: 5,
-    borderColor: INK,
-    borderRadius: 6,
     padding: 8,
     zIndex: 40,
   },
@@ -1071,24 +1056,23 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   panelEyebrow: {
-    color: theme.color.woodShadow,
+    color: BLUE,
     ...TYPE_SCALE.caption,
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   panelTitle: {
     color: INK,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   closeButton: {
+    ...CHROME.secondaryButton,
     minWidth: 44,
-    minHeight: 44,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 4,
+    paddingHorizontal: 8,
   },
   closeText: {
     color: INK,
@@ -1116,15 +1100,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   paletteItem: {
+    ...CHROME.card,
     width: 190,
     minHeight: 62,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
     padding: 6,
   },
   paletteGlyph: {
@@ -1151,8 +1131,10 @@ const styles = StyleSheet.create({
   },
   preferenceTag: {
     alignSelf: 'flex-start',
-    backgroundColor: theme.color.creamBase,
-    borderRadius: 99,
+    backgroundColor: theme.color.waterLight,
+    borderColor: INK,
+    borderRadius: 3,
+    borderWidth: 1,
     color: theme.color.plumShadow,
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
@@ -1167,21 +1149,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   actionButton: {
+    ...CHROME.neutralButton,
     minWidth: 44,
-    minHeight: 44,
     alignItems: 'flex-start',
-    justifyContent: 'center',
-    backgroundColor: CREAM_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
     paddingHorizontal: 10,
     marginTop: 5,
   },
-  actionDestructive: { backgroundColor: RED, borderColor: theme.color.redShadow },
+  actionDestructive: { ...CHROME.destructiveButton },
   actionText: {
-    color: INK,
+    color: CREAM_LIGHT,
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
@@ -1222,18 +1198,13 @@ const styles = StyleSheet.create({
     fontFamily: FONT.pixelBold,
   },
   undoButton: {
+    ...CHROME.neutralButton,
     minWidth: 64,
-    minHeight: 44,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: BLUE_LIGHT,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
+    paddingHorizontal: 8,
   },
   undoText: {
-    color: INK,
+    color: CREAM_LIGHT,
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     letterSpacing: 1,

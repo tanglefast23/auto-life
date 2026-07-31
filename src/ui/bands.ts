@@ -65,6 +65,21 @@ export const BAR_ICON: Record<BarId, { normal: string; alert: string; label: str
   hygiene: { normal: '◍', alert: '≈', label: 'Hygiene' },
 };
 
+/**
+ * What each bar means, and the one activity family that raises it.
+ *
+ * The glyphs above are the only thing naming a bar on screen, and a moon or a tilde is not
+ * self-evident — the names existed solely in `accessibilityLabel`, so a sighted player had
+ * no way to learn them. One line each: what it is, then how to raise it, because "what do
+ * I do about this?" is the question a bar actually provokes.
+ */
+export const BAR_TIP: Record<BarId, string> = {
+  energy: 'How rested she is. Sleep and naps restore it.',
+  nutrition: 'How well fed she is. Meals and snacks restore it.',
+  movement: 'How active she has been. Weights, treadmill and stretching raise it.',
+  hygiene: 'How clean she feels. Showers, quick washes and brushing raise it.',
+};
+
 /** design.md §2 — each bar's fill is its owned ramp's base. */
 export const BAR_COLOR: Record<BarId, string> = {
   energy: theme.color.plum, // Dusk plum

@@ -63,6 +63,11 @@ export interface RenderView {
   readonly position: { readonly x: number; readonly y: number };
   readonly facing: Facing;
   readonly pose: Pose;
+  /**
+   * Presentation-only activity identity. The renderer uses it to stage the body on the
+   * matching furniture after navigation has ended; it is derived and never persisted.
+   */
+  readonly activityId: string | null;
   /** Non-null only while travelling. */
   readonly travel: TravelView | null;
   /** 0..1 for the progress ring over the sim (SPEC §11.1). Null when idle or asleep. */
@@ -213,6 +218,12 @@ export function deriveRenderView(
     position: { x: s.position.x, y: s.position.y },
     facing: deriveFacing(s, content, travel),
     pose: travel !== null ? 'walk' : derivePose(s, content),
+    activityId:
+      travel !== null || cur === null || cur.type === 'travel'
+        ? null
+        : cur.type === 'sleep'
+          ? 'sleep'
+          : cur.dto.activityId,
     // Master §4: render never mutates simulation truth. A `readonly` type is a
     // compile-time promise only — pass 2 proved that touching
     // `snapshot.render.travel.path[0]` mutated the live GameLoop state. Copy the path.

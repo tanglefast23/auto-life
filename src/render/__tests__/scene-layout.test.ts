@@ -9,7 +9,9 @@ import {
   buildTileQuads,
   characterSprite,
   CHAR_H,
+  CHAR_W,
   dwelledPose,
+  HERO_DRAW_SCALE,
   IDLE_DWELL_MS,
   lookup,
   snapToPhysicalPixel,
@@ -17,6 +19,7 @@ import {
   type AtlasIndex,
 } from '../scene-layout';
 import type { RenderView } from '../../sim/render-view';
+import { ACTIVITY_HERO_ORIGINS, OBJECT_PRESENTATION } from '../object-presentation';
 
 const index = atlasIndexJson as AtlasIndex;
 
@@ -98,29 +101,31 @@ describe('tiles', () => {
 });
 
 describe('objects', () => {
-  test('one quad per object, positioned at its footprint top-left', () => {
+  test('one quad per object, positioned at its presentation origin', () => {
     const quads = buildObjectQuads(content.objects);
     expect(quads).toHaveLength(content.objects.objects.length);
-    const bed = content.objects.objects.find((o) => o.id === 'bed')!;
     const bedQuad = quads.find((q) => q.sprite === 'object.bed')!;
-    expect(bedQuad.x).toBe(Math.min(...bed.footprint.map(([x]) => x)) * TILE);
-    expect(bedQuad.y).toBe(Math.min(...bed.footprint.map(([, y]) => y)) * TILE);
+    expect(bedQuad.x).toBe(OBJECT_PRESENTATION.bed!.x);
+    expect(bedQuad.y).toBe(OBJECT_PRESENTATION.bed!.y);
   });
 
   test('draw order is lower-on-screen-last, and stable across calls', () => {
     const a = buildObjectQuads(content.objects);
     const b = buildObjectQuads(content.objects);
     expect(a.map((q) => q.sprite)).toEqual(b.map((q) => q.sprite));
-    for (let i = 1; i < a.length; i++) expect(a[i]!.y).toBeGreaterThanOrEqual(a[i - 1]!.y - TILE * 2);
+    const bottomFor = (quad: (typeof a)[number]) => {
+      const id = quad.sprite.replace('object.', '');
+      const visual = OBJECT_PRESENTATION[id]!;
+      return visual.y + visual.height;
+    };
+    for (let i = 1; i < a.length; i++) expect(bottomFor(a[i]!)).toBeGreaterThanOrEqual(bottomFor(a[i - 1]!));
   });
 
-  test('the atlas sprite matches each object footprint size', () => {
+  test('the atlas sprite matches each object presentation size', () => {
     for (const o of content.objects.objects) {
-      const xs = o.footprint.map(([x]) => x);
-      const ys = o.footprint.map(([, y]) => y);
       const r = lookup(index, `object.${o.id}`);
-      expect(r.w).toBe((Math.max(...xs) - Math.min(...xs) + 1) * TILE);
-      expect(r.h).toBe((Math.max(...ys) - Math.min(...ys) + 1) * TILE);
+      expect(r.w).toBe(OBJECT_PRESENTATION[o.id]!.width);
+      expect(r.h).toBe(OBJECT_PRESENTATION[o.id]!.height);
     }
   });
 });
@@ -154,16 +159,24 @@ describe('the character quad', () => {
     position: { x: 5, y: 7 },
     facing: 'down',
     pose: 'stand',
+    activityId: null,
     travel: null,
     activityProgress: null,
     mSpeed: 1,
     droop: false,
   };
 
-  test('stands feet-on-tile — the 48px sprite is lifted onto a 32px tile', () => {
+  test('draws the 1.5x hero centred on one tile with feet on the interaction baseline', () => {
     const q = buildCharacterQuad(index, 'moss-green', base, 0, 0);
-    expect(q.x).toBe(5 * TILE);
-    expect(q.y).toBe(7 * TILE - (CHAR_H - TILE));
+    expect(q.x).toBe(5 * TILE + (TILE - CHAR_W * HERO_DRAW_SCALE) / 2);
+    expect(q.y + CHAR_H * HERO_DRAW_SCALE).toBe(7 * TILE + TILE);
+  });
+
+  test('stages an activity on its furniture without changing the navigation position', () => {
+    const reading: RenderView = { ...base, pose: 'sit', activityId: 'read' };
+    const quad = buildCharacterQuad(index, 'moss-green', reading, 0, 0);
+    expect({ x: quad.x, y: quad.y }).toEqual(ACTIVITY_HERO_ORIGINS.read);
+    expect(reading.position).toEqual(base.position);
   });
 
   test('glances at the queue rail on the right when the queue changes (SPEC §11.3)', () => {
@@ -227,14 +240,14 @@ describe('the character quad', () => {
     const start = buildCharacterQuad(index, 'moss-green', travelling, 0, 0).x;
     const mid = buildCharacterQuad(index, 'moss-green', travelling, 0.3, 0).x;
     const end = buildCharacterQuad(index, 'moss-green', travelling, 1, 0).x;
-    expect(start).toBe(0);
-    expect(end).toBe(4 * TILE);
+    expect(start).toBe((TILE - CHAR_W * HERO_DRAW_SCALE) / 2);
+    expect(end).toBe(4 * TILE + (TILE - CHAR_W * HERO_DRAW_SCALE) / 2);
     expect(mid).toBeGreaterThan(start);
     expect(mid).toBeLessThan(end);
     // The whole point: a sub-tile x. (alpha 0.5 would land on 2.0 tiles exactly —
     // interpolation working, assertion badly chosen; 0.3 gives 1.2 tiles.)
     expect(mid % TILE).not.toBe(0);
-    expect(mid).toBeCloseTo(1.2 * TILE, 6);
+    expect(mid).toBeCloseTo(1.2 * TILE - (CHAR_W * HERO_DRAW_SCALE - TILE) / 2, 6);
   });
 
   test('walking runs a four-frame cycle; standing pins frame 0', () => {

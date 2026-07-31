@@ -1,7 +1,7 @@
 # v6 — "You" (expanded customization)
 
 **Fantasy:** the little person is *yours*, top to bottom — and always was. v6 is *expanded* customization: identity basics (name, pronouns, presets, preferences) shipped in v1 §9.1; v6 opens the whole wardrobe.
-**Depends on:** the layered paper-doll discipline held since the first sprite (design.md §layers). If that rule was kept, v6 is cheap; that is the entire bet, and why design.md enforces it.
+**Depends on:** the layered paper-doll discipline and F82-derived broad-head/expression anchors held since the v1 fidelity correction (design.md §6). If those structural rules are kept, v6 is cheap; customization may swap identity features but may never shrink the emotional face back into a generic dot-face rectangle.
 
 ---
 

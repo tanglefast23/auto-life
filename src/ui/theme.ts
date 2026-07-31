@@ -79,9 +79,29 @@ export const FONT = {
  */
 export const TYPE_SCALE = {
   caption: { fontFamily: FONT.prose, fontSize: 12, lineHeight: 16, fontWeight: 'normal' },
-  body: { fontFamily: FONT.pixel, fontSize: 16, fontWeight: 'normal' },
-  heading: { fontFamily: FONT.pixelBold, fontSize: 24, fontWeight: 'normal' },
-  display: { fontFamily: FONT.pixelBold, fontSize: 32, fontWeight: 'normal' },
+  body: {
+    fontFamily: FONT.pixel,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: 'normal',
+    letterSpacing: 0.5,
+  },
+  heading: {
+    fontFamily: FONT.pixelBold,
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: 'normal',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  display: {
+    fontFamily: FONT.pixelBold,
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: 'normal',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
 } as const satisfies Record<string, TextStyle>;
 
 export type TypeStep = keyof typeof TYPE_SCALE;
@@ -203,11 +223,13 @@ export const theme = {
  * inverse of the world's Track B rule — a face is never outlined like a button, and a
  * button is never shaded like a sprite.
  */
-function chunky(face: string, lip: string): ViewStyle {
+function chunky(face: string, lip: string, highlight: string): ViewStyle {
   return {
     backgroundColor: face,
     borderWidth: 2,
     borderColor: theme.color.ink,
+    borderTopWidth: 4,
+    borderTopColor: highlight,
     borderBottomWidth: 4,
     borderBottomColor: lip,
     borderRadius: theme.radius.card,
@@ -215,33 +237,55 @@ function chunky(face: string, lip: string): ViewStyle {
 }
 
 export const CHROME = {
-  panel: { ...chunky(theme.color.creamBase, theme.color.creamShadow), padding: theme.space.lg },
-  card: { ...chunky(theme.color.creamLight, theme.color.creamShadow), padding: theme.space.sm },
+  panel: {
+    ...chunky(theme.color.creamBase, theme.color.creamShadow, theme.color.creamLight),
+    padding: theme.space.lg,
+  },
+  card: {
+    ...chunky(theme.color.creamLight, theme.color.creamShadow, theme.color.creamLight),
+    padding: theme.space.sm,
+  },
   chip: {
-    ...chunky(theme.color.creamBase, theme.color.creamShadow),
+    ...chunky(theme.color.creamBase, theme.color.creamShadow, theme.color.creamLight),
     borderRadius: theme.radius.chip,
     paddingHorizontal: theme.space.sm,
     paddingVertical: theme.space.xs,
   },
   neutralButton: {
-    ...chunky(theme.color.creamLight, theme.color.creamShadow),
+    // HFM blue means confirm / primary / neutral action.
+    ...chunky(theme.color.water, theme.color.waterShadow, theme.color.waterLight),
     minHeight: theme.minTarget,
     paddingHorizontal: theme.space.lg,
     justifyContent: 'center',
   },
   /** design.md §2: red is URGENT and destructive confirms. Nothing decorative is red. */
   destructiveButton: {
-    ...chunky(theme.color.red, theme.color.redShadow),
+    ...chunky(theme.color.red, theme.color.redShadow, theme.color.redLight),
     minHeight: theme.minTarget,
     paddingHorizontal: theme.space.lg,
     justifyContent: 'center',
   },
   /** design.md §2: gold is light sources and **reward moments only**. Never generic emphasis. */
   rewardButton: {
-    ...chunky(theme.color.gold, theme.color.goldShadow),
+    ...chunky(theme.color.gold, theme.color.goldShadow, theme.color.goldLight),
     minHeight: theme.minTarget,
     paddingHorizontal: theme.space.lg,
     justifyContent: 'center',
+  },
+  secondaryButton: {
+    ...chunky(theme.color.creamLight, theme.color.creamShadow, theme.color.creamLight),
+    minHeight: theme.minTarget,
+    paddingHorizontal: theme.space.lg,
+    justifyContent: 'center',
+  },
+  selectedControl: {
+    ...chunky(theme.color.water, theme.color.waterShadow, theme.color.waterLight),
+    minHeight: theme.minTarget,
+  },
+  field: {
+    ...chunky(theme.color.creamLight, theme.color.grey, theme.color.creamLight),
+    minHeight: 48,
+    paddingHorizontal: theme.space.md,
   },
   /** Bar troughs (design.md §8). The fill colour is the bar's own ramp base, from `bands.ts`. */
   trough: {
@@ -253,7 +297,7 @@ export const CHROME = {
   },
   /** design.md §8 bubbles: cream rounds, Ink tail; grumpy plum, happy leaf, **never red**. */
   bubble: {
-    ...chunky(theme.color.creamLight, theme.color.creamShadow),
+    ...chunky(theme.color.creamLight, theme.color.creamShadow, theme.color.creamLight),
     borderRadius: theme.radius.chip,
     paddingHorizontal: theme.space.sm,
     paddingVertical: theme.space.xs,

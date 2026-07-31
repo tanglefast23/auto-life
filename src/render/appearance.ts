@@ -49,7 +49,8 @@ export interface AppearancePalette {
  */
 export const APPEARANCE_PALETTES: Record<string, AppearancePalette> = {
   'morning-blue': { skin: SKIN_RAMPS[0]!, hair: HAIR_BLACK, outfit: WATER_BLUE },
-  'moss-green': { skin: SKIN_RAMPS[2]!, hair: HAIR_AUBURN, outfit: LEAF_GREEN },
+  // Default hero: HFM F82's black top-knot identity in an off-pitch green tunic.
+  'moss-green': { skin: SKIN_RAMPS[2]!, hair: HAIR_BLACK, outfit: LEAF_GREEN },
   'warm-clay': { skin: SKIN_RAMPS[4]!, hair: HAIR_BLONDE, outfit: TERRACOTTA },
   'plum-night': { skin: SKIN_RAMPS[5]!, hair: DUSK_PLUM, outfit: DUSK_PLUM },
 };

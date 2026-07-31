@@ -63,6 +63,15 @@ describe('theme colours (design.md §2)', () => {
     expect(CHROME.panel.backgroundColor).not.toBe(theme.color.gold);
   });
 
+  it('uses HFM Track-A colour roles and hard bevel bands', () => {
+    expect(CHROME.neutralButton.backgroundColor).toBe(theme.color.water);
+    expect(CHROME.secondaryButton.backgroundColor).toBe(theme.color.creamLight);
+    expect(CHROME.neutralButton.borderTopColor).toBe(theme.color.waterLight);
+    expect(CHROME.neutralButton.borderBottomColor).toBe(theme.color.waterShadow);
+    expect(CHROME.card.borderTopColor).toBe(theme.color.creamLight);
+    expect(CHROME.card.borderBottomColor).toBe(theme.color.creamShadow);
+  });
+
   it('never tints a bubble red (design.md §8)', () => {
     expect(Object.values(BUBBLE_TINT)).not.toContain(theme.color.red);
   });

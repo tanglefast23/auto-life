@@ -2,6 +2,7 @@ import type { FloorMaterial, HomeMapConfig, ObjectsConfig } from '../sim/content
 import type { Lighting } from './lighting';
 import type { Facing, Pose, RenderView } from '../sim/render-view';
 import { interpolateTravel } from '../sim/render-view';
+import { activityHeroOrigin, objectPresentation } from './object-presentation';
 
 /**
  * Scene layout (P3 T6), kept pure and separate from the Skia component.
@@ -16,7 +17,19 @@ export const TILE = 32;
 /** design.md §5: character is 32×48, so it overhangs its tile by 16px upward. */
 export const CHAR_W = 32;
 export const CHAR_H = 48;
-const CHAR_Y_OFFSET = CHAR_H - TILE;
+/**
+ * One actor carries the whole emotional story, so the HFM-derived hero is deliberately
+ * larger than a one-tile crowd sprite. 1.5× remains a legal half-step in this renderer
+ * and gives every authored face pixel room to read without enlarging the world grid.
+ */
+export const HERO_DRAW_SCALE = 1.5;
+
+export function heroDrawOrigin(tileX: number, tileY: number): { x: number; y: number } {
+  return {
+    x: tileX * TILE + (TILE - CHAR_W * HERO_DRAW_SCALE) / 2,
+    y: tileY * TILE + TILE - CHAR_H * HERO_DRAW_SCALE,
+  };
+}
 
 export interface SpriteRect {
   x: number;
@@ -109,22 +122,22 @@ export function floorMaterialAt(
 }
 
 /**
- * Objects, drawn at their footprint's top-left.
+ * Objects, drawn at their authored visual bounds.
  *
- * Sorted by the footprint's bottom row so that an object lower on the screen paints
- * later — the cheapest correct depth rule for a fixed top-down room, and it keeps the
- * draw order stable (and therefore the Atlas buffer stable) across frames.
+ * The simulation footprint remains the pathfinding contract. Visual bounds are allowed
+ * to be larger and to cross a wall edge, which is how a bed can fit a person and a door
+ * can look installed without changing any deterministic movement. Objects sort by their
+ * visual bottom edge so depth still matches what the player sees.
  */
 export function buildObjectQuads(objects: ObjectsConfig): Quad[] {
   return objects.objects
     .map((o) => {
-      const xs = o.footprint.map(([x]) => x);
-      const ys = o.footprint.map(([, y]) => y);
+      const visual = objectPresentation(o);
       return {
         sprite: `object.${o.id}`,
-        x: Math.min(...xs) * TILE,
-        y: Math.min(...ys) * TILE,
-        bottom: Math.max(...ys),
+        x: visual.x,
+        y: visual.y,
+        bottom: visual.y + visual.height,
       };
     })
     .sort((a, b) => a.bottom - b.bottom || a.sprite.localeCompare(b.sprite))
@@ -244,8 +257,10 @@ export function characterSprite(
  * The character quad for a frame.
  *
  * `alpha` is progress through the current tick (0..1); while travelling the position is
- * interpolated so the sim glides instead of teleporting (SPEC §5). The sprite is 48 px
- * tall on a 32 px tile, so it is lifted by the difference to stand feet-on-tile.
+ * interpolated so the sim glides instead of teleporting (SPEC §5). The source sprite is
+ * 32×48 but the one-and-only hero is drawn at 1.5×. Travel and idle keep the feet on the
+ * navigation tile. A running activity uses a presentation-only origin that places the
+ * body on the mattress, seat, treadmill deck, or fixture it is actually using.
  */
 export function buildCharacterQuad(
   index: AtlasIndex,
@@ -257,6 +272,8 @@ export function buildCharacterQuad(
   facingOverride: Facing | null = null,
 ): Quad {
   const tile = view.travel !== null ? interpolateTravel(view.travel, alpha) : view.position;
+  const stagedOrigin = view.travel === null ? activityHeroOrigin(view.activityId) : null;
+  const origin = stagedOrigin ?? heroDrawOrigin(tile.x, tile.y);
   return {
     sprite: characterSprite(
       index,
@@ -267,8 +284,8 @@ export function buildCharacterQuad(
       view.droop,
       variantId,
     ),
-    x: tile.x * TILE,
-    y: tile.y * TILE - CHAR_Y_OFFSET,
+    x: origin.x,
+    y: origin.y,
   };
 }
 

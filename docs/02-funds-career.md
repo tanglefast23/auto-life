@@ -116,7 +116,7 @@ First busk (complete a workday) → Real deal (buy the guitar) → Open-mic debu
 
 ## 9. Art scope (per design.md)
 
-5 venue backdrops (one screen each, same 24×14 grid) · crowd chibi set: 6 bodies × palette swaps, 2-frame sway/clap loops · guitar sprites ×2 + case · commute vignette (door + street strip) · shop card chrome · coin/GP icons · weather overlay (rain) · per-venue lighting moods within the master palette (design.md §ramps — no new hues).
+5 venue backdrops (one screen each, same 24×14 grid) · HFM heroic-chibi crowd set: 6 bodies × palette swaps, each with one dominant face/silhouette cue, 2-frame sway/clap loops with readable emotion · guitar sprites ×2 + case · commute vignette (door + street strip) · HFM Track-A shop-card chrome · coin/GP icons · weather overlay (rain) · per-venue lighting moods within the master palette (design.md §ramps — no new hues).
 
 ## 10. Audio
 

@@ -1,5 +1,6 @@
 import { content } from '../../sim/content';
 import { OBJECT_SPRITES, renderObject } from '../sprites/objects';
+import { OBJECT_PRESENTATION } from '../object-presentation';
 import {
   auditBitmap,
   boxiness,
@@ -16,8 +17,6 @@ import {
  * and two colour-only variants share a silhouette signature, so neither can pass.
  */
 
-const TILE = 32;
-
 /** The ceiling. A filled rectangle is exactly 1.0; anything at or above this reads as a box. */
 const MAX_BOXINESS = 0.92;
 
@@ -29,16 +28,28 @@ describe('object sprites (design.md §6 silhouette-first, §11 bill, §12 checkl
     expect(authored.size).toBe(inContent.length);
   });
 
-  it('sizes every sprite to its declared footprint', () => {
+  it('sizes every sprite to its authored presentation bounds', () => {
     for (const o of content.objects.objects) {
-      const xs = o.footprint.map(([x]) => x);
-      const ys = o.footprint.map(([, y]) => y);
       const bmp = renderObject(o.id);
+      const visual = OBJECT_PRESENTATION[o.id];
+      expect(visual).toBeDefined();
       expect({ id: o.id, w: bmp.width, h: bmp.height }).toEqual({
         id: o.id,
-        w: (Math.max(...xs) - Math.min(...xs) + 1) * TILE,
-        h: (Math.max(...ys) - Math.min(...ys) + 1) * TILE,
+        w: visual!.width,
+        h: visual!.height,
       });
+    }
+  });
+
+  it('keeps interactive furniture large enough for the enlarged hero', () => {
+    for (const o of content.objects.objects.filter((object) => object.activities.length > 0)) {
+      const visual = OBJECT_PRESENTATION[o.id]!;
+      expect({ id: o.id, width: visual.width, height: visual.height }).toEqual({
+        id: o.id,
+        width: expect.any(Number),
+        height: expect.any(Number),
+      });
+      expect(Math.max(visual.width, visual.height)).toBeGreaterThanOrEqual(48);
     }
   });
 

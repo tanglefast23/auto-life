@@ -16,6 +16,7 @@
     "mintyFresh": "Minty",
     "freshMind": "Fresh",
     "practiceBlock": "Block",
+    "practiceUncounted": "No points",
     "blocked": "Blocked",
     "waiting": "Wait",
     "reroute": "Quick wash"
@@ -29,6 +30,7 @@
     "barDelta": "{amount} {bar} when this starts.",
     "scalePoints": "Practice earns {percent}% more.",
     "practiceBlock": "Keeps {block}% of base instead of {scattered}%.",
+    "practiceUncounted": "Only the first {max} sessions a day earn points. This one earns nothing.",
     "objectBlocked": "{object} is blocked until {time}.",
     "activityUnavailable": "{activity} is unavailable until {time}.",
     "reroute": "Shower blocked. Quick wash runs instead."
