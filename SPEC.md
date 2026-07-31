@@ -514,6 +514,20 @@ Single fixed screen, interior cutaway, **24×14 tiles @ 32 px** (768×448 logica
 
 ## 11. UI / UX
 
+### 11.0 Presentation contract [AMENDED 2026-07-31, P7]
+
+design.md §4 owns the type scale; this section states the parts the UI ring must satisfy.
+
+1. **The scale is 12 / 16 / 24 / 32.** The 8 px step is retired. No player-facing text below 12 px; no actionable text below 16 px.
+2. **The 12 px tier is sans, not Silkscreen.** 12 is not a multiple of the 8 px em, so pixel type at that size anti-aliases — a design.md §13 instant reject. Size and face are chosen together or not at all.
+3. **`display.hudTextScale` must change rendered text.** Through P5–P6 it multiplied only the reserved HUD *height* (`GameScreen`), so the accessibility setting moved layout and left every glyph at its authored size. Any surface that reserves space for scaled text must also scale it.
+4. **No screen may enlarge `document.body` beyond the viewport.** Panels are bounded and scroll internally.
+5. **One modal authority at a time.** A surface that looks modal must be modal to the keyboard and the screen reader too, and must restore focus on close.
+6. **A completed reward event owns a dedicated sound**, distinct from routine queue edits.
+7. **Turning reduced motion on cancels decorative motion already in flight**, without discarding committed game state.
+
+Items 1–2 are enforced by `src/ui/__tests__/theme.test.ts`; the rest are acceptance criteria for the P7 overhaul.
+
 Obeys Joe's global design rules (60-30-10, ≤4 font sizes, 2 weights, 8-pt grid, tabular numerals, one emphasis per section). Visual construction rules live in [design.md](design.md).
 
 ### 11.1 HUD — versioned hierarchy [DECIDED round 2]
