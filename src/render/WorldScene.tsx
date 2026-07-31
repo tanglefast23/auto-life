@@ -7,6 +7,7 @@ import {
   Path,
   Rect,
   rect,
+  RoundedRect,
   Skia,
   useImage,
   useRSXformBuffer,
@@ -15,7 +16,7 @@ import {
 import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { content } from '../sim/content';
 import { resolvePaletteId } from './appearance';
-import { lightingAt } from './lighting';
+import { lightingAt, type Lighting } from './lighting';
 import { effectFrame, MOTION, motionProgress, resolveMotion } from './motion';
 import type { RenderView } from '../sim/render-view';
 import atlasIndexJson from '../../assets/generated/atlas-index.json';
@@ -28,12 +29,15 @@ import {
   CHAR_W,
   characterSprite,
   DECORATION_PLACEMENTS,
+  floorMaterialAt,
   lookup,
   snapToPhysicalPixel,
   TILE,
   type AtlasIndex,
 } from './scene-layout';
-import { theme } from '../ui/theme';
+import type { FloorMaterial } from '../sim/content-schemas';
+import type { Bubble } from './bubbles';
+import { BUBBLE_TINT, theme } from '../ui/theme';
 
 const index = atlasIndexJson as AtlasIndex;
 
@@ -112,6 +116,20 @@ export interface WorldSceneProps {
    * 1× for no player action at all.
    */
   queueSignature?: string;
+  /**
+   * SPEC §11.1's world bubble, already decided by `bubbleFor()`.
+   *
+   * The scene draws it; it does not choose it. Priority is a pure rule with its own tests,
+   * and duplicating any of it here would be a second opinion about what the sim is thinking.
+   */
+  bubble?: Bubble | null;
+  /**
+   * One walk-cycle contact, with the floor under the sim at that moment.
+   *
+   * Lives here because the walk phase does: the cycle is advanced by this component's frame
+   * callback, so a footstep timed anywhere else would be guessing at where the feet are.
+   */
+  onFootstep?: (material: FloorMaterial) => void;
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
@@ -133,6 +151,8 @@ export function WorldScene({
   minuteOfDay = 12 * 60,
   reducedMotion = false,
   queueSignature = '',
+  bubble = null,
+  onFootstep,
   alphaRef,
   scale,
   physicalPerArtPixel = scale,
@@ -194,6 +214,10 @@ export function WorldScene({
   const ringProgress = useSharedValue(0);
   const ringX = useSharedValue(0);
   const ringY = useSharedValue(0);
+  // Offset to the sim's right shoulder rather than straight up, so the bubble and §11.1's
+  // progress ring can both be over her at once without stacking on the same pixels.
+  const bubbleX = useSharedValue(0);
+  const bubbleY = useSharedValue(0);
 
   const charTransforms = useRSXformBuffer(1, (val) => {
     'worklet';
@@ -208,15 +232,27 @@ export function WorldScene({
   });
 
   const fade = useSharedValue(1);
-  const firstLighting = useRef(true);
+  /**
+   * The lighting state the last crossfade actually ran *from* — not merely "has this
+   * effect run before".
+   *
+   * The effect re-runs on `reducedMotion` as well as on `lighting`, and `previousScene` is
+   * unconditionally the *opposite* lighting state. A boolean first-run flag could not tell
+   * those two triggers apart, so turning reduced motion back off at noon re-entered the
+   * fade with no lighting change at all and the player watched the evening room dissolve
+   * over four seconds. GameScreen stays mounted under the pause overlay, so the settings
+   * panel is exactly where this was reachable.
+   */
+  const lastLighting = useRef<Lighting | null>(null);
   // The outgoing room is only *mounted* while the fade runs. Leaving it mounted would
   // double the 350-quad static buffer for every frame of the day to serve a transition
   // that happens twice — the sort of always-on cost a perf pass then has to hunt for.
   const [crossfading, setCrossfading] = useState(false);
   useEffect(() => {
+    const previous = lastLighting.current;
+    lastLighting.current = lighting;
     const motion = resolveMotion(MOTION.lightingCrossfade, { reducedMotion });
-    if (firstLighting.current || motion.durationMs === 0) {
-      firstLighting.current = false;
+    if (previous === null || previous === lighting || motion.durationMs === 0) {
       fade.value = 1;
       setCrossfading(false);
       return;
@@ -303,6 +339,7 @@ export function WorldScene({
     physicalPerArtPixel,
     appearance,
     idleVariantId,
+    onFootstep,
     indexOf: chars.indexOf,
   });
   latest.current = {
@@ -312,6 +349,7 @@ export function WorldScene({
     physicalPerArtPixel,
     appearance,
     idleVariantId,
+    onFootstep,
     indexOf: chars.indexOf,
   };
 
@@ -319,6 +357,10 @@ export function WorldScene({
     let raf = 0;
     let phase = 0;
     let last: number | null = null;
+    // Which half of the walk cycle the last frame was in. A cycle is two strides, so a
+    // change here is one foot landing — the same signal the sprite swap reads, which is
+    // what keeps the sound on the frame the player sees the foot touch down.
+    let contact: number | null = null;
     const frame = (now: number) => {
       const {
         view: v,
@@ -327,12 +369,24 @@ export function WorldScene({
         physicalPerArtPixel: pixelGrid,
         appearance: paletteKey,
         idleVariantId: variant,
+        onFootstep: footstep,
         indexOf,
       } = latest.current;
       const delta = last === null ? 0 : now - last;
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
       phase = advancePhase(phase, delta * speed, v.mSpeed);
+      if (v.pose === 'walk' && footstep !== undefined) {
+        const half = Math.floor(phase * 2);
+        // `contact === null` is the first walking frame, which is a footfall the player
+        // both sees and expects; only a *repeat* of the same half is silent.
+        if (half !== contact) {
+          contact = half;
+          footstep(floorMaterialAt(content.homeMap, v.position.x, v.position.y));
+        }
+      } else {
+        contact = null;
+      }
       const quad = buildCharacterQuad(
         index,
         paletteKey,
@@ -351,11 +405,13 @@ export function WorldScene({
       ringProgress.value = v.activityProgress ?? 0;
       ringX.value = drawX + CHAR_W / 2;
       ringY.value = drawY - 6;
+      bubbleX.value = drawX + CHAR_W - 2;
+      bubbleY.value = drawY;
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [charX, charY, charSprite, ringProgress, ringX, ringY]);
+  }, [charX, charY, charSprite, ringProgress, ringX, ringY, bubbleX, bubbleY]);
 
   if (image === null) return null;
   return (
@@ -385,7 +441,99 @@ export function WorldScene({
       )}
       <Atlas image={image} sprites={charRects} transforms={charTransforms} sampling={NEAREST} />
       <ProgressRing progress={ringProgress} cx={ringX} cy={ringY} />
+      {bubble !== null && (
+        <ThoughtBubble bubble={bubble} image={image} cx={bubbleX} cy={bubbleY} />
+      )}
       {sparkle !== null && <RewardSparkle {...sparkle} />}
+    </Group>
+  );
+}
+
+/**
+ * SPEC §11.1's world thought bubble — "need <40, preferences, hints" — over the sim's head.
+ *
+ * `bubbles.ts` shipped with full unit coverage and no consumer at all: `bubbleFor()` was
+ * referenced only by its own test and `BUBBLE_TINT` only by the theme test, so the one
+ * §11.1 surface that teaches a player *why* she walked to the shower existed solely as a
+ * passing test file. This is the surface.
+ *
+ * design.md §8's recipe, exactly: cream round, Ink tail, a 12-px icon, and a tint that is
+ * plum, leaf or gold — never red. The tint rings the bubble rather than filling it, because
+ * a 12-px icon on a saturated ground is the one way to make an alert glyph *less* legible
+ * than the bar it is reporting.
+ */
+const BUBBLE_W = 22;
+const BUBBLE_H = 20;
+const BUBBLE_ICON = 12;
+const BUBBLE_TAIL = 4;
+
+function ThoughtBubble({
+  bubble,
+  image,
+  cx,
+  cy,
+}: {
+  bubble: Bubble;
+  image: ReturnType<typeof useImage>;
+  cx: SharedValue<number>;
+  cy: SharedValue<number>;
+}) {
+  const icon = useMemo(() => {
+    // An icon the atlas does not carry must not take the frame down for a decoration.
+    try {
+      const r = lookup(index, bubble.icon);
+      return rect(r.x, r.y, r.w, r.h);
+    } catch {
+      return null;
+    }
+  }, [bubble.icon]);
+  const transform = useDerivedValue(() => [
+    { translateX: cx.value },
+    { translateY: cy.value },
+  ]);
+  const tail = useMemo(() => {
+    const path = Skia.Path.Make();
+    path.moveTo(-BUBBLE_TAIL, 0);
+    path.lineTo(BUBBLE_TAIL, 0);
+    path.lineTo(0, BUBBLE_TAIL);
+    path.close();
+    return path;
+  }, []);
+  if (icon === null) return null;
+  return (
+    <Group transform={transform}>
+      <RoundedRect
+        x={-BUBBLE_W / 2}
+        y={-BUBBLE_H}
+        width={BUBBLE_W}
+        height={BUBBLE_H}
+        r={4}
+        color={theme.color.creamLight}
+      />
+      <RoundedRect
+        x={-BUBBLE_W / 2}
+        y={-BUBBLE_H}
+        width={BUBBLE_W}
+        height={BUBBLE_H}
+        r={4}
+        color={BUBBLE_TINT[bubble.tint]}
+        style="stroke"
+        strokeWidth={2}
+      />
+      <Path path={tail} color={theme.color.ink} />
+      <Atlas
+        image={image}
+        sprites={[icon]}
+        transforms={[
+          Skia.RSXform(
+            BUBBLE_ICON / icon.width,
+            0,
+            -BUBBLE_ICON / 2,
+            -BUBBLE_H + (BUBBLE_H - BUBBLE_ICON) / 2,
+          ),
+        ]}
+        sampling={NEAREST}
+      />
     </Group>
   );
 }

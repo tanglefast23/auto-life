@@ -5,7 +5,12 @@ import {
   ROUTINE_QUEUE_TARGET,
   refillRoutineQueue,
 } from '../planner/routine';
-import type { QueueCard } from '../queue';
+import {
+  REMOVE_SUPPRESSION_MIN,
+  STOP_SUPPRESSION_MIN,
+  type QueueCard,
+  type SuppressionMap,
+} from '../queue';
 import { PrngStreams } from '../prng';
 import { newGameState } from '../state';
 import { step } from '../step';
@@ -29,17 +34,20 @@ function refill(
   queue: readonly QueueCard[],
   currentCardId: string | null,
   currentBars: Bars,
+  suppression: SuppressionMap = {},
+  absoluteMinute = 600,
 ): QueueCard[] {
   let sequence = 1;
   return refillRoutineQueue({
     queue,
     currentCardId,
     bars: currentBars,
-    absoluteMinute: 600,
+    absoluteMinute,
     wakeTarget: 420,
     napEffectiveUsesToday: 0,
     content,
     createCardId: () => `routine-${sequence++}`,
+    suppression,
   });
 }
 
@@ -163,6 +171,98 @@ test('the real step path moves a Snack into the next slot when Nutrition dips be
   }
 
   throw new Error('expected the routine to reach productive reading');
+});
+
+/**
+ * §7.4 suppression, which the rolling refill did not read until ENGINE_VERSION 10.
+ *
+ * The planner ran one branch below the `step()` code that writes the suppression entry and
+ * ignored it, so a removed routine card was re-created in the same tick that removed it —
+ * Remove and Stop looked dead against most of the visible queue under the default autonomy,
+ * and the Undo toast offered to undo a removal that had already undone itself.
+ */
+describe('§7.4 suppression', () => {
+  it('does not re-plan a suppressed activity, and leaves the slot to the next need', () => {
+    const suppressed = refill([], null, bars(100, 70, 60, 70), {
+      snack: 600 + REMOVE_SUPPRESSION_MIN,
+    });
+
+    expect(suppressed.map((card) => card.activityId)).not.toContain('snack');
+    // Hygiene and Movement are untouched by a Nutrition suppression, so their maintenance
+    // still books — suppression removes one type, it does not stall the whole plan.
+    expect(suppressed.map((card) => card.activityId)).toEqual([
+      'quickwash',
+      'stretch',
+      'read',
+      'read',
+      'read',
+    ]);
+  });
+
+  it('plans the activity again the minute the window lapses', () => {
+    const until = 600 + REMOVE_SUPPRESSION_MIN;
+    const hungry = bars(100, 70, 100, 100);
+
+    const during = refill([], null, hungry, { snack: until }, until - 1);
+    expect(during.map((card) => card.activityId)).not.toContain('snack');
+
+    const after = refill([], null, hungry, { snack: until }, until);
+    expect(after.map((card) => card.activityId)).toContain('snack');
+  });
+
+  it('honours the shorter 1-hour window a Stop writes', () => {
+    const until = 600 + STOP_SUPPRESSION_MIN;
+    expect(STOP_SUPPRESSION_MIN).toBe(60);
+    expect(REMOVE_SUPPRESSION_MIN).toBe(120);
+
+    const hungry = bars(100, 70, 100, 100);
+    expect(
+      refill([], null, hungry, { snack: until }, until - 1).map((c) => c.activityId),
+    ).not.toContain('snack');
+    expect(
+      refill([], null, hungry, { snack: until }, until).map((c) => c.activityId),
+    ).toContain('snack');
+  });
+
+  it('leaves the plan short rather than looping when even the filler is suppressed', () => {
+    // The fallback is the refill loop's only other exit. Skipping it without breaking out
+    // would spin forever inside the tick, so this asserts termination as much as content.
+    const queue = refill([], null, bars(100, 100, 100, 100), {
+      read: 600 + REMOVE_SUPPRESSION_MIN,
+    });
+
+    expect(queue).toEqual([]);
+  });
+
+  it('re-creates a removed card once the window lapses, not before', () => {
+    const state = newGameState(
+      'baseline',
+      content.rates,
+      1234,
+      PrngStreams.create(1234).serialize(),
+    );
+    state.clock.absoluteMinute = 600;
+    state.bars = bars(100, 70, 100, 100);
+    state.queue = refill([], null, state.bars);
+    state.nextCardSeq = 100;
+
+    const snack = state.queue.find((card) => card.activityId === 'snack');
+    expect(snack).toBeDefined();
+
+    const removed = step(
+      state,
+      [{ type: 'removeCard', cardId: snack!.id }],
+      content,
+    );
+
+    // The regression, stated as the player would: the card is gone at the end of the very
+    // tick that removed it, rather than re-created by the refill two branches later.
+    expect(removed.next.suppression['snack']).toBe(600 + REMOVE_SUPPRESSION_MIN);
+    expect(
+      removed.snapshot.queue.some((card) => card.activityId === 'snack'),
+    ).toBe(false);
+    expect(removed.snapshot.queue).toHaveLength(ROUTINE_QUEUE_TARGET);
+  });
 });
 
 test('severe hunger upgrades an unstarted routine Snack to the existing reactive Meal', () => {

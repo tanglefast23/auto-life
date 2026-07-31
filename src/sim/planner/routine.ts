@@ -2,7 +2,7 @@ import { napEligibility } from '../activities';
 import { minuteOfDay } from '../clock';
 import type { ContentRegistry } from '../content';
 import { toDisplay, toFixed } from '../fixed';
-import type { QueueCard } from '../queue';
+import { isSuppressed, type QueueCard, type SuppressionMap } from '../queue';
 import type { BarId, Bars } from '../types';
 
 export const ROUTINE_QUEUE_TARGET = 5;
@@ -26,6 +26,18 @@ export interface RefillRoutineQueueArgs {
   content: ContentRegistry;
   createCardId: () => string;
   targetSize?: number;
+  /**
+   * §7.4's suppression window — removing an AUTO card suppresses its type for 2 game-hours,
+   * stopping one for 1.
+   *
+   * The reactive planner has read this since P2; the routine planner did not, and that gap
+   * made Remove and Stop dead verbs against exactly the cards the player sees most. Under
+   * the default `full-routine` autonomy the queue is refilled to five every tick, so a
+   * removed Snack was re-created in the same tick it was removed and a stopped activity
+   * restarted about two minutes later — with the Undo toast still offering to undo a
+   * removal that had already undone itself.
+   */
+  suppression: SuppressionMap;
 }
 
 function activityForNeed(
@@ -168,6 +180,17 @@ export function refillRoutineQueue(
     };
   };
 
+  /**
+   * §7.4: a suppressed type is not re-planned, and urgency is the only override.
+   *
+   * A routine card is never urgent — urgency is the reactive planner's escalation, and it
+   * reaches the queue through §7.2's net, which reads the same map with `urgent: true` and
+   * so still gets through in a genuine crisis. Passing `false` here is therefore the whole
+   * of the routine planner's half of the rule.
+   */
+  const suppressed = (activityId: string): boolean =>
+    isSuppressed(activityId, args.absoluteMinute, args.suppression, false);
+
   const additions: QueueCard[] = [];
   while (fixed.length + additions.length < targetSize) {
     const candidates = NEED_ORDER.flatMap((bar, order) => {
@@ -178,7 +201,7 @@ export function refillRoutineQueue(
         return [];
       }
       const activityId = activityForNeed(bar, args, projectedBars);
-      if (activityId === null) return [];
+      if (activityId === null || suppressed(activityId)) return [];
       return [{
         bar,
         activityId,
@@ -191,6 +214,10 @@ export function refillRoutineQueue(
 
     const next = candidates[0];
     if (next === undefined) {
+      // `break`, not `continue`. The fallback is the loop's only other exit, so suppressing
+      // it while still looping would spin forever inside the tick. A plan that is short for
+      // an hour is the correct outcome anyway: the player just said they did not want this.
+      if (suppressed(PRODUCTIVE_FALLBACK_ACTIVITY_ID)) break;
       additions.push(
         takeOrCreate(PRODUCTIVE_FALLBACK_ACTIVITY_ID, null),
       );

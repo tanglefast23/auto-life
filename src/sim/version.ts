@@ -68,4 +68,14 @@
  * free time uses a neutral Read activity; completing the current card refills the
  * fifth slot in the same tick. Existing v8 career envelopes migrate in place.
  */
-export const ENGINE_VERSION = 9 as const;
+/**
+ * v10 (2026-07-31, P6 audit): the routine planner reads §7.4's suppression map. Removing
+ * an AUTO routine card suppresses its type for 2 game-hours and stopping one for 1, exactly
+ * as the reactive planner has since v2 — the rolling refill introduced in v9 re-created a
+ * removed card in the same tick, so under the default `full-routine` autonomy Remove and
+ * Stop had no lasting effect on most of the visible queue. Urgency still overrides
+ * suppression through the reactive net, so a real crisis is unaffected. A refill that finds
+ * every candidate suppressed now leaves the plan short rather than falling back to Read.
+ * Both goldens re-recorded.
+ */
+export const ENGINE_VERSION = 10 as const;

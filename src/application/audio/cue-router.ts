@@ -1,4 +1,4 @@
-import type { AudioConfig, FloorMaterial } from '../../sim/content-schemas';
+import type { AudioConfig, AudioCue, FloorMaterial } from '../../sim/content-schemas';
 import { EVENING_START_MINUTE } from '../../render/lighting';
 
 /**
@@ -24,6 +24,12 @@ export interface BusLike {
   stop(key: string): void;
   remove(key: string): void;
   has(key: string): boolean;
+  fadeTo(
+    key: string,
+    target: number,
+    durationMs: number,
+    options?: { from?: number; removeWhenSilent?: boolean },
+  ): void;
 }
 
 export type DomainCueEvent =
@@ -62,7 +68,9 @@ const RAIN_KEY = 'ambience.rain';
 export class CueRouter {
   private bed: MusicBed | null = null;
   private riffLevel: number | null = null;
-  private readonly loops = new Set<string>();
+  /** Live activity loops, keyed by voice key and holding the cue needed to restart them. */
+  private readonly loops = new Map<string, AudioCue>();
+  private raining = false;
   private paused = false;
   private hydrating = false;
 
@@ -71,15 +79,38 @@ export class CueRouter {
     private readonly audio: AudioConfig,
   ) {}
 
+  /**
+   * Pause silences every continuous voice; resume puts them all back.
+   *
+   * The resume half is not symmetry for its own sake. Every one of these layers is started
+   * by a *change* — the bed at 06:00 and 19:00, the riff at a practice-level change, an
+   * activity loop when a different activity starts — so a paused-then-resumed session had
+   * nothing to restart it: the bed stayed silent until the next boundary, up to thirteen
+   * game-hours away, and a tracked activity loop never came back at all. Only the room and
+   * rain ambience recovered, because `onMinute` re-issues those every minute, which is
+   * precisely what made the gap look like it was working.
+   */
   setPaused(paused: boolean): void {
+    if (paused === this.paused) return;
     this.paused = paused;
     if (paused) {
       if (this.bed !== null) this.bus.stop(bedKey(this.bed));
       this.bus.stop(RIFF_KEY);
       this.bus.stop(ROOM_KEY);
       this.bus.stop(RAIN_KEY);
-      for (const key of this.loops) this.bus.stop(key);
+      for (const key of this.loops.keys()) this.bus.stop(key);
+      return;
     }
+    if (this.bed !== null) {
+      this.bus.playLoop(bedKey(this.bed), this.audio.music[this.bed], 'music');
+    }
+    if (this.riffLevel !== null) {
+      const riff = this.audio.practiceRiffs.find((r) => r.level === this.riffLevel);
+      if (riff !== undefined) this.bus.playLoop(RIFF_KEY, riff, 'music');
+    }
+    for (const [key, cue] of this.loops) this.bus.playLoop(key, cue, 'sfx');
+    this.bus.playLoop(ROOM_KEY, this.audio.ambience.room, 'sfx');
+    if (this.raining) this.bus.playLoop(RAIN_KEY, this.audio.ambience.rain, 'sfx');
   }
 
   setHydrating(hydrating: boolean): void {
@@ -99,6 +130,12 @@ export class CueRouter {
    * The incoming bed starts **before** the outgoing one stops, so the 19:00 change is a
    * crossfade rather than a gap — SPEC §11.3 calls it "the coziest beat of the day", and a
    * half-second of silence in the middle of it would be the opposite.
+   *
+   * Overlapping the two voices is necessary but was not sufficient: the first version paired
+   * `playLoop(incoming)` with `remove(outgoing)` in the same synchronous call, and `remove()`
+   * detaches its media element on the spot. Both voices did exist at once, for roughly no
+   * time at all, so the "crossfade" was a hard cut with the authored `crossfadeMs` read by
+   * nothing. The ramps below are what spend it.
    */
   onMinute(inputs: MusicInputs): void {
     if (this.paused) return;
@@ -106,9 +143,16 @@ export class CueRouter {
     const wanted = this.bedFor(inputs.minuteOfDay);
     if (wanted !== this.bed) {
       const outgoing = this.bed;
+      const crossfadeMs = this.audio.music.crossfadeMs;
       // Incoming first, outgoing second — the overlap is the crossfade.
       this.bus.playLoop(bedKey(wanted), this.audio.music[wanted], 'music');
-      if (outgoing !== null) this.bus.remove(bedKey(outgoing));
+      if (outgoing === null) {
+        // The session's first bed has nothing to fade from, so it simply starts.
+        this.bus.fadeTo(bedKey(wanted), 1, 0);
+      } else {
+        this.bus.fadeTo(bedKey(wanted), 1, crossfadeMs, { from: 0 });
+        this.bus.fadeTo(bedKey(outgoing), 0, crossfadeMs, { removeWhenSilent: true });
+      }
       this.bed = wanted;
     }
 
@@ -126,7 +170,8 @@ export class CueRouter {
     }
 
     this.bus.playLoop(ROOM_KEY, this.audio.ambience.room, 'sfx');
-    if (inputs.rain === true) this.bus.playLoop(RAIN_KEY, this.audio.ambience.rain, 'sfx');
+    this.raining = inputs.rain === true;
+    if (this.raining) this.bus.playLoop(RAIN_KEY, this.audio.ambience.rain, 'sfx');
     else if (this.bus.has(RAIN_KEY)) this.bus.remove(RAIN_KEY);
   }
 
@@ -145,7 +190,7 @@ export class CueRouter {
 
   /** Activity loops that have not been stopped — exposed so teardown can be asserted. */
   activeLoops(): string[] {
-    return [...this.loops].sort();
+    return [...this.loops.keys()].sort();
   }
 
   /** Activities with no authored loop. The T13 bill gate reads this. */
@@ -167,7 +212,7 @@ export class CueRouter {
         const loop = this.audio.activityLoops[event.activityId];
         if (loop === undefined) return; // most activities are silent; that is not an error
         const key = `loop.${event.activityId}`;
-        this.loops.add(key);
+        this.loops.set(key, loop);
         this.bus.playLoop(key, loop, 'sfx');
         return;
       }

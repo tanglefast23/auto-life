@@ -6,6 +6,7 @@ import type { Speed } from '../application/loop';
 import { SPEEDS } from '../application/loop';
 import { BAR_COLOR, BAR_ICON, BAR_ORDER, bandFor, bandForDefault, type BandName } from './bands';
 import { formatClock } from './clock-format';
+import { MOTION, resolveMotion } from '../render/motion';
 import { practiceLevel } from '../sim/practice-level';
 import { fillGoalCopy, goalStrings } from './goal-copy';
 import { settingsStrings } from './settings-copy';
@@ -120,9 +121,17 @@ export function Hud({
 
   // design.md §8 says the alert state PULSES. One shared driver for every bar, so the
   // animation cost is constant regardless of how many bars are in crisis.
+  //
+  // Timed by `MOTION.urgentPulse`, not by a local number. This ran at a hand-written 500 ms
+  // while `QueueStrip` ran the same §11.6 urgency signal off the table's 700 ms — the same
+  // crisis pulsing at two tempos on two surfaces — and it re-derived the reduced-motion
+  // rule with its own `if`, which is exactly how half a set of animations quietly stops
+  // obeying the setting. `motion.test.ts` could not catch either, because a file that never
+  // names `MOTION` is invisible to a gate that looks for `MOTION.`.
   const pulse = useRef(new Animated.Value(1)).current;
+  const pulseMs = resolveMotion(MOTION.urgentPulse, { reducedMotion }).durationMs;
   useEffect(() => {
-    if (reducedMotion) {
+    if (pulseMs === 0) {
       pulse.setValue(1);
       return;
     }
@@ -131,11 +140,11 @@ export function Hud({
     // Desktop web is the v1 target; ask for the native driver only where it exists.
     const useNativeDriver = Platform.OS !== 'web';
     const step = (toValue: number) =>
-      Animated.timing(pulse, { toValue, duration: 500, easing: Easing.inOut(Easing.ease), useNativeDriver });
+      Animated.timing(pulse, { toValue, duration: pulseMs, easing: Easing.inOut(Easing.ease), useNativeDriver });
     const loop = Animated.loop(Animated.sequence([step(0.25), step(1)]));
     loop.start();
     return () => loop.stop();
-  }, [pulse, reducedMotion]);
+  }, [pulse, pulseMs]);
   return (
     <View style={styles.root} pointerEvents="box-none">
       {/* Top-left: Health block (§11.1) */}

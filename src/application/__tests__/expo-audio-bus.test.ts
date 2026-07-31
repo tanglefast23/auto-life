@@ -140,6 +140,17 @@ describe('browser autoplay (the failure the class was reshaped around)', () => {
     expect(b.muted).toBe(true);
   });
 
+  it('keeps the dev auto-mute when stored preferences arrive', () => {
+    // The rule used to be seeded into `settings.muted`, and the composition root applies
+    // stored preferences on mount — so the very first `apply()` overwrote it and the dev
+    // preview was audible from the second tick onwards.
+    const b = new ExpoAudioBus(config, mix(), { dev: true, platform: 'web' });
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    b.apply(mix({ muted: false }));
+    expect(b.muted).toBe(true);
+    expect(mockPlayers[0]!.volume).toBe(0);
+  });
+
   it('needs no gesture on native', () => {
     expect(bus().isUnlocked).toBe(true);
   });
@@ -192,5 +203,87 @@ describe('voices', () => {
     b.shutdown();
     b.unlock();
     expect(mockPlayers[0]!.playing).toBe(false);
+  });
+});
+
+/**
+ * The volume ramp `content/audio.json`'s `crossfadeMs` was authored for.
+ *
+ * Without it the router's 19:00 "crossfade" was `playLoop(incoming)` then `remove(outgoing)`
+ * in one synchronous call — a hard cut on the beat design.md §7 calls the coziest of the day.
+ */
+describe('fades', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('ramps a voice down over the requested duration instead of cutting it', () => {
+    const b = bus();
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    expect(mockPlayers[0]!.volume).toBeCloseTo(1, 6);
+
+    b.fadeTo('bed', 0, 1000);
+    jest.advanceTimersByTime(500);
+    const halfway = mockPlayers[0]!.volume;
+    expect(halfway).toBeGreaterThan(0);
+    expect(halfway).toBeLessThan(1);
+
+    jest.advanceTimersByTime(600);
+    expect(mockPlayers[0]!.volume).toBe(0);
+  });
+
+  it('fades a voice in from silence when given a starting level', () => {
+    const b = bus();
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    b.fadeTo('bed', 1, 1000, { from: 0 });
+    expect(mockPlayers[0]!.volume).toBe(0);
+    jest.advanceTimersByTime(1100);
+    expect(mockPlayers[0]!.volume).toBeCloseTo(1, 6);
+  });
+
+  it('releases the voice once a fade-out reaches silence', () => {
+    const b = bus();
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    b.fadeTo('bed', 0, 1000, { removeWhenSilent: true });
+    expect(b.has('bed')).toBe(true); // still overlapping the incoming bed
+    jest.advanceTimersByTime(1100);
+    expect(b.has('bed')).toBe(false);
+    expect(mockRemoved).toHaveLength(1);
+  });
+
+  it('lets the mixer keep winning mid-ramp', () => {
+    // The ramp is a multiplier on the computed mix, not a write over it, so a slider moved
+    // during a four-second crossfade lands at the right level rather than being stomped.
+    const b = bus();
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    b.fadeTo('bed', 0, 1000);
+    jest.advanceTimersByTime(500);
+    b.apply(mix({ master: 0.5 }));
+    expect(mockPlayers[0]!.volume).toBeLessThanOrEqual(0.5);
+    b.apply(mix({ muted: true }));
+    expect(mockPlayers[0]!.volume).toBe(0);
+  });
+
+  it('lets a second fade cancel the first rather than racing it', () => {
+    const b = bus();
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    b.fadeTo('bed', 0, 1000, { removeWhenSilent: true });
+    jest.advanceTimersByTime(500);
+    b.fadeTo('bed', 1, 0); // the bed came back before the fade finished
+    jest.advanceTimersByTime(2000);
+    expect(b.has('bed')).toBe(true);
+    expect(mockPlayers[0]!.volume).toBeCloseTo(1, 6);
+  });
+
+  it('cancels a running ramp on shutdown, so no timer outlives the tab', () => {
+    const b = bus();
+    b.playLoop('bed', cue('music.day', 1), 'music');
+    b.fadeTo('bed', 0, 1000, { removeWhenSilent: true });
+    b.shutdown();
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('ignores a fade aimed at a voice that is not playing', () => {
+    const b = bus();
+    expect(() => b.fadeTo('nothing', 0, 1000)).not.toThrow();
   });
 });

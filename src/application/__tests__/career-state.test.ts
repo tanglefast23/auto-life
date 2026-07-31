@@ -107,12 +107,12 @@ test('forecasting consumes no live career stream', () => {
   expect(JSON.stringify(career.payload.prng)).toBe(before);
 });
 
-test('the canonical CareerState payload has a reviewed engine-v9 digest', () => {
+test('the canonical CareerState payload has a reviewed engine-v10 digest', () => {
   const digest = createHash('sha256')
     .update(canonicalCareerPayload(freshCareer().payload))
     .digest('hex');
   expect(digest).toBe(
-    '2670eb8391a0df15fa1c1269e536f57c587395668fcc8b864040c3e8276ef762',
+    'e838e9fbeafaeb8d901d2eb936193361fa127d74d682a07df7ad111346b990de',
   );
 });
 

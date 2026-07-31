@@ -1,4 +1,4 @@
-import type { HomeMapConfig, ObjectsConfig } from '../sim/content-schemas';
+import type { FloorMaterial, HomeMapConfig, ObjectsConfig } from '../sim/content-schemas';
 import type { Lighting } from './lighting';
 import type { Facing, Pose, RenderView } from '../sim/render-view';
 import { interpolateTravel } from '../sim/render-view';
@@ -82,6 +82,30 @@ export function buildTileQuads(map: HomeMapConfig, lighting: Lighting = 'day'): 
     }
   }
   return quads;
+}
+
+/**
+ * Which floor the sim is standing on (P6 T10's footsteps).
+ *
+ * Reads `home-map.json`'s own room glyphs and per-room `materials`, the same two fields the
+ * tile builder above uses, so a footstep can never disagree with the floor drawn under it.
+ * Out-of-bounds and wall tiles fall back to the hall's material rather than throwing: this
+ * is called from a frame callback, and a sound is never worth taking the app down for.
+ */
+export function floorMaterialAt(
+  map: HomeMapConfig,
+  x: number,
+  y: number,
+): FloorMaterial {
+  const fallback: FloorMaterial = 'wood';
+  const row = map.grid[Math.round(y)];
+  if (row === undefined) return fallback;
+  const glyph = row[Math.round(x)];
+  if (glyph === undefined) return fallback;
+  for (const [room, roomGlyph] of Object.entries(map.rooms)) {
+    if (roomGlyph === glyph) return map.materials[room] ?? fallback;
+  }
+  return fallback;
 }
 
 /**
