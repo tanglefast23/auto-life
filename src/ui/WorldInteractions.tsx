@@ -6,11 +6,11 @@ import {
 } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { WORLD_H, WORLD_W } from '../render/scale';
-import { TILE } from '../render/scene-layout';
+import { objectPresentation } from '../render/object-presentation';
 import { activityByIdIn, content } from '../sim/content';
 import type { ObjectsConfig } from '../sim/content-schemas';
 import { activityCopy } from './queue-presenter';
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
 
 type ObjectDef = ObjectsConfig['objects'][number];
 
@@ -37,26 +37,24 @@ const OPTION_HEIGHT = 44;
 
 const CREAM_LIGHT = theme.color.creamLight;
 const CREAM_BASE = theme.color.creamBase;
-const CREAM_SHADOW = theme.color.creamShadow;
 const INK = theme.color.ink;
-const GOLD = theme.color.gold;
+const BLUE = theme.color.water;
 
 /**
- * Maps one authored world footprint into the screen-space overlay used by React
- * Native. A one-tile object grows around its centre to the §11.2 44 px minimum;
- * larger footprints keep their exact bounds.
+ * Maps the furniture's visible bounds into the screen-space overlay used by React
+ * Native. This intentionally follows the art rather than the smaller navigation
+ * footprint, so the whole enlarged couch, bed, mat, or appliance is clickable.
  */
 export function objectHitTarget(
-  object: Pick<ObjectDef, 'footprint'>,
+  object: Pick<ObjectDef, 'id' | 'footprint'>,
   scale: number,
 ): WorldHitTarget {
   const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  const xs = object.footprint.map(([x]) => x);
-  const ys = object.footprint.map(([, y]) => y);
-  const rawLeft = Math.min(...xs) * TILE * safeScale;
-  const rawTop = Math.min(...ys) * TILE * safeScale;
-  const rawWidth = (Math.max(...xs) - Math.min(...xs) + 1) * TILE * safeScale;
-  const rawHeight = (Math.max(...ys) - Math.min(...ys) + 1) * TILE * safeScale;
+  const visual = objectPresentation(object);
+  const rawLeft = visual.x * safeScale;
+  const rawTop = visual.y * safeScale;
+  const rawWidth = visual.width * safeScale;
+  const rawHeight = visual.height * safeScale;
   const width = Math.max(MIN_TARGET_PX, rawWidth);
   const height = Math.max(MIN_TARGET_PX, rawHeight);
   return {
@@ -277,11 +275,11 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   hotspotVisible: {
-    borderColor: GOLD,
-    backgroundColor: 'rgba(240, 168, 64, 0.18)',
+    borderColor: BLUE,
+    backgroundColor: 'rgba(90, 143, 214, 0.18)',
   },
   hotspotPressed: {
-    backgroundColor: 'rgba(240, 168, 64, 0.32)',
+    backgroundColor: 'rgba(90, 143, 214, 0.32)',
   },
   hotspotLabel: {
     position: 'absolute',
@@ -299,15 +297,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   choicePanel: {
+    ...CHROME.panel,
     position: 'absolute',
     width: PANEL_WIDTH,
     padding: 8,
     gap: 4,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
-    backgroundColor: CREAM_BASE,
     zIndex: 20,
   },
   choiceHeading: {
@@ -320,16 +314,15 @@ const styles = StyleSheet.create({
     color: INK,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   closeButton: {
+    ...CHROME.secondaryButton,
     width: 44,
     height: 44,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
+    paddingHorizontal: 0,
   },
   closeText: {
     color: INK,
@@ -338,29 +331,29 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   choiceOption: {
+    ...CHROME.neutralButton,
     minHeight: OPTION_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   buttonPressed: {
-    backgroundColor: CREAM_SHADOW,
+    transform: [{ translateY: 2 }],
+    borderBottomWidth: 2,
   },
   choiceGlyph: {
     width: 20,
-    color: GOLD,
+    color: CREAM_LIGHT,
     fontFamily: FONT.pixel,
     fontSize: TYPE_SCALE.body.fontSize,
     textAlign: 'center',
   },
   choiceText: {
-    color: INK,
+    color: CREAM_LIGHT,
     fontFamily: FONT.pixel,
     fontSize: TYPE_SCALE.body.fontSize,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });

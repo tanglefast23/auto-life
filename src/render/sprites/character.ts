@@ -1,7 +1,7 @@
 import { createBitmap, type Bitmap } from '../../../scripts/art/png';
 import { paintShapes, SPRITE_H, SPRITE_W, type Shape } from '../sprite-spec';
 import type { AppearancePalette } from '../appearance';
-import { CREAM_SHADOW, GREY, INK, LANTERN_GOLD, WOOD } from '../palette';
+import { CREAM_LIGHT, CREAM_SHADOW, GREY, INK, LANTERN_GOLD, WOOD } from '../palette';
 import { rect, px, outlined } from './parts';
 
 /**
@@ -13,7 +13,7 @@ import { rect, px, outlined } from './parts';
  *
  * The construction rules are A0's and are **not re-litigated** — A0 proved them and P3
  * depends on them:
- *  - 32×48, big head (~45% of height), dot mouth, mitten hands (design.md §6);
+ *  - 32×48 source cell, rendered at 1.5× in-world, with an extra-large caricature head;
  *  - layer order base body → face → hair → outfit, with hair keyed to the head anchor;
  *  - world-track outlines use the fill ramp's shadow, never Ink (design.md §3);
  *  - up and down share a silhouette by design (A0 finding), so **direction is carried by
@@ -24,9 +24,17 @@ import { rect, px, outlined } from './parts';
  * and asserted in `appearance.test.ts`.
  */
 
-// A0's proven vertical layout. Changing these invalidates the anchor rule.
-const HEAD_TOP = 4;
-const HEAD_H = 18;
+// HFM look F82, adapted as the off-pitch Auto Life hero. The top knot, angled eyes and
+// toothy smile are structural identity cues from HFM's real portrait sheet, not a new
+// generic chibi. The head occupies half the cell before the body begins so expression is
+// still legible when the whole 24×14 room is visible.
+export const HERO_LOOK_SOURCE = 'Hero Football Manager portrait f82' as const;
+export const HERO_HEAD_SHARE = 0.5;
+
+const HEAD_TOP = 3;
+const HEAD_H = 21;
+const HEAD_X = 4;
+const HEAD_W = 24;
 const TORSO_TOP = 22;
 const TORSO_H = 13;
 const LEG_TOP = 35;
@@ -43,38 +51,96 @@ interface Kit {
 // Body parts
 // ---------------------------------------------------------------------------
 
-const headFront = (k: Kit, dy = 0): Shape[] =>
-  outlined(9, HEAD_TOP + dy, 14, HEAD_H, k.skin.base, k.skin.shadow);
+/** Wide stepped F82 head: cheek width dominates, while the chin stays compact. */
+const headFront = (k: Kit, dy = 0): Shape[] => [
+  rect(HEAD_X + 2, HEAD_TOP + dy, HEAD_W - 4, 1, k.skin.shadow),
+  rect(HEAD_X, HEAD_TOP + 1 + dy, HEAD_W, HEAD_H - 5, k.skin.shadow),
+  rect(HEAD_X + 2, HEAD_TOP + HEAD_H - 4 + dy, HEAD_W - 4, 4, k.skin.shadow),
+  rect(HEAD_X + 3, HEAD_TOP + 1 + dy, HEAD_W - 6, 1, k.skin.light),
+  rect(HEAD_X + 1, HEAD_TOP + 2 + dy, HEAD_W - 2, HEAD_H - 7, k.skin.base),
+  rect(HEAD_X + 3, HEAD_TOP + HEAD_H - 5 + dy, HEAD_W - 6, 4, k.skin.base),
+];
 
 function headProfile(k: Kit, facing: 'left' | 'right', dy = 0): Shape[] {
-  const x = facing === 'left' ? 8 : 13;
-  const noseX = facing === 'left' ? x - 1 : x + 11;
+  const x = facing === 'left' ? 3 : 10;
+  const noseX = facing === 'left' ? x - 2 : x + 20;
   return [
-    ...outlined(x, HEAD_TOP + dy, 11, HEAD_H, k.skin.base, k.skin.shadow),
-    rect(noseX, HEAD_TOP + 10 + dy, 1, 2, k.skin.shadow),
+    ...outlined(x, HEAD_TOP + dy, 20, HEAD_H, k.skin.base, k.skin.shadow),
+    rect(noseX, HEAD_TOP + 11 + dy, 2, 3, k.skin.shadow),
   ];
 }
 
-/** Front face: two large eyes + dot mouth. Emotion lives in the eyes (design.md §6). */
-const faceFront = (k: Kit, dy = 0): Shape[] => [
-  rect(12, 13 + dy, 2, 3, INK),
-  rect(18, 13 + dy, 2, 3, INK),
-  px(15, 18 + dy, k.skin.shadow),
-  px(16, 18 + dy, k.skin.shadow),
-];
+export type FaceMood = 'rest' | 'joy' | 'effort' | 'focus' | 'awkward' | 'tired';
+export const HERO_FACE_MOODS: readonly FaceMood[] = [
+  'rest', 'joy', 'effort', 'focus', 'awkward', 'tired',
+] as const;
+
+/**
+ * HFM expression swaps over one fixed head. F82's one big move is the eye-and-smile
+ * band: angled eyes above an oversized tooth display. Other moods change only that band,
+ * preserving the character rather than redrawing a different person for every activity.
+ */
+function faceFront(k: Kit, dy = 0, mood: FaceMood = 'rest'): Shape[] {
+  if (mood === 'tired') {
+    return [
+      rect(8, 12 + dy, 5, 1, INK), rect(19, 12 + dy, 5, 1, INK),
+      rect(9, 15 + dy, 5, 1, INK), rect(18, 15 + dy, 5, 1, INK),
+      rect(14, 20 + dy, 4, 1, k.skin.shadow),
+    ];
+  }
+  if (mood === 'joy') {
+    return [
+      rect(8, 12 + dy, 2, 1, INK), rect(10, 13 + dy, 4, 1, INK),
+      rect(18, 13 + dy, 4, 1, INK), rect(22, 12 + dy, 2, 1, INK),
+      rect(11, 17 + dy, 10, 5, INK),
+      rect(12, 18 + dy, 8, 2, CREAM_LIGHT),
+      rect(13, 20 + dy, 6, 1, k.skin.shadow),
+    ];
+  }
+  if (mood === 'effort') {
+    return [
+      rect(8, 11 + dy, 6, 2, INK), rect(18, 11 + dy, 6, 2, INK),
+      rect(10, 14 + dy, 3, 3, INK), rect(19, 14 + dy, 3, 3, INK),
+      rect(10, 19 + dy, 12, 3, INK), rect(11, 19 + dy, 10, 1, CREAM_LIGHT),
+    ];
+  }
+  if (mood === 'focus') {
+    return [
+      rect(8, 11 + dy, 6, 1, INK), rect(18, 11 + dy, 6, 1, INK),
+      rect(10, 13 + dy, 3, 4, INK), rect(19, 13 + dy, 3, 4, INK),
+      px(10, 13 + dy, CREAM_LIGHT), px(19, 13 + dy, CREAM_LIGHT),
+      rect(12, 20 + dy, 8, 2, k.skin.shadow),
+    ];
+  }
+  if (mood === 'awkward') {
+    return [
+      rect(8, 12 + dy, 5, 1, INK), rect(19, 11 + dy, 5, 1, INK),
+      rect(10, 14 + dy, 3, 4, INK), rect(19, 13 + dy, 3, 4, INK),
+      px(10, 14 + dy, CREAM_LIGHT), px(19, 13 + dy, CREAM_LIGHT),
+      rect(13, 19 + dy, 7, 2, INK), rect(13, 19 + dy, 5, 1, CREAM_LIGHT),
+    ];
+  }
+  return [
+    // F82's angled eyes, enlarged into all-pupil shapes with one HFM-style sparkle.
+    rect(8, 11 + dy, 6, 1, INK), rect(18, 11 + dy, 6, 1, INK),
+    rect(9, 13 + dy, 4, 5, INK), rect(19, 13 + dy, 4, 5, INK),
+    px(9, 13 + dy, CREAM_LIGHT), px(19, 13 + dy, CREAM_LIGHT),
+    // F82 tooth smile, the defining move kept visible even at room scale.
+    rect(11, 19 + dy, 10, 3, INK), rect(12, 19 + dy, 8, 1, CREAM_LIGHT),
+  ];
+}
 
 /** Closed eyes — sleep, nap, and the droop frame. A flat lid, never a dot. */
 const faceClosed = (k: Kit, dy = 0): Shape[] => [
-  rect(12, 15 + dy, 3, 1, INK),
-  rect(18, 15 + dy, 3, 1, INK),
-  px(15, 18 + dy, k.skin.shadow),
-  px(16, 18 + dy, k.skin.shadow),
+  rect(8, 14 + dy, 6, 1, INK),
+  rect(18, 14 + dy, 6, 1, INK),
+  rect(14, 20 + dy, 4, 1, k.skin.shadow),
 ];
 
 const faceProfile = (k: Kit, facing: 'left' | 'right', dy = 0): Shape[] =>
   facing === 'left'
-    ? [rect(11, 13 + dy, 2, 3, INK), px(10, 18 + dy, k.skin.shadow)]
-    : [rect(19, 13 + dy, 2, 3, INK), px(21, 18 + dy, k.skin.shadow)];
+    ? [rect(7, 13 + dy, 4, 5, INK), px(7, 13 + dy, CREAM_LIGHT), rect(5, 20 + dy, 5, 2, INK)]
+    : [rect(21, 13 + dy, 4, 5, INK), px(21, 13 + dy, CREAM_LIGHT), rect(22, 20 + dy, 5, 2, INK)];
 
 /**
  * Torso is 12 wide, not 10.
@@ -85,23 +151,28 @@ const faceProfile = (k: Kit, facing: 'left' | 'right', dy = 0): Shape[] =>
  * `deriveSlim`'s width floor and stance rules intact and reads as a body.
  */
 const torso = (k: Kit, dy = 0): Shape[] =>
-  outlined(10, TORSO_TOP + dy, 12, TORSO_H, k.skin.base, k.skin.shadow);
+  outlined(9, TORSO_TOP + dy, 14, TORSO_H, k.skin.base, k.skin.shadow);
 
 const torsoProfile = (k: Kit, dy = 0): Shape[] =>
-  outlined(11, TORSO_TOP + dy, 10, TORSO_H, k.skin.base, k.skin.shadow);
+  outlined(10, TORSO_TOP + dy, 12, TORSO_H, k.skin.base, k.skin.shadow);
 
-/** Hair as an authored overlay, positioned from the head anchor — A0's v6 cost claim. */
+/** F82 top knot and asymmetric crown, used on every frame from the shared head anchor. */
 function hairCap(k: Kit, dy = 0, profile: 'left' | 'right' | null = null): Shape[] {
-  const x = profile === 'left' ? 7 : profile === 'right' ? 12 : 8;
-  const w = profile === null ? 16 : 13;
+  const x = profile === 'left' ? 2 : profile === 'right' ? 9 : 4;
+  const w = profile === null ? 24 : 21;
   return [
-    rect(x + 1, HEAD_TOP - 2 + dy, w - 2, 3, k.hair.shadow),
-    rect(x + 1, HEAD_TOP - 1 + dy, w - 2, 3, k.hair.base),
-    rect(x, HEAD_TOP + 1 + dy, 2, 7, k.hair.base),
-    rect(x + w - 2, HEAD_TOP + 1 + dy, 2, 7, k.hair.base),
-    rect(x, HEAD_TOP + 1 + dy, 1, 7, k.hair.shadow),
-    rect(x + w - 1, HEAD_TOP + 1 + dy, 1, 7, k.hair.shadow),
-    rect(x + 3, HEAD_TOP - 1 + dy, w - 6, 1, k.hair.light),
+    // Top knot is F82's silhouette contract.
+    rect(x + 9, HEAD_TOP - 3 + dy, 7, 4, k.hair.shadow),
+    rect(x + 10, HEAD_TOP - 3 + dy, 5, 2, k.hair.base),
+    rect(x + 11, HEAD_TOP - 3 + dy, 2, 1, k.hair.light),
+    // Broad crown with one deliberately uneven side.
+    rect(x + 4, HEAD_TOP - 1 + dy, w - 7, 3, k.hair.shadow),
+    rect(x + 1, HEAD_TOP + 1 + dy, w - 2, 6, k.hair.shadow),
+    rect(x + 3, HEAD_TOP + 1 + dy, w - 5, 4, k.hair.base),
+    rect(x + 4, HEAD_TOP + 1 + dy, w - 8, 1, k.hair.light),
+    rect(x, HEAD_TOP + 4 + dy, 4, 7, k.hair.shadow),
+    rect(x + 1, HEAD_TOP + 5 + dy, 3, 5, k.hair.base),
+    rect(x + w - 3, HEAD_TOP + 4 + dy, 3, 5, k.hair.shadow),
   ];
 }
 
@@ -112,25 +183,25 @@ function hairCap(k: Kit, dy = 0, profile: 'left' | 'right' | null = null): Shape
  */
 function tunic(k: Kit, front: boolean, dy = 0): Shape[] {
   return [
-    ...outlined(10, TORSO_TOP + 1 + dy, 12, TORSO_H + 2, k.outfit.base, k.outfit.shadow),
-    rect(10, TORSO_TOP + TORSO_H - 3 + dy, 12, 2, WOOD.shadow),
+    ...outlined(9, TORSO_TOP + 1 + dy, 14, TORSO_H + 2, k.outfit.base, k.outfit.shadow),
+    rect(9, TORSO_TOP + TORSO_H - 3 + dy, 14, 2, WOOD.shadow),
     ...(front ? [rect(15, TORSO_TOP + 3 + dy, 2, 5, k.outfit.light)] : []),
   ];
 }
 
 function tunicProfile(k: Kit, dy = 0): Shape[] {
   return [
-    ...outlined(11, TORSO_TOP + 1 + dy, 10, TORSO_H + 2, k.outfit.base, k.outfit.shadow),
-    rect(11, TORSO_TOP + TORSO_H - 3 + dy, 10, 2, WOOD.shadow),
+    ...outlined(10, TORSO_TOP + 1 + dy, 12, TORSO_H + 2, k.outfit.base, k.outfit.shadow),
+    rect(10, TORSO_TOP + TORSO_H - 3 + dy, 12, 2, WOOD.shadow),
   ];
 }
 
 function legs(k: Kit, lift: number, dy = 0): Shape[] {
   return [
-    ...outlined(12, LEG_TOP - lift + dy, 4, 12, k.skin.base, k.skin.shadow),
-    ...outlined(17, LEG_TOP + lift + dy, 4, 12, k.skin.base, k.skin.shadow),
-    rect(12, 46 - lift + dy, 4, 1, CREAM_SHADOW),
-    rect(17, 46 + lift + dy, 4, 1, CREAM_SHADOW),
+    ...outlined(10, LEG_TOP - lift + dy, 5, 12, k.skin.base, k.skin.shadow),
+    ...outlined(17, LEG_TOP + lift + dy, 5, 12, k.skin.base, k.skin.shadow),
+    rect(9, 45 - lift + dy, 6, 2, CREAM_SHADOW),
+    rect(17, 45 + lift + dy, 6, 2, CREAM_SHADOW),
   ];
 }
 
@@ -147,10 +218,10 @@ function arms(k: Kit, swing: number, dy = 0): Shape[] {
   const lY = 24 + swing + dy;
   const rY = 24 - swing + dy;
   return [
-    ...outlined(8, lY, 3, 9, k.skin.base, k.skin.shadow),
-    ...outlined(21, rY, 3, 9, k.skin.base, k.skin.shadow),
-    ...outlined(8, lY + 9, 3, 3, k.skin.light, k.skin.shadow),
-    ...outlined(21, rY + 9, 3, 3, k.skin.light, k.skin.shadow),
+    ...outlined(6, lY, 4, 9, k.skin.base, k.skin.shadow),
+    ...outlined(22, rY, 4, 9, k.skin.base, k.skin.shadow),
+    ...outlined(6, lY + 8, 4, 4, k.skin.light, k.skin.shadow),
+    ...outlined(22, rY + 8, 4, 4, k.skin.light, k.skin.shadow),
   ];
 }
 
@@ -164,11 +235,11 @@ function arms(k: Kit, swing: number, dy = 0): Shape[] {
  * that can carry the stride. It has to be visible to do that.
  */
 function armsProfile(k: Kit, facing: 'left' | 'right', swing: number, dy = 0): Shape[] {
-  const x = facing === 'left' ? 9 : 20;
+  const x = facing === 'left' ? 7 : 21;
   const y = 24 + swing + dy;
   return [
-    ...outlined(x, y, 3, 9, k.skin.base, k.skin.shadow),
-    ...outlined(x, y + 9, 3, 3, k.skin.light, k.skin.shadow),
+    ...outlined(x, y, 4, 9, k.skin.base, k.skin.shadow),
+    ...outlined(x, y + 8, 4, 4, k.skin.light, k.skin.shadow),
   ];
 }
 
@@ -227,12 +298,14 @@ function run(k: Kit, i: number): Shape[] {
   // Same rule as the walk cycle: four genuinely different frames, not two repeated.
   const lift = [0, 3, 1, 4][i]!;
   const swing = [1, -1, -1, 1][i]!;
+  const toeX = [9, 7, 10, 6][i]!;
   // The trailing leg stays anchored at the hip. An earlier version offset it by lift/2,
   // which at lift 4 opened a 3px gap between hip and thigh — a leg floating in space.
   return [
     ...outlined(10, LEG_TOP - lift, 5, 11 + lift, k.skin.base, k.skin.shadow),
     ...outlined(18, LEG_TOP, 5, 12, k.skin.shadow, k.skin.shadow),
-    rect(10, 45, 5, 1, CREAM_SHADOW),
+    // A real forward toe, with four positions so the four-frame run reads in silhouette.
+    rect(toeX, 45, 7, 2, CREAM_SHADOW),
     ...armsProfile(k, 'right', swing, -lean),
     ...torsoProfile(k, -lean),
     ...tunicProfile(k, -lean),
@@ -242,72 +315,86 @@ function run(k: Kit, i: number): Shape[] {
   ];
 }
 
-/** Horizontal on the bed — nothing else in the bill is wider than it is tall. */
+/**
+ * Top-down in the bed: one connected body under the duvet, head on the pillow, feet at
+ * the foot. The old horizontal scrap used only half the 32x48 cell and looked like a body
+ * lying on the floor beside the bed once the hero grew to 1.5x.
+ */
 function sleep(k: Kit, i: number): Shape[] {
   const breathe = i;
   return [
-    ...outlined(2, 26 + breathe, 26, 9, k.outfit.base, k.outfit.shadow), // body under the duvet
-    ...outlined(21, 20, 10, 10, k.skin.base, k.skin.shadow), // head on the pillow
-    rect(24, 25, 3, 1, INK), // closed eye
-    ...hairCapLying(k),
-    ...outlined(2, 30 + breathe, 8, 5, k.skin.base, k.skin.shadow), // feet poking out
+    // Feet remain connected to the covered body and peek out at the foot of the bed.
+    ...outlined(10, 40 + breathe, 5, 7, k.skin.base, k.skin.shadow),
+    ...outlined(17, 40 + breathe, 5, 7, k.skin.base, k.skin.shadow),
+    rect(9, 46, 6, 1, CREAM_SHADOW),
+    rect(17, 46, 6, 1, CREAM_SHADOW),
+    // A tapered blanket/body mass, with breathing shown by one lower fold.
+    ...outlined(7, 22, 18, 22 + breathe, k.outfit.base, k.outfit.shadow),
+    rect(9, 25, 14, 2, k.outfit.light),
+    rect(10, 36 + breathe, 12, 2, k.outfit.shadow),
+    // Hands resting over the blanket make the anatomy readable at room scale.
+    ...outlined(8, 26, 4, 8, k.skin.base, k.skin.shadow),
+    ...outlined(20, 26, 4, 8, k.skin.base, k.skin.shadow),
+    ...headFront(k),
+    ...faceClosed(k),
+    ...hairCap(k),
   ];
 }
 
-function hairCapLying(k: Kit): Shape[] {
-  return [
-    rect(22, 18, 9, 3, k.hair.base),
-    rect(22, 18, 9, 1, k.hair.shadow),
-    rect(29, 21, 2, 6, k.hair.base),
-  ];
-}
-
-/** Seated: the A0 deferral. Thigh runs forward, shin drops — an L, not a squat block. */
+/** Upright on the couch: hips on the cushion, two knees and two feet in front. */
 function sit(k: Kit, i: number): Shape[] {
-  const drop = 6 + i;
+  const shift = i;
   return [
-    ...outlined(11, LEG_TOP + drop - 4, 13, 5, k.skin.base, k.skin.shadow), // thigh forward
-    ...outlined(19, LEG_TOP + drop, 5, 8, k.skin.base, k.skin.shadow), // shin down
-    rect(19, LEG_TOP + drop + 8, 5, 1, CREAM_SHADOW),
-    ...outlined(8, 24 + drop, 3, 8, k.skin.base, k.skin.shadow),
-    ...outlined(8, 32 + drop, 3, 3, k.skin.light, k.skin.shadow),
-    ...torso(k, drop),
-    ...tunic(k, true, drop),
-    ...headFront(k, drop),
-    ...faceFront(k, drop),
-    ...hairCap(k, drop),
+    ...outlined(8, 34, 8, 6, k.skin.base, k.skin.shadow),
+    ...outlined(16, 34, 8, 6, k.skin.base, k.skin.shadow),
+    ...outlined(9, 39, 6, 8, k.skin.base, k.skin.shadow),
+    ...outlined(18, 39, 6, 8, k.skin.base, k.skin.shadow),
+    rect(8, 46, 7, 1, CREAM_SHADOW),
+    rect(18, 46, 7, 1, CREAM_SHADOW),
+    ...outlined(6 - shift, 24, 4, 10, k.skin.base, k.skin.shadow),
+    ...outlined(22 + shift, 24, 4, 10, k.skin.base, k.skin.shadow),
+    ...torso(k),
+    ...tunic(k, true),
+    ...headFront(k),
+    ...faceFront(k, 0, i === 0 ? 'rest' : 'focus'),
+    ...hairCap(k),
   ];
 }
 
-/** Slumped on the couch — lower and more folded than `sit`, with closed eyes. */
+/** Curled into the couch rather than lying on the floor in front of it. */
 function nap(k: Kit, i: number): Shape[] {
-  const drop = 9 + i;
+  const sag = 3 + i;
   return [
-    ...outlined(10, LEG_TOP + drop - 5, 15, 5, k.skin.base, k.skin.shadow),
-    ...outlined(8, 24 + drop, 3, 7, k.skin.base, k.skin.shadow),
-    ...outlined(21, 24 + drop, 3, 7, k.skin.base, k.skin.shadow),
-    ...outlined(11, TORSO_TOP + drop, 10, TORSO_H - 3, k.outfit.base, k.outfit.shadow),
-    ...outlined(9, HEAD_TOP + drop + 2, 14, HEAD_H - 2, k.skin.base, k.skin.shadow),
-    ...faceClosed(k, drop + 1),
-    ...hairCap(k, drop + 2),
+    ...outlined(8, 35, 16, 6, k.skin.base, k.skin.shadow),
+    ...outlined(10, 40, 6, 7, k.skin.base, k.skin.shadow),
+    ...outlined(17, 40, 6, 7, k.skin.base, k.skin.shadow),
+    rect(9, 46, 7, 1, CREAM_SHADOW),
+    rect(17, 46, 7, 1, CREAM_SHADOW),
+    ...outlined(8, 25 + sag, 4, 8, k.skin.base, k.skin.shadow),
+    ...outlined(20, 25 + sag, 4, 8, k.skin.base, k.skin.shadow),
+    ...outlined(10, TORSO_TOP + sag, 12, TORSO_H - 2, k.outfit.base, k.outfit.shadow),
+    ...headFront(k, sag),
+    ...faceClosed(k, sag),
+    ...hairCap(k, sag),
   ];
 }
 
-/** One hand up at the mouth. The raised forearm is the whole silhouette cue. */
+/** Standing at the appliance with a bowl in one hand and food at the mouth. */
 function eat(k: Kit, i: number): Shape[] {
-  const drop = 6;
-  const reach = i === 0 ? 0 : 5;
+  const reach = i === 0 ? 0 : 3;
   return [
-    ...outlined(11, LEG_TOP + drop - 4, 13, 5, k.skin.base, k.skin.shadow),
-    ...outlined(19, LEG_TOP + drop, 5, 8, k.skin.base, k.skin.shadow),
-    ...outlined(8, 24 + drop, 3, 8, k.skin.base, k.skin.shadow),
-    ...torso(k, drop),
-    ...tunic(k, true, drop),
-    ...outlined(21, 24 + drop - reach, 3, 8, k.skin.base, k.skin.shadow),
-    ...outlined(20, 21 + drop - reach, 4, 4, k.skin.light, k.skin.shadow),
-    ...headFront(k, drop),
-    ...faceFront(k, drop),
-    ...hairCap(k, drop),
+    ...legs(k, 0),
+    ...outlined(6, 24, 4, 10, k.skin.base, k.skin.shadow),
+    ...torso(k),
+    ...tunic(k, true),
+    // Bowl and supporting hand stay at waist height.
+    ...outlined(5, 31, 13, 5, CREAM_LIGHT, CREAM_SHADOW),
+    rect(8, 35, 7, 2, WOOD.shadow),
+    ...outlined(22, 23 - reach, 4, 8, k.skin.base, k.skin.shadow),
+    ...outlined(19, 19 - reach, 5, 5, k.skin.light, k.skin.shadow),
+    ...headFront(k),
+    ...faceFront(k, 0, 'joy'),
+    ...hairCap(k),
   ];
 }
 
@@ -324,7 +411,7 @@ function brush(k: Kit, i: number): Shape[] {
     ...outlined(19, 15, 6, 3, k.skin.base, k.skin.shadow), // forearm across to the mouth
     ...outlined(17, 14, 3, 3, k.skin.light, k.skin.shadow),
     ...headFront(k),
-    ...faceFront(k),
+    ...faceFront(k, 0, i === 0 ? 'rest' : 'joy'),
     ...hairCap(k),
   ];
 }
@@ -354,24 +441,27 @@ function quickwash(k: Kit): Shape[] {
     ...outlined(10, TORSO_TOP + bend, 12, TORSO_H - 3, k.outfit.base, k.outfit.shadow),
     ...outlined(8, 26 + bend, 3, 7, k.skin.base, k.skin.shadow),
     ...outlined(21, 26 + bend, 3, 7, k.skin.base, k.skin.shadow),
-    ...outlined(9, HEAD_TOP + bend + 4, 14, HEAD_H - 3, k.skin.base, k.skin.shadow),
-    ...faceClosed(k, bend + 3),
+    ...headFront(k, bend + 3),
+    ...faceFront(k, bend + 3, 'awkward'),
     ...hairCap(k, bend + 4),
   ];
 }
 
-/** Seated low with knees up — reads shorter than every other seated pose. */
+/** Compact seated posture that visually overlaps the toilet bowl. */
 function toilet(k: Kit): Shape[] {
-  const drop = 10;
   return [
-    ...outlined(11, LEG_TOP + drop - 6, 12, 5, k.skin.base, k.skin.shadow),
-    ...outlined(19, LEG_TOP + drop - 1, 4, 6, k.skin.base, k.skin.shadow),
-    ...outlined(9, 24 + drop, 3, 6, k.skin.base, k.skin.shadow),
-    ...outlined(20, 24 + drop, 3, 6, k.skin.base, k.skin.shadow),
-    ...outlined(11, TORSO_TOP + drop, 10, TORSO_H - 4, k.outfit.base, k.outfit.shadow),
-    ...outlined(9, HEAD_TOP + drop, 14, HEAD_H - 2, k.skin.base, k.skin.shadow),
-    ...faceFront(k, drop - 1),
-    ...hairCap(k, drop),
+    ...outlined(7, 34, 9, 6, k.skin.base, k.skin.shadow),
+    ...outlined(16, 34, 9, 6, k.skin.base, k.skin.shadow),
+    ...outlined(8, 39, 6, 8, k.skin.base, k.skin.shadow),
+    ...outlined(19, 39, 6, 8, k.skin.base, k.skin.shadow),
+    rect(7, 46, 7, 1, CREAM_SHADOW),
+    rect(19, 46, 7, 1, CREAM_SHADOW),
+    ...outlined(7, 25, 4, 9, k.skin.base, k.skin.shadow),
+    ...outlined(21, 25, 4, 9, k.skin.base, k.skin.shadow),
+    ...outlined(10, TORSO_TOP, 12, TORSO_H, k.outfit.base, k.outfit.shadow),
+    ...headFront(k),
+    ...faceFront(k, 0, 'awkward'),
+    ...hairCap(k),
   ];
 }
 
@@ -387,7 +477,7 @@ function lift(k: Kit, i: number): Shape[] {
     rect(4, barY - 2, 24, 2, GREY.shadow), // the bar
     rect(4, barY - 1, 24, 1, GREY.light),
     ...headFront(k),
-    ...faceFront(k),
+    ...faceFront(k, 0, 'effort'),
     ...hairCap(k),
   ];
 }
@@ -401,7 +491,7 @@ function stretch(k: Kit, i: number): Shape[] {
       ...tunic(k, true),
       ...armsRaised(k, 6),
       ...headFront(k),
-      ...faceFront(k),
+      ...faceFront(k, 0, 'effort'),
       ...hairCap(k),
     ];
   }
@@ -411,7 +501,8 @@ function stretch(k: Kit, i: number): Shape[] {
     ...outlined(10, TORSO_TOP + fold, 12, TORSO_H - 5, k.outfit.base, k.outfit.shadow),
     ...outlined(7, 30 + fold, 3, 8, k.skin.base, k.skin.shadow),
     ...outlined(22, 30 + fold, 3, 8, k.skin.base, k.skin.shadow),
-    ...outlined(9, HEAD_TOP + fold + 8, 13, HEAD_H - 5, k.skin.base, k.skin.shadow),
+    ...headFront(k, fold + 5),
+    ...faceFront(k, fold + 5, 'effort'),
     ...hairCap(k, fold + 8),
   ];
 }
@@ -434,7 +525,7 @@ function practice(k: Kit, i: number): Shape[] {
     ...outlined(21, 22 + strum, 3, 7, k.skin.base, k.skin.shadow),
     ...outlined(20, 29 + strum, 4, 3, k.skin.light, k.skin.shadow),
     ...headFront(k),
-    ...faceFront(k),
+    ...faceFront(k, 0, i === 2 ? 'joy' : 'focus'),
     ...hairCap(k),
   ];
 }
@@ -453,7 +544,10 @@ function idle(k: Kit, i: number): Shape[] {
   const lean = i;
   return [
     ...legs(k, 0),
-    ...shiftX([...arms(k, 0), ...torso(k), ...tunic(k, true), ...headFront(k), ...faceFront(k), ...hairCap(k)], -lean),
+    ...shiftX([
+      ...arms(k, 0), ...torso(k), ...tunic(k, true),
+      ...headFront(k), ...faceFront(k, 0, i === 0 ? 'rest' : 'joy'), ...hairCap(k),
+    ], -lean),
   ];
 }
 
@@ -479,9 +573,8 @@ function idleSlowStretching(k: Kit): Shape[] {
     ...outlined(10, 20, 3, 10, k.skin.base, k.skin.shadow),
     ...outlined(19, 10, 3, 12, k.skin.base, k.skin.shadow), // one arm over the head
     ...outlined(19, 7, 3, 3, k.skin.light, k.skin.shadow),
-    ...outlined(11, HEAD_TOP + 2, 14, HEAD_H, k.skin.base, k.skin.shadow),
-    rect(14, 15, 2, 3, INK),
-    rect(20, 15, 2, 3, INK),
+    ...headFront(k, 2),
+    ...faceFront(k, 2, 'effort'),
     ...hairCap(k, 2),
   ];
 }
@@ -499,10 +592,8 @@ function idleAirGuitar(k: Kit): Shape[] {
     ...outlined(3, 14, 4, 4, k.skin.light, k.skin.shadow),
     ...outlined(22, 24, 3, 8, k.skin.base, k.skin.shadow),
     ...outlined(22, 32, 3, 3, k.skin.light, k.skin.shadow),
-    ...outlined(9, HEAD_TOP - 2, 14, HEAD_H, k.skin.base, k.skin.shadow), // head thrown back
-    rect(12, 12, 2, 2, INK),
-    rect(18, 12, 2, 2, INK),
-    rect(14, 17, 4, 2, INK), // open mouth
+    ...headFront(k, -2), // head thrown back
+    ...faceFront(k, -2, 'joy'),
     ...hairCap(k, -2),
   ];
 }
@@ -520,8 +611,8 @@ function standDroop(k: Kit): Shape[] {
     ...outlined(8, 26 + sag, 3, 8, k.skin.base, k.skin.shadow),
     ...outlined(21, 26 + sag, 3, 8, k.skin.base, k.skin.shadow),
     ...outlined(11, TORSO_TOP + sag, 10, TORSO_H - 1, k.outfit.base, k.outfit.shadow),
-    ...outlined(9, HEAD_TOP + sag + 2, 14, HEAD_H - 1, k.skin.base, k.skin.shadow),
-    ...faceClosed(k, sag + 2),
+    ...headFront(k, sag + 2),
+    ...faceFront(k, sag + 2, 'tired'),
     ...hairCap(k, sag + 2),
   ];
 }

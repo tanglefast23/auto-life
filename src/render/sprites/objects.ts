@@ -1,6 +1,10 @@
 import { createBitmap, type Bitmap } from '../../../scripts/art/png';
 import { paintShapes, type Shape } from '../sprite-spec';
+import { OBJECT_PRESENTATION } from '../object-presentation';
 import {
+  CREAM_BASE,
+  CREAM_LIGHT,
+  CREAM_SHADOW,
   DUSK_PLUM,
   GREY,
   LANTERN_GOLD,
@@ -44,35 +48,92 @@ export interface ObjectSprite {
 
 const TILE = 32;
 
+/**
+ * Scale an authored low-resolution silhouette into its room-sized presentation box.
+ * Every edge is rounded independently, keeping hard integer pixels and avoiding the
+ * blurred transforms that made the old tiny appliances look unlike HFM art.
+ */
+function fitShapes(
+  shapes: readonly Shape[],
+  sourceWidth: number,
+  sourceHeight: number,
+  width: number,
+  height: number,
+): Shape[] {
+  const sx = width / sourceWidth;
+  const sy = height / sourceHeight;
+  return shapes.map((shape) => {
+    const x = Math.round(shape.x * sx);
+    const y = Math.round(shape.y * sy);
+    if (shape.k === 'px') {
+      return rect(x, y, Math.max(1, Math.round(sx)), Math.max(1, Math.round(sy)), shape.c);
+    }
+    const right = Math.round((shape.x + shape.w) * sx);
+    const bottom = Math.round((shape.y + shape.h) * sy);
+    return rect(x, y, Math.max(1, right - x), Math.max(1, bottom - y), shape.c);
+  });
+}
+
+function fittedSprite(
+  id: string,
+  sourceWidth: number,
+  sourceHeight: number,
+  idle: Shape[],
+  active?: Shape[],
+): ObjectSprite {
+  const visual = OBJECT_PRESENTATION[id];
+  if (visual === undefined) throw new Error(`object presentation missing for "${id}"`);
+  return {
+    width: visual.width,
+    height: visual.height,
+    idle: fitShapes(idle, sourceWidth, sourceHeight, visual.width, visual.height),
+    ...(active === undefined
+      ? {}
+      : { active: fitShapes(active, sourceWidth, sourceHeight, visual.width, visual.height) }),
+  };
+}
+
+function authoredSprite(id: string, idle: Shape[], active?: Shape[]): ObjectSprite {
+  const visual = OBJECT_PRESENTATION[id];
+  if (visual === undefined) throw new Error(`object presentation missing for "${id}"`);
+  return {
+    width: visual.width,
+    height: visual.height,
+    idle,
+    ...(active === undefined ? {} : { active }),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Bedroom
 // ---------------------------------------------------------------------------
 
-/** Headboard, pillow, duvet fold, and two legs with floor showing between them. */
+/** Full-size top-down bed: tall enough for the enlarged hero to lie inside it. */
 function bedShapes(occupied: boolean): Shape[] {
   return [
-    // Headboard stands proud; the notches beside it are what break the rectangle.
-    ...outlined(6, 0, 52, 12, WOOD.base, WOOD.shadow),
-    notch(0, 0, 6, 12),
-    notch(58, 0, 6, 12),
-    ...outlined(2, 10, 60, 48, DUSK_PLUM.base, DUSK_PLUM.shadow),
+    // The headboard reads against the wall; inset rails keep the silhouette furniture-like.
+    ...outlined(6, 0, 68, 14, WOOD.base, WOOD.shadow),
+    ...outlined(8, 11, 64, 100, DUSK_PLUM.base, DUSK_PLUM.shadow),
+    ...outlined(10, 17, 60, 27, CREAM_BASE, DUSK_PLUM.shadow),
     ...(occupied
       ? [
-          // Slept in: the pillow dents and the duvet humps over a body.
-          ...outlined(8, 14, 48, 10, DUSK_PLUM.light, DUSK_PLUM.shadow),
-          ...outlined(10, 28, 44, 18, DUSK_PLUM.light, DUSK_PLUM.shadow),
+          rect(14, 26, 52, 4, CREAM_SHADOW),
+          ...outlined(9, 45, 62, 54, DUSK_PLUM.light, DUSK_PLUM.shadow),
+          rect(13, 53, 54, 3, DUSK_PLUM.base),
         ]
       : [
-          ...outlined(8, 13, 48, 13, DUSK_PLUM.light, DUSK_PLUM.shadow),
-          lip(4, 32, 56, DUSK_PLUM.light),
-          rect(4, 33, 56, 2, DUSK_PLUM.shadow),
+          rect(14, 25, 52, 3, CREAM_SHADOW),
+          ...outlined(9, 45, 62, 54, DUSK_PLUM.light, DUSK_PLUM.shadow),
+          lip(12, 48, 56, DUSK_PLUM.light),
+          rect(12, 73, 56, 3, DUSK_PLUM.base),
         ]),
-    // Legs, with the floor visible between them.
-    rect(4, 58, 7, 6, WOOD.shadow),
-    rect(53, 58, 7, 6, WOOD.shadow),
-    notch(11, 58, 42, 6),
-    notch(0, 58, 4, 6),
-    notch(60, 58, 4, 6),
+    rect(7, 111, 10, 7, WOOD.shadow),
+    rect(63, 111, 10, 7, WOOD.shadow),
+    notch(0, 0, 6, 11),
+    notch(74, 0, 6, 11),
+    notch(0, 111, 7, 9),
+    notch(17, 111, 46, 9),
+    notch(73, 111, 7, 9),
   ];
 }
 
@@ -133,21 +194,31 @@ function sinkShapes(running: boolean): Shape[] {
 
 function showerShapes(running: boolean): Shape[] {
   return [
-    rect(2, 1, 60, 3, GREY.shadow), // curtain rail overhanging both ends
-    ...outlined(44, 4, 10, 6, GREY.base, GREY.shadow), // head
-    rect(47, 10, 4, 12, GREY.shadow), // riser
+    rect(2, 0, 76, 5, GREY.shadow),
+    rect(6, 5, 5, 108, GREY.shadow),
+    rect(69, 5, 5, 108, GREY.shadow),
+    ...outlined(53, 12, 14, 9, GREY.base, GREY.shadow),
+    rect(58, 21, 4, 17, GREY.shadow),
+    // Translucent-looking curtain bands, still fully opaque palette pixels.
+    rect(12, 7, 12, 97, WATER_BLUE.light),
+    rect(27, 7, 12, 97, WATER_BLUE.base),
+    rect(42, 7, 12, 97, WATER_BLUE.light),
+    rect(57, 38, 11, 66, WATER_BLUE.base),
+    rect(23, 7, 3, 97, WATER_BLUE.shadow),
+    rect(39, 7, 3, 97, WATER_BLUE.shadow),
+    rect(54, 7, 3, 97, WATER_BLUE.shadow),
     ...(running
       ? [
-          rect(45, 11, 2, 12, WATER_BLUE.light),
-          rect(51, 11, 2, 12, WATER_BLUE.light),
-          rect(48, 12, 2, 11, WATER_BLUE.base),
+          rect(55, 23, 2, 20, CREAM_LIGHT),
+          rect(62, 23, 2, 20, CREAM_LIGHT),
+          rect(58, 25, 2, 20, WATER_BLUE.light),
         ]
       : []),
-    ...outlined(4, 22, 56, 9, WATER_BLUE.light, WATER_BLUE.shadow), // tray
-    notch(0, 4, 44, 18),
-    notch(54, 4, 10, 18),
-    notch(0, 0, 2, 32),
-    notch(62, 0, 2, 32),
+    ...outlined(3, 104, 74, 17, WATER_BLUE.light, WATER_BLUE.shadow),
+    rect(12, 109, 56, 3, CREAM_LIGHT),
+    notch(0, 0, 2, 128),
+    notch(78, 0, 2, 128),
+    notch(0, 121, 80, 7),
   ];
 }
 
@@ -229,86 +300,105 @@ const counter: ObjectSprite = {
 
 function couchShapes(sat: boolean): Shape[] {
   return [
-    ...outlined(10, 2, 76, 14, TERRACOTTA.base, TERRACOTTA.shadow), // back
-    ...outlined(0, 6, 12, 21, TERRACOTTA.light, TERRACOTTA.shadow), // arms stand taller than the seat
-    ...outlined(84, 6, 12, 21, TERRACOTTA.light, TERRACOTTA.shadow),
-    ...outlined(12, 15, 72, 12, TERRACOTTA.base, TERRACOTTA.shadow), // seat
+    ...outlined(12, 2, 104, 29, TERRACOTTA.base, TERRACOTTA.shadow),
+    rect(16, 6, 96, 3, TERRACOTTA.light),
+    ...outlined(0, 12, 16, 42, TERRACOTTA.light, TERRACOTTA.shadow),
+    ...outlined(112, 12, 16, 42, TERRACOTTA.light, TERRACOTTA.shadow),
+    ...outlined(16, 29, 96, 27, TERRACOTTA.base, TERRACOTTA.shadow),
     // Three cushion divisions.
-    rect(36, 16, 1, 10, TERRACOTTA.shadow),
-    rect(60, 16, 1, 10, TERRACOTTA.shadow),
-    ...(sat ? [rect(38, 17, 21, 2, TERRACOTTA.shadow)] : [lip(13, 16, 70, TERRACOTTA.light)]),
-    rect(4, 27, 6, 4, TERRACOTTA.shadow), // legs
-    rect(86, 27, 6, 4, TERRACOTTA.shadow),
-    notch(0, 0, 10, 6),
-    notch(86, 0, 10, 6),
-    notch(10, 27, 76, 5),
-    notch(0, 31, 96, 1),
+    rect(47, 31, 2, 23, TERRACOTTA.shadow),
+    rect(79, 31, 2, 23, TERRACOTTA.shadow),
+    ...(sat ? [rect(51, 35, 26, 4, TERRACOTTA.shadow)] : [lip(18, 31, 92, TERRACOTTA.light)]),
+    rect(6, 54, 9, 7, TERRACOTTA.shadow),
+    rect(113, 54, 9, 7, TERRACOTTA.shadow),
+    notch(0, 0, 12, 12),
+    notch(116, 0, 12, 12),
+    notch(16, 56, 96, 8),
+    notch(0, 61, 128, 3),
   ];
 }
 
-/** Screen on a narrow neck over a wide foot — a clear T in flat Ink. */
+/**
+ * Rear of the television, because its screen faces up toward the couch instead of down
+ * toward the player. Vents, ports, cable and stand make the direction unambiguous.
+ */
 function tvShapes(): Shape[] {
   return [
-    ...outlined(2, 2, 28, 18, GREY.shadow, GREY.shadow),
-    rect(4, 4, 24, 14, GREY.base), // screen face
-    rect(13, 20, 6, 6, GREY.shadow), // neck
-    ...outlined(7, 26, 18, 5, GREY.base, GREY.shadow), // foot
-    notch(0, 20, 13, 12),
-    notch(19, 20, 13, 12),
-    notch(0, 26, 7, 6),
-    notch(25, 26, 7, 6),
-    notch(0, 0, 32, 2),
+    ...outlined(4, 2, 80, 34, GREY.base, GREY.shadow),
+    rect(10, 7, 68, 3, GREY.light),
+    rect(14, 15, 28, 3, GREY.shadow),
+    rect(14, 21, 28, 3, GREY.shadow),
+    rect(56, 15, 14, 12, GREY.shadow),
+    rect(59, 18, 8, 6, GREY.light),
+    rect(42, 30, 4, 15, GREY.shadow), // cable points toward the couch side
+    ...outlined(38, 36, 12, 10, GREY.shadow, GREY.shadow),
+    ...outlined(20, 45, 48, 8, GREY.base, GREY.shadow),
+    rect(8, 53, 14, 2, CREAM_SHADOW),
+    rect(66, 53, 14, 2, CREAM_SHADOW),
+    notch(0, 0, 4, 56),
+    notch(84, 0, 4, 56),
+    notch(0, 36, 38, 20),
+    notch(50, 36, 38, 9),
+    notch(0, 45, 20, 11),
+    notch(68, 45, 20, 11),
   ];
 }
 
 function benchShapes(lifting: boolean): Shape[] {
   return [
-    ...outlined(2, 10, 7, 12, GREY.shadow, GREY.shadow), // rack upright at one end
+    ...outlined(3, 10, 8, 27, GREY.shadow, GREY.shadow),
+    ...outlined(85, 10, 8, 27, GREY.shadow, GREY.shadow),
     ...(lifting
-      ? [rect(2, 5, 28, 2, GREY.light)] // bar raised off the rack
-      : [rect(2, 11, 12, 2, GREY.light)]),
-    ...outlined(6, 13, 22, 6, TERRACOTTA.base, TERRACOTTA.shadow), // padded top
-    rect(9, 19, 4, 11, GREY.shadow), // legs
-    rect(21, 19, 4, 11, GREY.shadow),
-    notch(13, 19, 8, 13),
-    notch(0, 22, 6, 10),
-    notch(25, 19, 7, 13),
-    notch(0, 0, 32, 5),
+      ? [rect(5, 3, 86, 4, GREY.light)]
+      : [rect(5, 13, 86, 4, GREY.light)]),
+    rect(1, lifting ? 1 : 11, 7, 8, GREY.shadow),
+    rect(88, lifting ? 1 : 11, 7, 8, GREY.shadow),
+    ...outlined(17, 25, 62, 15, TERRACOTTA.base, TERRACOTTA.shadow),
+    rect(24, 40, 8, 13, GREY.shadow),
+    rect(64, 40, 8, 13, GREY.shadow),
+    notch(0, 0, 96, 3),
+    notch(0, 17, 3, 39),
+    notch(93, 17, 3, 39),
+    notch(11, 17, 74, 8),
+    notch(32, 40, 32, 16),
   ];
 }
 
 function treadmillShapes(running: boolean): Shape[] {
   return [
-    ...outlined(21, 1, 10, 7, GREY.light, GREY.shadow), // console
-    rect(24, 8, 4, 12, GREY.shadow), // upright post
-    // Sloping deck: three stepped bands, so the ramp reads in flat Ink.
-    ...outlined(12, 19, 19, 4, GREY.base, GREY.shadow),
-    ...outlined(6, 22, 21, 4, GREY.base, GREY.shadow),
-    ...outlined(1, 25, 22, 5, GREY.base, GREY.shadow),
+    ...outlined(77, 1, 17, 11, GREY.light, GREY.shadow),
+    rect(83, 12, 6, 20, GREY.shadow),
+    rect(74, 13, 4, 17, GREY.shadow),
+    rect(76, 13, 10, 3, GREY.light),
+    // Long deck runs left-to-right, matching the activity's right-facing run pose.
+    ...outlined(20, 27, 69, 7, GREY.base, GREY.shadow),
+    ...outlined(9, 32, 77, 7, GREY.base, GREY.shadow),
+    ...outlined(1, 37, 82, 8, GREY.base, GREY.shadow),
     ...(running
-      ? [rect(4, 27, 4, 1, GREY.light), rect(12, 27, 4, 1, GREY.light), rect(9, 23, 4, 1, GREY.light)]
-      : [rect(6, 27, 4, 1, GREY.light), rect(14, 27, 4, 1, GREY.light)]),
-    notch(0, 0, 21, 19),
-    notch(0, 19, 12, 3),
-    notch(0, 22, 6, 3),
-    notch(27, 22, 5, 10),
-    notch(23, 25, 9, 7),
+      ? [rect(13, 40, 11, 2, GREY.light), rect(38, 37, 11, 2, GREY.light), rect(62, 34, 11, 2, GREY.light)]
+      : [rect(22, 40, 13, 2, GREY.light), rect(52, 36, 13, 2, GREY.light)]),
+    notch(0, 0, 74, 27),
+    notch(0, 27, 20, 5),
+    notch(0, 32, 9, 5),
+    notch(89, 12, 7, 36),
+    notch(83, 39, 13, 9),
   ];
 }
 
 function rugShapes(scuffed: boolean): Shape[] {
-  const fringeColumns = [1, 5, 9, 13, 17, 21, 25, 29];
+  const fringeColumns = [4, 12, 20, 28, 36, 44, 52, 60, 68];
   return [
-    ...outlined(1, 6, 30, 20, TERRACOTTA.base, TERRACOTTA.shadow),
-    rect(5, 11, 22, 10, TERRACOTTA.light), // woven band
-    rect(9, 14, 14, 4, scuffed ? TERRACOTTA.base : TERRACOTTA.shadow),
-    // Alternating fringe — the entire silhouette signature lives here.
+    ...outlined(2, 8, 68, 88, TERRACOTTA.base, TERRACOTTA.shadow),
+    rect(8, 16, 56, 72, TERRACOTTA.light),
+    rect(14, 26, 44, 52, TERRACOTTA.base),
+    rect(20, 34, 32, 36, scuffed ? TERRACOTTA.shadow : TERRACOTTA.light),
+    rect(26, 42, 20, 20, TERRACOTTA.shadow),
     ...fringeColumns.flatMap((x) => [
-      rect(x, 3, 2, 3, TERRACOTTA.shadow),
-      rect(x, 26, 2, 3, TERRACOTTA.shadow),
+      rect(x, 2, 3, 6, TERRACOTTA.shadow),
+      rect(x, 96, 3, 6, TERRACOTTA.shadow),
     ]),
-    notch(0, 0, 32, 3),
-    notch(0, 29, 32, 3),
+    notch(0, 0, 72, 2),
+    notch(0, 102, 72, 2),
   ];
 }
 
@@ -366,21 +456,21 @@ function frontDoorShapes(ajar: boolean): Shape[] {
 // ---------------------------------------------------------------------------
 
 export const OBJECT_SPRITES: Record<string, ObjectSprite> = {
-  bed: { width: 2 * TILE, height: 2 * TILE, idle: bedShapes(false), active: bedShapes(true) },
-  wardrobe,
-  toilet: { width: TILE, height: TILE, idle: toiletShapes(false), active: toiletShapes(true) },
-  sink: { width: TILE, height: TILE, idle: sinkShapes(false), active: sinkShapes(true) },
-  shower: { width: 2 * TILE, height: TILE, idle: showerShapes(false), active: showerShapes(true) },
-  fridge: { width: TILE, height: TILE, idle: fridgeShapes(false), active: fridgeShapes(true) },
-  microwave: { width: TILE, height: TILE, idle: microwaveShapes(false), active: microwaveShapes(true) },
-  counter,
-  couch: { width: 3 * TILE, height: TILE, idle: couchShapes(false), active: couchShapes(true) },
-  tv: { width: TILE, height: TILE, idle: tvShapes() },
-  bench: { width: TILE, height: TILE, idle: benchShapes(false), active: benchShapes(true) },
-  treadmill: { width: TILE, height: TILE, idle: treadmillShapes(false), active: treadmillShapes(true) },
-  rug: { width: TILE, height: TILE, idle: rugShapes(false), active: rugShapes(true) },
-  guitar: { width: TILE, height: TILE, idle: guitarShapes(false), active: guitarShapes(true) },
-  'front-door': { width: TILE, height: TILE, idle: frontDoorShapes(false), active: frontDoorShapes(true) },
+  bed: authoredSprite('bed', bedShapes(false), bedShapes(true)),
+  wardrobe: fittedSprite('wardrobe', TILE, TILE, wardrobe.idle),
+  toilet: fittedSprite('toilet', TILE, TILE, toiletShapes(false), toiletShapes(true)),
+  sink: fittedSprite('sink', TILE, TILE, sinkShapes(false), sinkShapes(true)),
+  shower: authoredSprite('shower', showerShapes(false), showerShapes(true)),
+  fridge: fittedSprite('fridge', TILE, TILE, fridgeShapes(false), fridgeShapes(true)),
+  microwave: fittedSprite('microwave', TILE, TILE, microwaveShapes(false), microwaveShapes(true)),
+  counter: fittedSprite('counter', 2 * TILE, TILE, counter.idle),
+  couch: authoredSprite('couch', couchShapes(false), couchShapes(true)),
+  tv: authoredSprite('tv', tvShapes()),
+  bench: authoredSprite('bench', benchShapes(false), benchShapes(true)),
+  treadmill: authoredSprite('treadmill', treadmillShapes(false), treadmillShapes(true)),
+  rug: authoredSprite('rug', rugShapes(false), rugShapes(true)),
+  guitar: fittedSprite('guitar', TILE, TILE, guitarShapes(false), guitarShapes(true)),
+  'front-door': fittedSprite('front-door', TILE, TILE, frontDoorShapes(false), frontDoorShapes(true)),
 };
 
 export function renderObject(id: string, state: 'idle' | 'active' = 'idle'): Bitmap {
@@ -388,6 +478,15 @@ export function renderObject(id: string, state: 'idle' | 'active' = 'idle'): Bit
   if (!spec) throw new Error(`no authored sprite for object "${id}" — see design.md §11`);
   const shapes = state === 'active' ? (spec.active ?? spec.idle) : spec.idle;
   const bmp = createBitmap(spec.width, spec.height);
+  // HFM Track B gives every prop one squashed ground-contact shadow. Two hard pixel bands
+  // imply the ellipse without alpha or blur; the object then paints over it. A rug is the
+  // ground surface itself, so its authored fringe is its contact edge.
+  if (id !== 'rug') {
+    paintShapes(bmp, [
+      rect(6, spec.height - 2, Math.max(4, spec.width - 12), 1, CREAM_SHADOW),
+      rect(3, spec.height - 1, Math.max(4, spec.width - 6), 1, CREAM_SHADOW),
+    ]);
+  }
   paintShapes(bmp, shapes);
   return bmp;
 }

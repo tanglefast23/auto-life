@@ -54,7 +54,7 @@ Both round-2 audits agreed the set is near-P−1-ready; their overlapping findin
 | Cut line didn't cut; iOS quietly inside v1 | v1 DoD is desktop-web; iPhone verification moves to a v1.1 mobile pass; real cut order stated (§17, §18) |
 | HUD would accrete by v5 | Versioned HUD hierarchy: permanent set capped at Health · Funds · Connection · clock (§11.1) |
 | Palette & frame counts inconsistent | Canonical: core 31 + character-only 26 = 57; v1 ≈ 48 frames; early art-risk spike added (design.md, §17) |
-| **Art direction** (Joe, overriding both) | The generated week-plan concept art is **rejected**; the *idea* (two horizons) is kept. Art pivots to **simple HFM-style pixel art** — C8 revised, design.md rewritten |
+| **Art direction** (Joe, overriding both) | The generated week-plan concept art is **rejected**; the *idea* (two horizons) is kept. Art and UI use HFM's actual palette and construction rules—not a loose “inspired by” interpretation. C8 revised; design.md v3 is binding. |
 
 Also adopted (single-audit, no conflict): Autonomy setting (Full / Essentials / Reactive-only) [HYPOTHESIS] · monthly rhythm beat (docs/02) · endings can end the run, NG+ carries the gallery (docs/05/06) · v5 ships 4 deep candidates · friend comfort tags · Tab freed for focus traversal (`Q` focuses the queue; shortcuts suppressed while typing).
 
@@ -136,7 +136,7 @@ The core loop the whole game is built to deliver:
 1. **Autonomy you steer.** The sim always has a sensible, *explained* plan. Player verbs: reorder, insert, remove, stop. Never puppet.
 2. **Numbers you can feel.** Every bar maps to a distinct visible behavior (§6.5). No *consequential* state is invisible — qualitative faces (like v3's battery) are fine, but exact numbers are always available in details.
 3. **Time is the currency.** Health buys speed; speed buys free hours; free hours become Practice, wrinkles handled, and later gigs, friends, and dates.
-4. **Cozy, readable pixel world.** Warm interiors in simple, chunky HFM-style pixel art (Mystia's Izakaya is mood/layout reference only — C8 revised), one screen per scene, everything legible at a glance. All art obeys [design.md](design.md).
+4. **Cozy, readable HFM world.** HFM's exact palette backbone and chunky construction language, carried from the broad-headed caricature hero through every home prop and every piece of UI chrome. One screen per scene; everything legible at a glance. All art and player-facing UI obey [design.md](design.md).
 5. **A person, not a dashboard.** Preferences, storylets, and a home that accumulates history make the sim someone you *know*.
 
 **Working title:** "Auto Life" (naming candidates parked in O5).
@@ -156,7 +156,7 @@ The core loop the whole game is built to deliver:
 | C11 | v3 social model | **Connection + social-battery split** (O3 ruled 2026-07-29): reading recharges an introvert's battery; only people fill Connection. Weekday-evening light social (O3b) ships with it — verifier-required for friend reachability. |
 | C12 | Fun gate | **P−1 skipped, non-negotiable** (Joe, 2026-07-29): queue-steering is known-fun from experience; build goes straight to P0. P4.5 is the only external fun gate. The `humanizer` skill pass is a mandatory build step for all authored strings (writing.md §5). |
 | C7 | Platforms | Desktop web first, iPhone later, one Expo codebase. |
-| C8 | Art | **Revised by Joe (round 2): simple pixel art in Hero Football Manager's chunky style**, warm home palette, per [design.md](design.md). Mystia's Izakaya is a mood/layout reference only; the AI-generated week-plan concept image is explicitly *not* the direction. |
+| C8 | Art | **Revised by Joe (round 2; fidelity corrected 2026-07-31): Hero Football Manager's actual chunky pixel language**, including its palette backbone, F82-derived broad-headed hero, expressive caricature faces, hard-banded props, and Track-A UI chrome, per [design.md](design.md). Mystia's Izakaya is mood/layout only; the AI-generated week-plan concept image is explicitly *not* the direction. |
 | C9 | Audio | **SFX + music ship in v1** (§14), with sliders in Settings. |
 | C10 | Meta UI | Escape opens the pause/settings menu (§11.7); keyboard bindings per §11.8. |
 
@@ -542,6 +542,8 @@ Single fixed screen, interior cutaway, **24×14 tiles @ 32 px** (768×448 logica
 
 - A* on the walkable grid, 4-directional; each object declares an `interactPoint` + facing.
 - Objects are data (`content/objects.json`): footprint, interactPoint, activities, upgrade track (dormant until v4), decoration slots (§9.4 rewards).
+- **Presentation geometry is separate from navigation geometry [CONFIRMED 2026-07-31].** A 32 px footprint is a collision/pathfinding contract, not the visible size of the furniture. Renderer-owned bounds may enlarge and offset a prop or cross a wall edge; renderer-owned activity origins place the 48×72 hero on the actual seat, mattress, deck, mat, or fixture. Neither is serialized or read by the sim, so saves, timing, pathfinding, and replay digests remain unchanged.
+- **Room-direction contract [CONFIRMED 2026-07-31]:** couch and television face one another at conversational distance; the TV shows its rear to the player; the yoga mat is full-body length; gym and household fixtures are proportioned to the hero; the front-door leaf/frame intersects the bottom wall. Visible object bounds also own pointer hit targets.
 - Guitar and rug added for Practice and Stretch.
 
 ---
@@ -665,8 +667,10 @@ First-session pacing targets (P4.5-tested, not assumed): a real choice within ~6
 
 Binding rules, palette, sprite construction, and per-version asset scope live in **[design.md](design.md)** — every generated or drawn asset must pass its checklist. Summary of what's fixed here:
 
-- Style: simple chunky HFM-style pixel chibi (C8 revised round 2); Mystia's Izakaya is mood/layout reference only. The AI-generability and small-loop rationale carries over; the rendering lineage is HFM's pixel bible (design.md v2).
-- Tiles 32×32 · character 32×48 · scaling per §11.5 (integer/half-step on desktop, sharp-bilinear fractional on phones) · indexed master palette per design.md §2 (canonical count lives there) · soft colored outlines, never pure black · character authored as layers (body/hair/outfit) from the first sprite.
+- Style: HFM's actual heroic-chibi and Track-A chrome rules (C8 fidelity correction); Mystia's Izakaya is mood/layout only. `design.md` v3 is the binding rendering authority, not the earlier generic “HFM-style” wording.
+- Tiles 32×32 · character source cell 32×48, drawn at 1.5× · hero directly adapts HFM F82 with a head ≈50% of source height, angled eyes, toothy expression band, and activity-specific emotion swaps · indexed HFM-backed palette per design.md §2 · soft colored world outlines, never pure black · character authored as layers from the first sprite.
+- Every house prop follows HFM's hard upper-left value bands, ground-contact shadow, and one exaggerated silhouette feature. Every player-facing card, panel, field, chip, and button uses HFM Track-A bevels, exact semantic blue/red/gold roles, and the Silkscreen hierarchy.
+- Prop scale, direction, placement, and body contact are one acceptance surface: furniture is sized against the 48×72 live hero; couch/TV and activity equipment face their users; doors sit in walls; seated/sleeping/fixture poses overlap the surface they use. Renderer-only presentation bounds/origins keep that visual truth out of deterministic simulation state.
 - v1 asset list: [design.md](design.md) §11's v1 bill of materials is canonical.
 - Pipeline & placeholder-first rule unchanged (placeholders through P5; art lands P6; licensed-pack fallback stands).
 

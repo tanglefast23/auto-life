@@ -35,7 +35,7 @@ import type { ActivePreferenceTag } from '../ui/preference-tags';
 import { preferenceReaction } from '../ui/preference-tags';
 import { intentionStrings } from '../ui/intention-copy';
 import type { AutonomyMode } from '../sim/rules';
-import { FONT, TYPE_SCALE, theme } from '../ui/theme';
+import { CHROME, FONT, TYPE_SCALE, theme } from '../ui/theme';
 
 /**
  * P3's screen: the composition root's view (master §4).
@@ -528,13 +528,10 @@ function HydratedGameScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.color.ink, alignItems: 'center' },
+  root: { flex: 1, backgroundColor: theme.color.creamBase, alignItems: 'center' },
   preferenceBubble: {
+    ...CHROME.bubble,
     alignItems: 'center',
-    backgroundColor: theme.color.creamLight,
-    borderColor: theme.color.ink,
-    borderRadius: 12,
-    borderWidth: 2,
     gap: 2,
     left: '50%',
     marginLeft: -96,
@@ -570,24 +567,22 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     alignItems: 'center',
-    backgroundColor: 'rgba(46, 33, 25, 0.88)',
+    backgroundColor: 'rgba(36, 31, 46, 0.88)',
     justifyContent: 'center',
     padding: 24,
     zIndex: 100,
   },
   fatalPanel: {
-    backgroundColor: theme.color.creamBase,
+    ...CHROME.panel,
     borderColor: theme.color.redShadow,
-    borderRadius: 8,
-    borderWidth: 2,
+    borderBottomColor: theme.color.redShadow,
     maxWidth: 480,
     padding: 24,
     width: '100%',
   },
   fatalTitle: {
     color: theme.color.ink,
-    fontSize: TYPE_SCALE.heading.fontSize,
-    fontFamily: FONT.pixelBold,
+    ...TYPE_SCALE.heading,
     marginBottom: 12,
   },
   fatalCopy: {

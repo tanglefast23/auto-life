@@ -1,5 +1,10 @@
 # Auto Life v1 — Master Implementation Plan
 
+> **Current art/UI correction (2026-07-31):** wherever this historical plan says
+> “HFM-style” or “final art,” `design.md` v3 is the binding meaning: F82-derived
+> extra-large expressive hero, HFM palette backbone, Track-B house props, and Track-A UI
+> chrome across every player-facing surface.
+
 > **Implementation contract:** Work one checked task at a time. A named agent skill may help execute a phase, but no unavailable skill is assumed. Every task ends with the relevant checks green; phase exits require the evidence defined below. Git initialization and commits happen only when Joe explicitly authorizes them for the implementation run.
 
 **Goal:** Ship Auto Life v1 per `SPEC.md` v0.3: the autonomous life sim's home chapter, desktop web first.

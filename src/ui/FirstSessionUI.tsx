@@ -29,7 +29,7 @@ import {
   wrinkleStrings,
 } from './wrinkle-copy';
 import { goalStrings } from './goal-copy';
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
 
 export interface FirstSessionUIProps {
   session: SessionState;
@@ -456,6 +456,7 @@ function isFreshSession(session: SessionState): boolean {
 
 const styles = StyleSheet.create({
   goalChip: {
+    ...CHROME.chip,
     position: 'absolute',
     left: 8,
     width: 264,
@@ -464,11 +465,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
-    backgroundColor: CREAM_BASE,
     zIndex: 30,
   },
   goalChipMark: {
@@ -482,6 +478,7 @@ const styles = StyleSheet.create({
     ...TYPE_SCALE.caption,
   },
   intentionChip: {
+    ...CHROME.chip,
     position: 'absolute',
     left: 280,
     width: 248,
@@ -490,14 +487,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
-    backgroundColor: CREAM_BASE,
     zIndex: 30,
   },
   wrinkleChip: {
+    ...CHROME.chip,
     position: 'absolute',
     right: 8,
     width: 248,
@@ -506,11 +499,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
-    backgroundColor: CREAM_BASE,
     zIndex: 30,
   },
   wrinkleChipMark: {
@@ -524,16 +512,12 @@ const styles = StyleSheet.create({
     fontSize: TYPE_SCALE.body.fontSize,
   },
   goalsPanel: {
+    ...CHROME.panel,
     position: 'absolute',
     left: 8,
     width: 336,
     padding: 10,
     gap: 8,
-    borderWidth: 2,
-    borderBottomWidth: 4,
-    borderColor: INK,
-    borderRadius: 4,
-    backgroundColor: CREAM_BASE,
     zIndex: 31,
   },
   goalsScroll: {
@@ -562,6 +546,7 @@ const styles = StyleSheet.create({
     color: INK,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   eyebrow: {
     color: GOLD,
@@ -570,14 +555,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   closeButton: {
+    ...CHROME.secondaryButton,
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   closeText: {
     color: INK,
@@ -585,13 +567,10 @@ const styles = StyleSheet.create({
     fontSize: TYPE_SCALE.body.fontSize,
   },
   goalRow: {
+    ...CHROME.card,
     flexDirection: 'row',
     gap: 8,
     padding: 8,
-    borderWidth: 1,
-    borderColor: CREAM_SHADOW,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   preferenceTags: {
     flexDirection: 'row',
@@ -600,20 +579,19 @@ const styles = StyleSheet.create({
   },
   preferenceTag: {
     backgroundColor: theme.color.creamBase,
-    borderRadius: 99,
+    borderColor: INK,
+    borderRadius: 4,
+    borderWidth: 1,
     color: theme.color.plumShadow,
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
   intentionSummary: {
+    ...CHROME.card,
     gap: 5,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: CREAM_SHADOW,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   goalRowComplete: {
     borderColor: GREEN,
@@ -657,36 +635,31 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   goalFilter: {
+    ...CHROME.secondaryButton,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: CREAM_SHADOW,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   goalFilterSelected: {
-    borderColor: GREEN,
+    ...CHROME.selectedControl,
   },
   goalFilterText: {
     color: INK,
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
+  goalFilterTextSelected: { color: CREAM_LIGHT },
   journalSection: {
+    ...CHROME.card,
     gap: 5,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: CREAM_SHADOW,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   journalEntry: {
     color: theme.color.plum,
     ...TYPE_SCALE.caption,
   },
   eventCard: {
+    ...CHROME.panel,
     position: 'absolute',
     left: '50%',
     width: 368,
@@ -695,9 +668,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 3,
     borderBottomWidth: 6,
-    borderColor: INK,
-    borderRadius: 5,
-    backgroundColor: CREAM_BASE,
     zIndex: 50,
   },
   lifeDecisionOverlay: {
@@ -709,32 +679,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: 'rgba(46, 33, 25, 0.72)',
+    backgroundColor: 'rgba(36, 31, 46, 0.76)',
     zIndex: 100,
   },
   lifeDecisionCard: {
+    ...CHROME.panel,
     width: '100%',
     maxWidth: 420,
     padding: 16,
     gap: 10,
     borderWidth: 3,
     borderBottomWidth: 6,
-    borderColor: INK,
-    borderRadius: 5,
-    backgroundColor: CREAM_BASE,
   },
   intentionPanel: {
     maxHeight: 560,
     zIndex: 55,
   },
   intentionChoice: {
+    ...CHROME.card,
     minHeight: 50,
     gap: 3,
     padding: 8,
-    borderWidth: 2,
-    borderColor: CREAM_SHADOW,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   intentionChoiceDefault: {
     borderColor: GOLD,
@@ -743,6 +708,7 @@ const styles = StyleSheet.create({
     color: INK,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   body: {
     color: INK,
@@ -754,15 +720,12 @@ const styles = StyleSheet.create({
     fontFamily: FONT.pixelBold,
   },
   choice: {
+    ...CHROME.card,
     minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     padding: 8,
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   choiceGlyph: {
     width: 32,
@@ -779,12 +742,14 @@ const styles = StyleSheet.create({
     color: INK,
     fontSize: TYPE_SCALE.body.fontSize,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   choiceDescription: {
     color: INK,
     ...TYPE_SCALE.caption,
   },
   recapCard: {
+    ...CHROME.panel,
     position: 'absolute',
     right: 8,
     width: 344,
@@ -792,9 +757,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 3,
     borderBottomWidth: 6,
-    borderColor: INK,
-    borderRadius: 5,
-    backgroundColor: CREAM_BASE,
     zIndex: 45,
   },
   recapStats: {
@@ -802,12 +764,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   stat: {
+    ...CHROME.card,
     flex: 1,
     alignItems: 'center',
     paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: CREAM_SHADOW,
-    backgroundColor: CREAM_LIGHT,
   },
   statValue: {
     color: INK,
@@ -852,26 +812,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
+    ...CHROME.neutralButton,
     minWidth: 88,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 3,
-    backgroundColor: CREAM_LIGHT,
   },
   actionButtonDisabled: {
     opacity: 0.5,
   },
   actionText: {
-    color: INK,
+    color: CREAM_LIGHT,
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
+    textTransform: 'uppercase',
   },
   buttonPressed: {
-    backgroundColor: CREAM_SHADOW,
+    borderTopWidth: 2,
+    transform: [{ translateY: 2 }],
   },
   srOnly: {
     position: 'absolute',

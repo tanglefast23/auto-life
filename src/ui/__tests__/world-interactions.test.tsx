@@ -17,27 +17,27 @@ function byTestId(tree: ReactTestRenderer, testID: string): ReactTestInstance {
 }
 
 describe('object hit geometry', () => {
-  test('uses the authored footprint, world scale, and a 44 px minimum target', () => {
+  test('uses visible furniture bounds and world scale', () => {
     const bed = content.objects.objects.find((object) => object.id === 'bed')!;
     const guitar = content.objects.objects.find((object) => object.id === 'guitar')!;
 
     expect(objectHitTarget(bed, 1)).toEqual({
-      left: 64,
-      top: 64,
-      width: 64,
-      height: 64,
+      left: 48,
+      top: 40,
+      width: 80,
+      height: 120,
     });
     expect(objectHitTarget(guitar, 1)).toEqual({
-      left: 186,
-      top: 250,
-      width: 44,
-      height: 44,
+      left: 192,
+      top: 232,
+      width: 48,
+      height: 80,
     });
     expect(objectHitTarget(guitar, 1.5)).toEqual({
       left: 288,
-      top: 384,
-      width: 48,
-      height: 48,
+      top: 348,
+      width: 72,
+      height: 120,
     });
   });
 });

@@ -247,6 +247,24 @@ test('names the active activity beside its radial progress and Stop control', ()
   act(() => tree.unmount());
 });
 
+test('an upcoming card is as tall as the running one, so its label cannot be clipped', () => {
+  const { tree } = setup();
+  const height = (testID: string): number =>
+    StyleSheet.flatten(
+      tree.root.findByProps({ testID }).props.style,
+    ).height as number;
+
+  // The card clips its own overflow, so its height is not cosmetic: borders (2 + 4) and
+  // padding (3 + 3) take 12px, and the glyph row (14), the pixel-bold label (18) and the
+  // start time (16) need 48. At the old 56 that left 44 and the label lost its bottom
+  // rows mid-glyph. Asserting the two units match keeps them from drifting apart again.
+  const upcoming = height('queue-card:meal');
+  expect(upcoming).toBe(height('queue-current-card'));
+  expect(upcoming).toBeGreaterThanOrEqual(48 + 2 + 4 + 3 + 3);
+
+  act(() => tree.unmount());
+});
+
 test('the queue is a right-side one-column rail with one visible task per row', () => {
   const { tree } = setup();
   const railStyle = StyleSheet.flatten(
@@ -511,6 +529,47 @@ test('Practice exposes its consecutive-block advantage as a legible chip and det
       (node) => node.props.children === 'Keeps 85% of base instead of 70%.',
     ).length,
   ).toBeGreaterThan(0);
+
+  act(() => tree.unmount());
+});
+
+/**
+ * The other half of the same question. A Practice past the day's cap earns exactly zero,
+ * and before this chip it looked identical to the day's *first* Practice — the one card
+ * where the absence of "Block" means the opposite thing.
+ */
+test('a Practice past the day’s cap says so, instead of just dropping the Block chip', () => {
+  const uncounted = card('spare-practice', 'practice', {
+    owner: 'PINNED',
+    source: 'player',
+    forecast: {
+      cardId: 'spare-practice',
+      activityId: 'practice',
+      predictedStartMinute: 560,
+      reason: null,
+      targetObjectId: 'guitar',
+      effects: {},
+      capWaste: {},
+      bonuses: [],
+      practiceUncounted: true,
+      conflicts: [],
+      wakeConflicts: [],
+    },
+  });
+  const { tree } = setup({
+    snapshot: { ...snapshot, queue: [...queue, uncounted] },
+  });
+
+  expect(
+    tree.root.findByProps({ testID: 'queue-uncounted-chip:spare-practice' })
+      .props.children,
+  ).toBe('No points');
+
+  // A card that scores nothing must say so to a screen reader too, not only in pixels.
+  expect(
+    tree.root.findByProps({ testID: 'queue-card:spare-practice' })
+      .props.accessibilityLabel,
+  ).toContain('This one earns nothing.');
 
   act(() => tree.unmount());
 });

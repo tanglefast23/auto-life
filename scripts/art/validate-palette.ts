@@ -53,10 +53,10 @@ export function findPaletteViolations(bmp: Bitmap): PaletteViolation[] {
   return [...byHex.values()];
 }
 
-/** design.md §13: pure black and pure white are rejected anywhere, palette member or not. */
+/** HFM permits shared White for eyes/highlights; only dead pure black stays forbidden. */
 export function findForbiddenExtremes(bmp: Bitmap): PaletteViolation[] {
   const out: PaletteViolation[] = [];
-  const check = (r: number, g: number, b: number) => (r === 0 && g === 0 && b === 0) || (r === 255 && g === 255 && b === 255);
+  const check = (r: number, g: number, b: number) => r === 0 && g === 0 && b === 0;
   for (let y = 0; y < bmp.height; y++) {
     for (let x = 0; x < bmp.width; x++) {
       const i = (y * bmp.width + x) * 4;

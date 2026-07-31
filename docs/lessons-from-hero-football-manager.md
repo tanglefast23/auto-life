@@ -10,6 +10,12 @@
 > an automated check in this repository; the rest are review obligations. A phase plan
 > that touches one of these areas must say which rule it is honouring and how.
 
+> **Art-fidelity correction (2026-07-31):** “HFM-style” is not an acceptance criterion by
+> itself. The earlier Auto Life character passed pipeline checks while still reading as a
+> narrow rectangle with a dot face. Current acceptance is structural: the v1 hero adapts
+> HFM F82, is rendered at 1.5× with an extra-large expressive head, and all props/UI use
+> HFM's exact Track-B/Track-A construction and palette roles from `design.md` v3.
+
 The handover's own summary of the verdict: *keep the stack and art direction; do not copy
 the implementation without its hard-won guardrails.* The pure simulation architecture held
 up well. Almost every repeated mistake happened where React Native, Skia, artwork, audio,
@@ -87,10 +93,22 @@ of deliberately difficult subjects first, test them at 1× on the real target vi
 lock cell size, proportions, outline, feet, expressions, and on-screen footprint before
 generating hundreds.
 
-*Auto Life status:* A0 did exactly this for the character (32×48 locked, layer/anchor/offset
-strategy proven before P3 depended on it). **P6 extends it to objects:** T2 authors and
-reviews the object set at true size *before* T4 spends the 48-frame character bill, so a
-silhouette rethink cannot cascade into a preset re-bake.
+*Auto Life status:* A0 proved the **32×48 source cell** and the layer/anchor/offset
+pipeline, but it did not prove visual fidelity to HFM; treating it as final-style evidence
+was the mistake. The current hero keeps that source contract, renders at 1.5× in-world,
+and uses the F82 head silhouette plus named emotion swaps. Object review now requires the
+HFM contact shadow, hard upper-left value bands, and one exaggerated feature—not merely a
+distinct silhouette.
+
+The same mistake can happen one level up: a sprite can be recognisable by itself and still
+look wrong in the room. The 32 px collision tile made the first couch, mat, appliances,
+and exercise equipment dollhouse-small beside the 48×72 live hero; the interact point then
+parked seated and sleeping poses on the floor. **[GATED] Navigation geometry and visual
+geometry are now separate.** Every current object has reviewed presentation bounds, every
+activity has a renderer-only body origin, click targets follow the visible art, and the
+generated interaction sheet reviews all contacts at the real 2× room / 3× hero ratio.
+Future object work must review size, direction, location, counterpart relationship, and
+body contact together—not as five independent sprite checks.
 
 ### 2.2 Generators are the source of truth [GATED]
 

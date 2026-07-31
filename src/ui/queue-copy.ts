@@ -28,6 +28,7 @@ const QueueStringsSchema = z.strictObject({
     mintyFresh: z.string().min(1),
     freshMind: z.string().min(1),
     practiceBlock: z.string().min(1),
+    practiceUncounted: z.string().min(1),
     blocked: z.string().min(1),
     waiting: z.string().min(1),
     reroute: z.string().min(1),
@@ -41,6 +42,7 @@ const QueueStringsSchema = z.strictObject({
     barDelta: z.string().min(1),
     scalePoints: z.string().min(1),
     practiceBlock: z.string().min(1),
+    practiceUncounted: z.string().min(1),
     objectBlocked: z.string().min(1),
     activityUnavailable: z.string().min(1),
     reroute: z.string().min(1),
@@ -136,6 +138,23 @@ export function bonusDetail(bonus: ForecastBonus): string {
   }
   return fill(queueStrings.details.scalePoints, {
     percent: Math.round((effect.factor - 1) * 100),
+  });
+}
+
+/**
+ * The chip for a Practice that starts past the day's counted cap.
+ *
+ * Kept beside the bonus copy because it is the same question a player is asking of the
+ * card — "is this one worth anything?" — but it is not a bonus, so it carries the warning
+ * styling rather than the gold.
+ */
+export function practiceUncountedChip(): string {
+  return queueStrings.chips.practiceUncounted;
+}
+
+export function practiceUncountedDetail(maxCountedSessionsPerDay: number): string {
+  return fill(queueStrings.details.practiceUncounted, {
+    max: maxCountedSessionsPerDay,
   });
 }
 

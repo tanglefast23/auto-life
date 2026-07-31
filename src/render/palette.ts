@@ -5,23 +5,23 @@
  * No RN/Expo imports — shared by the app, build scripts, and headless verification.
  */
 
-/** Neutrals (4). */
-export const INK = '#2e2119';
-export const CREAM_LIGHT = '#faf1dc';
-export const CREAM_BASE = '#f2e4c2';
-export const CREAM_SHADOW = '#d9c493';
+/** Neutrals (4) — the HFM canvas, ink, white and soft structure grey. */
+export const INK = '#241f2e';
+export const CREAM_LIGHT = '#ffffff';
+export const CREAM_BASE = '#f4f1ea';
+export const CREAM_SHADOW = '#d9d5cf';
 
 /** World ramps (6 × shadow/base/light = 18). */
-export const WOOD = { shadow: '#5d3a1e', base: '#8a5a30', light: '#b07c46' } as const;
-export const GREY = { shadow: '#6f6a75', base: '#9a95a2', light: '#c8c4cd' } as const;
+export const WOOD = { shadow: '#6a4326', base: '#8a5a30', light: '#a9743d' } as const;
+export const GREY = { shadow: '#6b6675', base: '#9a95a4', light: '#c9c5d0' } as const;
 export const DUSK_PLUM = { shadow: '#4a3550', base: '#6b4f74', light: '#9678a0' } as const;
-export const LEAF_GREEN = { shadow: '#3f7a44', base: '#5ca860', light: '#98d194' } as const;
-export const WATER_BLUE = { shadow: '#3a6d94', base: '#5b95c0', light: '#a8d0e8' } as const;
+export const LEAF_GREEN = { shadow: '#3f8a4a', base: '#5cb85c', light: '#8fd98f' } as const;
+export const WATER_BLUE = { shadow: '#3f6fb5', base: '#5a8fd6', light: '#a3c8f0' } as const;
 export const TERRACOTTA = { shadow: '#8a4a2e', base: '#bc6b42', light: '#e09a6e' } as const;
 
 /** Meaning ramps (3 × 3 = 9) — reserved semantics; unused by A0 sprites. */
-export const LANTERN_GOLD = { shadow: '#c07f28', base: '#f0a840', light: '#ffd27a' } as const;
-export const IZAKAYA_RED = { shadow: '#962e20', base: '#c8402e', light: '#e8705a' } as const;
+export const LANTERN_GOLD = { shadow: '#c8862a', base: '#edb54a', light: '#f7d894' } as const;
+export const IZAKAYA_RED = { shadow: '#a83440', base: '#d94f52', light: '#f2938c' } as const;
 export const ROSE = { shadow: '#a34a5e', base: '#d4708a', light: '#f0a8bc' } as const;
 
 /** Character-only: six skin ramps (18). A0 uses SKIN_2. */
@@ -35,7 +35,9 @@ export const SKIN_RAMPS = [
 ] as const;
 
 /** Character-only: the 8 net-new hair hexes (other hair sets reuse ramps above). */
-export const HAIR_BLACK = { shadow: INK, base: '#4a3d33', light: '#665648' } as const;
+// F82's near-black HFM hair ramp, with shared Ink as its darkest step to preserve the
+// locked 57-colour budget.
+export const HAIR_BLACK = { shadow: INK, base: '#3d2a22', light: '#534537' } as const;
 export const HAIR_AUBURN = { shadow: '#8a3c28', base: '#b85a38', light: '#d98a5e' } as const;
 export const HAIR_BLONDE = { shadow: '#b08a3a', base: '#d9b05c', light: '#f0d494' } as const;
 

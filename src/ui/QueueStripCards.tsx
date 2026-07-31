@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import type { PublishedQueueCard } from '../application/snapshot';
+import { content } from '../sim/content';
 import { formatTimeOfDay } from './clock-format';
 import {
   activityCopy,
@@ -19,6 +20,8 @@ import {
   bonusDetail,
   capWasteDetail,
   conflictDetail,
+  practiceUncountedChip,
+  practiceUncountedDetail,
   queueStrings,
   startConstraintChip,
   startConstraintDetail,
@@ -479,6 +482,7 @@ function ForecastChips({
       card.forecast.conflicts.length > 0 ||
       card.forecast.wakeConflicts.length > 0 ||
       card.forecast.bonuses.length > 0 ||
+      card.forecast.practiceUncounted === true ||
       card.forecast.startConstraint != null,
   );
   if (!hasAny) return null;
@@ -490,6 +494,17 @@ function ForecastChips({
       style={styles.forecastChips}
     >
       {cards.flatMap((card) => [
+        ...(card.forecast.practiceUncounted === true
+          ? [
+              <Text
+                key={`uncounted:${card.id}`}
+                testID={`queue-uncounted-chip:${card.id}`}
+                style={[styles.forecastChip, styles.warningChip]}
+              >
+                {practiceUncountedChip()}
+              </Text>,
+            ]
+          : []),
         ...(card.forecast.startConstraint == null
           ? []
           : [
@@ -545,6 +560,9 @@ function forecastAccessibilityLabel(
 ): string {
   const details = [
     whyLine(card.forecast.reason),
+    card.forecast.practiceUncounted === true
+      ? practiceUncountedDetail(content.practice.maxCountedSessionsPerDay)
+      : null,
     card.forecast.startConstraint == null
       ? null
       : startConstraintDetail(card.forecast.startConstraint),

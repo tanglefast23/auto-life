@@ -12,7 +12,7 @@ Prerequisite = v2 venue L2 + $400 lifetime earned · fallback = career week 4 ·
 
 ## 1. External axis — object upgrade tracks
 
-Every core object has L1→L3 (data dormant in `objects.json` since v1). Tap an object → upgrade tab (same catalog chrome as v2's shop). Silhouettes persist across tiers; materials improve (design.md ramp discipline).
+Every core object has L1→L3 (data dormant in `objects.json` since v1). Tap an object → upgrade tab (same catalog chrome as v2's shop). Silhouettes persist across tiers; materials improve within the same HFM ramp. Every tier keeps its contact shadow, upper-left hard highlight, and oversized defining feature—an upgrade may enrich material bands but never become a sterile realistic miniature.
 
 **Round-2 rule — upgrades buy time or decisions, never capped amounts:** a verifier showed the draft's "+restore" effects were mostly cap-waste (morning showers already cap; sleep already reaches 100). Every effect below passes the test "what changes during normal steady play?", and the shop previews it as time: `Saves ≈ 55 game-min / week`.
 

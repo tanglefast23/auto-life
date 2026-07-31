@@ -3,43 +3,45 @@
   "reviews": [
     {
       "file": "content/strings/queue.json",
-      "sha256": "1bea563c2d16dd76004026532e0674c30afd9c505e9311a2bde26d316023f74f",
+      "sha256": "aa23af0ca666402d18c1d7e530c199c20775f02a8d9444d8e077c46271a85902",
       "reviewedAt": "2026-07-31",
       "humanizer": {
         "name": "humanizer",
         "version": "2.2.0",
-        "invocation": "Humanizer 2.2.0 full-batch pattern scan, read-aloud pass, anti-AI pass, and writing.md checklist after adding routine-plan explanations."
+        "invocation": "Humanizer 2.2.0 pattern scan, read-aloud pass and anti-AI pass over the two new practiceUncounted strings, then the writing.md checklist over the whole queue batch."
       },
       "stringIds": [
-        "why.reactiveTrigger",
-        "why.anchorWindow",
-        "why.routineNeed",
-        "why.routineFree",
-        "why.wrinklePackage",
-        "why.wrinkleFallback",
+        "announcements.forecastUpdated",
+        "chips.blocked",
         "chips.conflict",
+        "chips.cramp",
+        "chips.freshMind",
+        "chips.itSticks",
+        "chips.mintyFresh",
+        "chips.practiceBlock",
+        "chips.practiceUncounted",
+        "chips.reroute",
+        "chips.waiting",
         "chips.wakeConflict",
         "chips.warmedUp",
-        "chips.itSticks",
-        "chips.cramp",
-        "chips.mintyFresh",
-        "chips.freshMind",
-        "chips.practiceBlock",
-        "chips.blocked",
-        "chips.waiting",
-        "chips.reroute",
-        "details.conflict",
-        "details.wakeConflict",
-        "details.capWaste",
-        "details.halveDuration",
-        "details.scaleDecay",
-        "details.barDelta",
-        "details.scalePoints",
-        "details.practiceBlock",
-        "details.objectBlocked",
         "details.activityUnavailable",
+        "details.barDelta",
+        "details.capWaste",
+        "details.conflict",
+        "details.halveDuration",
+        "details.objectBlocked",
+        "details.practiceBlock",
+        "details.practiceUncounted",
         "details.reroute",
-        "announcements.forecastUpdated"
+        "details.scaleDecay",
+        "details.scalePoints",
+        "details.wakeConflict",
+        "why.anchorWindow",
+        "why.reactiveTrigger",
+        "why.routineFree",
+        "why.routineNeed",
+        "why.wrinkleFallback",
+        "why.wrinklePackage"
       ],
       "rewrites": [
         {
@@ -71,9 +73,21 @@
           "before": "Urgent hygiene reroutes to Quick wash.",
           "after": "Shower blocked. Quick wash runs instead.",
           "reason": "Replaced system language with the visible cause and result."
+        },
+        {
+          "id": "chips.practiceUncounted",
+          "before": "No credit",
+          "after": "No points",
+          "reason": "Named the consequence a player feels rather than the scoring mechanism."
+        },
+        {
+          "id": "details.practiceUncounted",
+          "before": "Past today's {max} counted sessions — earns no points.",
+          "after": "Only the first {max} sessions a day earn points. This one earns nothing.",
+          "reason": "Removed the em dash and the sentence fragment, and said plainly that this card scores zero."
         }
       ],
-      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed for the complete queue batch; the routine lines are short, concrete, factual, and non-technical."
+      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed for the complete queue batch; the new uncounted-practice lines state the consequence before the rule and carry no em dash."
     },
     {
       "file": "content/strings/first-session.json",

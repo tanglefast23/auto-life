@@ -60,13 +60,13 @@ describe('palette validator', () => {
     expect(findPaletteViolations(bmp)).toHaveLength(1);
   });
 
-  test('catches pure black and pure white anywhere (§13)', () => {
+  test('catches pure black but admits HFM shared White (§13)', () => {
     const black = createBitmap(1, 1);
     black.data.set([0, 0, 0, 255], 0);
     const white = createBitmap(1, 1);
     white.data.set([255, 255, 255, 255], 0);
     expect(findForbiddenExtremes(black)).toHaveLength(1);
-    expect(findForbiddenExtremes(white)).toHaveLength(1);
+    expect(findForbiddenExtremes(white)).toHaveLength(0);
   });
 
   test('passes a fully transparent region', () => {

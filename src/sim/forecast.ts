@@ -35,6 +35,17 @@ export interface ForecastAnnotation {
   capWaste: Partial<Record<BarId, number>>;
   /** Bonuses sampled by the real start path, attached to the card that earns them. */
   bonuses: ForecastBonus[];
+  /**
+   * True when this Practice starts past the day's counted cap and will score nothing.
+   *
+   * `step()` scores a session with `idx < maxCountedSessionsPerDay ? curve[idx] : 0`, so
+   * the fifth Practice of a day and every one after it earns exactly zero points. Nothing
+   * on the card said so — the "Block" chip simply stopped appearing, which looks identical
+   * to the *first* session of the day, the one case where block and scattered are both 1.0
+   * and the chip is correctly absent. Two opposite meanings sharing one blank card is how a
+   * player queues six worthless Practices without noticing.
+   */
+  practiceUncounted?: boolean;
   /** Current announced wrinkle gate. Null means the card can begin normally. */
   startConstraint?: Exclude<
     CardStartDecision,
@@ -162,6 +173,25 @@ function freezeForecast(result: ForecastResult): ForecastResult {
   Object.freeze(result.wakeConflicts);
   Object.freeze(result.barsAtHorizon);
   return Object.freeze(result);
+}
+
+/**
+ * Does this Practice land past the day's counted cap?
+ *
+ * Read from the same two values `step()` scores with, so the chip cannot drift from the
+ * points: the sessions already counted today, against `maxCountedSessionsPerDay`.
+ */
+function practiceUncountedAtStart(
+  before: SimState,
+  after: NonNullable<SimState['current']>,
+  content: ContentRegistry,
+): boolean {
+  if (after.type !== 'activity') return false;
+  if (activityByIdIn(content, after.dto.activityId).kind !== 'practice') return false;
+  return (
+    before.practice.sessionsCountedToday >=
+    content.practice.maxCountedSessionsPerDay
+  );
 }
 
 function bonusesAtStart(
@@ -318,6 +348,9 @@ export function forecast(
           effects: existing.effects,
           capWaste: existing.capWaste,
           bonuses: existing.bonuses,
+          ...(existing.practiceUncounted === true
+            ? { practiceUncounted: true }
+            : {}),
           ...(chosenConstraint === null
             ? {}
             : { startConstraint: chosenConstraint }),
@@ -385,6 +418,9 @@ export function forecast(
             tickAbsoluteMinute,
             content,
           ),
+          ...(practiceUncountedAtStart(stateAtStart, after!, content)
+            ? { practiceUncounted: true }
+            : {}),
         });
       }
     }

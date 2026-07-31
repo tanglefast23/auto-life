@@ -1,5 +1,9 @@
 # Auto Life P6 — Final Art, Audio, Juice & Performance
 
+> **Historical executed plan.** Its generic HFM-style art target was superseded by Joe's
+> 2026-07-31 fidelity correction in `design.md` v3: F82-derived extra-large expressive
+> hero, HFM palette backbone, HFM Track-B props, and HFM Track-A UI throughout.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development`
 > (recommended) or `superpowers:executing-plans` to implement this plan task-by-task.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
