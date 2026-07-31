@@ -13,6 +13,7 @@ import type { RecoveryBlob } from '../application/career-repository';
 import { appShellStrings } from './app-shell-copy';
 import { identityString } from './identity-copy';
 import { settingsStrings } from './settings-copy';
+import { FONT, TYPE_SCALE, theme } from './theme';
 
 interface ButtonProps {
   label: string;
@@ -140,10 +141,10 @@ const PRONOUNS: ReadonlyArray<{
 ];
 
 const APPEARANCE_COLORS: Record<string, string> = {
-  'morning-blue': '#6f93ad',
-  'moss-green': '#778a57',
-  'warm-clay': '#bc6b42',
-  'plum-night': '#70546f',
+  'morning-blue': theme.color.water,
+  'moss-green': theme.color.leaf,
+  'warm-clay': theme.color.terracotta,
+  'plum-night': theme.color.plum,
 };
 
 export function IdentityShell({
@@ -262,7 +263,7 @@ export function IdentityShell({
                   styles.appearance,
                   {
                     backgroundColor:
-                      APPEARANCE_COLORS[preset.id] ?? '#8d7a68',
+                      APPEARANCE_COLORS[preset.id] ?? theme.color.greyShadow,
                   },
                   selected && styles.choiceSelected,
                 ]}
@@ -443,20 +444,20 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#2e2119',
+    backgroundColor: theme.color.ink,
     justifyContent: 'center',
     padding: 24,
   },
   scrollRoot: {
     alignItems: 'center',
-    backgroundColor: '#2e2119',
+    backgroundColor: theme.color.ink,
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
   panel: {
-    backgroundColor: '#f4e4c1',
-    borderColor: '#6d4334',
+    backgroundColor: theme.color.creamBase,
+    borderColor: theme.color.terracottaShadow,
     borderRadius: 10,
     borderWidth: 2,
     maxWidth: 560,
@@ -464,38 +465,38 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   eyebrow: {
-    color: '#9d4e33',
-    fontSize: 12,
-    fontWeight: '800',
+    color: theme.color.terracottaShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1.5,
   },
   title: {
-    color: '#4b2e24',
-    fontSize: 32,
-    fontWeight: '800',
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.display.fontSize,
+    fontFamily: FONT.pixelBold,
     marginTop: 6,
   },
   body: {
-    color: '#6d4334',
-    fontSize: 17,
+    color: theme.color.terracottaShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 24,
     marginBottom: 22,
     marginTop: 10,
   },
   label: {
-    color: '#4b2e24',
-    fontSize: 14,
-    fontWeight: '700',
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
     marginBottom: 8,
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#fff8e7',
-    borderColor: '#9b765f',
+    backgroundColor: theme.color.creamLight,
+    borderColor: theme.color.woodLight,
     borderRadius: 6,
     borderWidth: 1,
-    color: '#3c271f',
-    fontSize: 18,
+    color: theme.color.ink,
+    fontSize: TYPE_SCALE.body.fontSize,
     minHeight: 48,
     paddingHorizontal: 12,
   },
@@ -505,8 +506,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   choice: {
-    backgroundColor: '#fff8e7',
-    borderColor: '#b58b68',
+    backgroundColor: theme.color.creamLight,
+    borderColor: theme.color.woodLight,
     borderRadius: 6,
     borderWidth: 2,
     minHeight: 44,
@@ -514,16 +515,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   choiceSelected: {
-    borderColor: '#3c6757',
+    borderColor: theme.color.leafShadow,
     borderWidth: 3,
   },
   choiceText: {
-    color: '#4b2e24',
-    fontSize: 15,
-    fontWeight: '600',
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   appearance: {
-    borderColor: '#b58b68',
+    borderColor: theme.color.woodLight,
     borderRadius: 6,
     borderWidth: 2,
     height: 52,
@@ -535,20 +536,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: '#d7e0b4',
+    backgroundColor: theme.color.creamBase,
     borderRadius: 99,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   tagText: {
-    color: '#3c4f35',
-    fontSize: 14,
-    fontWeight: '700',
+    color: theme.color.plumShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   button: {
     alignItems: 'center',
-    backgroundColor: '#3c6757',
-    borderColor: '#28463b',
+    backgroundColor: theme.color.leafShadow,
+    borderColor: theme.color.plumShadow,
     borderRadius: 6,
     borderWidth: 2,
     justifyContent: 'center',
@@ -557,8 +558,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   buttonSecondary: {
-    backgroundColor: '#f4e4c1',
-    borderColor: '#7d5b49',
+    backgroundColor: theme.color.creamBase,
+    borderColor: theme.color.wood,
   },
   buttonPressed: {
     transform: [{ translateY: 1 }],
@@ -567,30 +568,30 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   buttonText: {
-    color: '#fff8e7',
-    fontSize: 16,
-    fontWeight: '800',
+    color: theme.color.creamLight,
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   buttonTextSecondary: {
-    color: '#5b3b2f',
+    color: theme.color.woodShadow,
   },
   error: {
-    color: '#8a2f2f',
-    fontSize: 14,
+    color: theme.color.redShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
     marginTop: 16,
   },
   diagnostic: {
-    backgroundColor: '#fff8e7',
-    color: '#4b2e24',
-    fontFamily: 'monospace',
-    fontSize: 11,
+    backgroundColor: theme.color.creamLight,
+    color: theme.color.woodShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     marginTop: 18,
     maxHeight: 240,
     padding: 10,
   },
   notice: {
-    backgroundColor: '#f4e4c1',
-    borderColor: '#3c6757',
+    backgroundColor: theme.color.creamBase,
+    borderColor: theme.color.leafShadow,
     borderRadius: 8,
     borderWidth: 2,
     left: 24,
@@ -601,13 +602,13 @@ const styles = StyleSheet.create({
     zIndex: 200,
   },
   noticeTitle: {
-    color: '#4b2e24',
-    fontSize: 18,
-    fontWeight: '800',
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   noticeBody: {
-    color: '#6d4334',
-    fontSize: 14,
+    color: theme.color.terracottaShadow,
+    fontSize: TYPE_SCALE.body.fontSize,
     marginTop: 6,
   },
 });

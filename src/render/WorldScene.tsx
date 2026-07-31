@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Atlas,
   FilterMode,
@@ -15,6 +15,7 @@ import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-
 import { content } from '../sim/content';
 import { resolvePaletteId } from './appearance';
 import { lightingAt } from './lighting';
+import { MOTION, motionProgress, resolveMotion } from './motion';
 import type { RenderView } from '../sim/render-view';
 import atlasIndexJson from '../../assets/generated/atlas-index.json';
 import {
@@ -99,6 +100,8 @@ export interface WorldSceneProps {
   idleVariantId?: string | null;
   /** Minute of the game day, so the room can swap to its evening tile set (design.md §7). */
   minuteOfDay?: number;
+  /** SPEC §11.6 — kills pulses and parallax, keeps state changes. */
+  reducedMotion?: boolean;
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
@@ -118,6 +121,7 @@ export function WorldScene({
   paletteId,
   idleVariantId = null,
   minuteOfDay = 12 * 60,
+  reducedMotion = false,
   alphaRef,
   scale,
   physicalPerArtPixel = scale,
@@ -132,6 +136,23 @@ export function WorldScene({
   // stable within a state — which is what keeps the Atlas upload off the frame path.
   const staticScene = useMemo(() => {
     const quads = buildStaticQuads(content.homeMap, content.objects, lighting);
+    return {
+      sprites: quads.map((q) => {
+        const r = lookup(index, q.sprite);
+        return rect(r.x, r.y, r.w, r.h);
+      }),
+      transforms: quads.map((q) => Skia.RSXform(1, 0, q.x, q.y)),
+    };
+  }, [lighting]);
+
+  /**
+   * design.md §7's 19:00 crossfade. Both tile sets are memoized, so the change is an
+   * opacity ramp over two already-uploaded buffers rather than a rebuild — and reduced
+   * motion collapses it to an instant swap while keeping the end state (SPEC §11.6).
+   */
+  const previousScene = useMemo(() => {
+    const other = lighting === 'day' ? 'evening' : 'day';
+    const quads = buildStaticQuads(content.homeMap, content.objects, other);
     return {
       sprites: quads.map((q) => {
         const r = lookup(index, q.sprite);
@@ -174,6 +195,34 @@ export function WorldScene({
     const r = charRectTable[charSprite.value] ?? charRectTable[0]!;
     val.setXYWH(r[0]!, r[1]!, r[2]!, r[3]!);
   });
+
+  const fade = useSharedValue(1);
+  const firstLighting = useRef(true);
+  // The outgoing room is only *mounted* while the fade runs. Leaving it mounted would
+  // double the 350-quad static buffer for every frame of the day to serve a transition
+  // that happens twice — the sort of always-on cost a perf pass then has to hunt for.
+  const [crossfading, setCrossfading] = useState(false);
+  useEffect(() => {
+    const motion = resolveMotion(MOTION.lightingCrossfade, { reducedMotion });
+    if (firstLighting.current || motion.durationMs === 0) {
+      firstLighting.current = false;
+      fade.value = 1;
+      setCrossfading(false);
+      return;
+    }
+    fade.value = 0;
+    setCrossfading(true);
+    const started = Date.now();
+    const id = setInterval(() => {
+      const t = motionProgress(motion, Date.now() - started);
+      fade.value = t;
+      if (t >= 1) {
+        clearInterval(id);
+        setCrossfading(false);
+      }
+    }, 32);
+    return () => clearInterval(id);
+  }, [lighting, reducedMotion, fade]);
 
   // ONE RAF for the component's lifetime.
   //
@@ -238,11 +287,20 @@ export function WorldScene({
   if (image === null) return null;
   return (
     <Group transform={[{ scale }]}>
+      {crossfading && (
+        <Atlas
+          image={image}
+          sprites={previousScene.sprites}
+          transforms={previousScene.transforms}
+          sampling={NEAREST}
+        />
+      )}
       <Atlas
         image={image}
         sprites={staticScene.sprites}
         transforms={staticScene.transforms}
         sampling={NEAREST}
+        opacity={fade}
       />
       {decorationScene.sprites.length > 0 && (
         <Atlas

@@ -165,8 +165,30 @@ This makes the Day-1 07:00 wake window observable on the first step. Leaf system
 | **P3** | Placeholder home scene, rendering/interpolation, visible travel/actions, HUD/clock/speeds, pause/background behavior, desktop scaling baseline | A complete placeholder day is watchable at 1×/2×/4×; sim result is speed-independent; desktop frame/scaling evidence recorded |
 | **P4** | Full §7.4 queue interaction surface, forecasts/why-lines needed for comprehension, keyboard/mouse/touch-capable-web parity, **player-visible Practice integration using P2's math**, **§11.4 sleep-skip** (assigned 2026-07-30 — see below), plus the minimum first-session slice below | Every interaction passes; scripted queue replay added; a recorded P4 baseline contains the complete minimum slice |
 | **P5** | Remaining goals 3–7, full wrinkle shapes/variants and storylets, **§7.4 blocked-object deferral, Quick-wash rerouting, and visitor behaviour beyond P4's Day-1 package** (ruled 2026-07-30 at P4 T0 — retaining them in P4 needed engine work outside its Q1/Q6/Q7 allowance), Practice levels/Prepared-Performer progression around the already-playable core, intentions, identity/preferences, journal, remaining recap, settings/autonomy, three-layer persistence, rotating saves/migrations, Day-8 letter | Mid-activity kill/resume; goals completable; scripted-player replay extended with Practice pacing, wrinkle exposure, Goal 6, suppression, and undo; authored-string gate current |
-| **P6** | Final art per `design.md`, animation/juice, audio/music, desktop performance and ship pass. **Also owns SPEC §11.1's world bubbles** (assigned 2026-07-31 — see below) | No placeholders (mechanically gated); desktop-web DoD; **P4.5 passes on the frozen post-P6 build** |
+| **P6** | Final art per `design.md`, animation/juice, audio/music, desktop performance and ship pass. **Also owns SPEC §11.1's world bubbles** (assigned 2026-07-31 — see below) | **No placeholder art** (mechanically gated); a real file per declared audio cue, with final sound design and mix deferred to v1.1 (see below); 60 fps defined as p95 ≤ 16.7 ms and < 1% dropped over 600 frames at 1× and 4×, idle and mid-travel; desktop-web DoD; **P4.5 passes on the frozen post-P6 build** |
 | **P4.5** | After **P6** (2026-07-31 amendment): Joe diagnostic self-test, then external test of comprehension **and enjoyment** using the unchanged frozen criteria below, on final art | Pass record from at least 3 fresh external testers; otherwise v1 does not ship and §6's failure loop runs |
+
+### Final audio and mix — owner assigned to v1.1 (2026-07-31)
+
+P6 ships the **complete audio system** and a **complete cue bank**: the real mixer behind
+P5's `AudioBus` interface, day and evening beds with the 19:00 crossfade, four
+level-dependent Practice riffs, room tone plus the rain variant, footsteps for all three
+floor materials, eight activity loops, the six UI cues, and every slider and mute working.
+SPEC §18's "audio mixes with working sliders" is genuinely met.
+
+**The sound design itself is explicitly placeholder for v1** [DECIDED by Joe, 2026-07-31].
+Cues are synthesized from authored TypeScript parameters (P6 plan §0b) rather than
+composed or performed.
+
+**This collides with P6's "no placeholders" exit, and the collision is resolved rather
+than papered over:** that gate is scoped to **art** — design.md §12's domain, which is
+what it was written for and what the mechanical validator covers. Audio keeps its own,
+weaker but real gate: the bill of materials requires a genuine file on disk for every
+declared cue, so nothing is silently missing, and the audio bank is diffed in CI exactly
+as the atlas is.
+
+**Owner for final sound design and mix: v1.1.** It may not be quietly dropped, and P4.5's
+result must be read knowing the sound is placeholder.
 
 ### §11.1 world bubbles — owner assigned to P6 (2026-07-31)
 

@@ -1,5 +1,6 @@
 import type { RatesConfig } from '../sim/content-schemas';
 import type { BarId } from '../sim/types';
+import { theme } from './theme';
 
 /**
  * Display bands (SPEC §11.1, P3 T7).
@@ -66,10 +67,10 @@ export const BAR_ICON: Record<BarId, { normal: string; alert: string; label: str
 
 /** design.md §2 — each bar's fill is its owned ramp's base. */
 export const BAR_COLOR: Record<BarId, string> = {
-  energy: '#6b4f74', // Dusk plum
-  nutrition: '#5ca860', // Leaf green
-  movement: '#bc6b42', // Terracotta
-  hygiene: '#5b95c0', // Water blue
+  energy: theme.color.plum, // Dusk plum
+  nutrition: theme.color.leaf, // Leaf green
+  movement: theme.color.terracotta, // Terracotta
+  hygiene: theme.color.water, // Water blue
 };
 
 export const BAR_ORDER: readonly BarId[] = ['energy', 'nutrition', 'movement', 'hygiene'];

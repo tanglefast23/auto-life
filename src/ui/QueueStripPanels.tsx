@@ -18,6 +18,7 @@ import {
 } from './queue-copy';
 import type { ActivePreferenceTag } from './preference-tags';
 import type { QueueStripSnapshot } from './QueueStrip';
+import { theme } from './theme';
 
 type QueueStyles = Record<string, any>;
 
@@ -35,7 +36,7 @@ export interface PaletteGroup {
   activities: PaletteActivity[];
 }
 
-const INK = '#2e2119';
+const INK = theme.color.ink;
 const ROOM_ORDER = [
   'bedroom',
   'bathroom',
@@ -43,10 +44,10 @@ const ROOM_ORDER = [
   'living',
 ] as const;
 const ROOM_ACCENT: Record<string, string> = {
-  bedroom: '#6b4f74',
-  bathroom: '#5b95c0',
-  kitchen: '#5ca860',
-  living: '#bc6b42',
+  bedroom: theme.color.plum,
+  bathroom: theme.color.water,
+  kitchen: theme.color.leaf,
+  living: theme.color.terracotta,
 };
 
 export function PalettePanel({

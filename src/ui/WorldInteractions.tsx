@@ -10,6 +10,7 @@ import { TILE } from '../render/scene-layout';
 import { activityByIdIn, content } from '../sim/content';
 import type { ObjectsConfig } from '../sim/content-schemas';
 import { activityCopy } from './queue-presenter';
+import { FONT, TYPE_SCALE, theme } from './theme';
 
 type ObjectDef = ObjectsConfig['objects'][number];
 
@@ -34,11 +35,11 @@ const PANEL_WIDTH = 208;
 const PANEL_MARGIN = 8;
 const OPTION_HEIGHT = 44;
 
-const CREAM_LIGHT = '#faf1dc';
-const CREAM_BASE = '#f2e4c2';
-const CREAM_SHADOW = '#d9c493';
-const INK = '#2e2119';
-const GOLD = '#f0a840';
+const CREAM_LIGHT = theme.color.creamLight;
+const CREAM_BASE = theme.color.creamBase;
+const CREAM_SHADOW = theme.color.creamShadow;
+const INK = theme.color.ink;
+const GOLD = theme.color.gold;
 
 /**
  * Maps one authored world footprint into the screen-space overlay used by React
@@ -294,8 +295,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: CREAM_BASE,
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     textAlign: 'center',
   },
   choicePanel: {
@@ -318,9 +319,8 @@ const styles = StyleSheet.create({
   },
   choiceTitle: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   closeButton: {
     width: 44,
@@ -334,8 +334,8 @@ const styles = StyleSheet.create({
   },
   closeText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 20,
   },
   choiceOption: {
@@ -355,13 +355,13 @@ const styles = StyleSheet.create({
   choiceGlyph: {
     width: 20,
     color: GOLD,
-    fontFamily: 'monospace',
-    fontSize: 16,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
     textAlign: 'center',
   },
   choiceText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 12,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
   },
 });

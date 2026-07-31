@@ -9,6 +9,7 @@ import { formatClock } from './clock-format';
 import { practiceLevel } from '../sim/practice-level';
 import { fillGoalCopy, goalStrings } from './goal-copy';
 import { settingsStrings } from './settings-copy';
+import { FONT, TYPE_SCALE, theme } from './theme';
 
 /**
  * The HUD (SPEC §11.1, P3 T7).
@@ -24,12 +25,12 @@ import { settingsStrings } from './settings-copy';
  * (recorded as a deviation from SPEC §3 with P4 as owner).
  */
 
-const CREAM_BASE = '#f2e4c2';
-const CREAM_LIGHT = '#faf1dc';
-const CREAM_SHADOW = '#d9c493';
-const INK = '#2e2119';
-const RED = '#c8402e';
-const GOLD = '#f0a840';
+const CREAM_BASE = theme.color.creamBase;
+const CREAM_LIGHT = theme.color.creamLight;
+const CREAM_SHADOW = theme.color.creamShadow;
+const INK = theme.color.ink;
+const RED = theme.color.red;
+const GOLD = theme.color.gold;
 
 export interface HudProps {
   snapshot: SimSnapshot | null;
@@ -312,8 +313,8 @@ const styles = StyleSheet.create({
   },
   clockBlock: { alignItems: 'flex-end' },
   healthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', width: 168 },
-  healthLabel: { fontFamily: 'monospace', fontSize: 10, color: INK, letterSpacing: 1 },
-  healthValue: { fontFamily: 'monospace', fontSize: 16, color: INK, fontVariant: ['tabular-nums'] },
+  healthLabel: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: INK, letterSpacing: 1 },
+  healthValue: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: INK, fontVariant: ['tabular-nums'] },
   trough: {
     backgroundColor: CREAM_SHADOW,
     borderWidth: 1,
@@ -325,11 +326,11 @@ const styles = StyleSheet.create({
   edgeTick: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: CREAM_SHADOW },
   alertPulse: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: RED },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  icon: { fontFamily: 'monospace', fontSize: 12, color: INK, width: 14, textAlign: 'center' },
+  icon: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: INK, width: 14, textAlign: 'center' },
   iconAlert: { color: RED },
-  subValue: { fontFamily: 'monospace', fontSize: 10, color: INK, width: 24, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  practice: { fontFamily: 'monospace', fontSize: 10, color: GOLD, marginTop: 2 },
-  clock: { fontFamily: 'monospace', fontSize: 13, color: INK, fontVariant: ['tabular-nums'] },
+  subValue: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: INK, width: 24, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  practice: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: GOLD, marginTop: 2 },
+  clock: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: INK, fontVariant: ['tabular-nums'] },
   speedRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
   metaRow: {
     flexDirection: 'row',
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   speedBtnActive: { backgroundColor: INK },
-  speedText: { fontFamily: 'monospace', fontSize: 11, color: INK },
+  speedText: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: INK },
   speedTextActive: { color: CREAM_LIGHT },
   metaButton: {
     alignItems: 'center',
@@ -361,8 +362,7 @@ const styles = StyleSheet.create({
   },
   metaButtonText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
 });

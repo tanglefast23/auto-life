@@ -175,7 +175,7 @@ Mirrors **Hero Football Manager** (verified in-repo):
 | UI state | zustand (UI mirrors sim snapshots; sim owns truth) |
 | Validation | zod on all `content/` JSON at build time |
 | Saves | `persistence/kv` adapter — web: localStorage, native: expo-sqlite (§15; P0 kill-gate ruling). Versioned JSON snapshots; relational tables deferred until a feature needs queries [DECIDED] |
-| Styling | NativeWind; Silkscreen pixel font (art pass may substitute a friendlier pixel face — design.md owns this) |
+| Styling | React Native `StyleSheet` **[CORRECTED 2026-07-31]**; Silkscreen pixel font, both real weights (art pass may substitute a friendlier pixel face — design.md owns this). This line said NativeWind through P0–P5 while the repo has never used it: P3 recorded the deviation and named P4 as owner, and P4 closed without addressing it. The spec now matches the code, and `src/ui/theme.ts` is the single source for palette, type scale, spacing and the design.md §8 recipes. |
 | Audio | expo-audio (§14) |
 
 Approaches considered and rejected: Phaser+Capacitor (abandons the HFM toolchain and conventions), Godot (strongest engine, worst fit for the existing pipeline and TestFlight tooling).
@@ -707,7 +707,7 @@ First launch → identity-lite → Day 1 (§9.1, §12) · returning player → r
 | P4 | Queue strip complete: drag + card menus + keyboard, palette, undo, forecasts, adjacency chips; **minimum first-session slice:** player-visible Practice using P2's math, scripted Day-1 package, Goals 1–2, one persistent decoration reward, first-night recap | every §7.4 interaction on desktop web via mouse/keyboard/touch-capable browser; frozen build contains the complete P4.5 slice |
 | **P4.5** | **External playtest gate** (≥3 fresh people, not Joe; frozen no-coaching protocol in the master plan) | each chooses within 60 s, predicts and sees a consequence, and explains a decision; ≥2/3 choose another day. Fail → P5/P6 wait and the unchanged protocol reruns with fresh testers. |
 | P5 | Goals 3–7, full wrinkles/storylets and Practice levels/Prepared-Performer progression around the playable core, intention, identity-lite/preferences, full journal/recap, settings/pause (audio sliders wired to the still-silent bus — assets land P6), three-layer saves/migrations | kill app mid-shower → resume mid-shower; goals 1–6 completable; scripted replay gains week-scale Practice/wrinkle/Goal-6 assertions |
-| P6 | Art per design.md, animations, audio (§14), juice, desktop-web perf | no placeholders; 60 fps on MBA-13 web and 1366×768 |
+| P6 | Art per design.md, animations, audio (§14), juice, desktop-web perf | **no placeholder art** (design.md §12's domain, mechanically gated); every declared audio cue has a real file, with **final sound design and mix deferred to v1.1** [DECIDED 2026-07-31]; 60 fps on MBA-13 web and 1366×768, defined as p95 within the 16.7 ms budget and under 1% dropped frames over 600 frames |
 
 **Cut line, in order, if v1 slips [rewritten round 2 — the old list totaled ~3% of the build]:**
 1. **iOS pass** — v1 DoD is desktop-web only (§18); iPhone scaling/60fps/simulator gates move to a **v1.1 mobile pass**. Touch-parity stays in the design (cheap insurance, expensive retrofit).

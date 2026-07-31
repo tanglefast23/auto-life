@@ -1,3 +1,4 @@
+import { FONT, TYPE_SCALE, theme } from './theme';
 import {
   forwardRef,
   useEffect,
@@ -89,15 +90,15 @@ type MenuTarget =
 
 const cardFocusToken = (cardId: string): string => `card:${cardId}`;
 
-const CREAM_LIGHT = '#faf1dc';
-const CREAM_BASE = '#f2e4c2';
-const CREAM_SHADOW = '#d9c493';
-const INK = '#2e2119';
-const RED = '#c8402e';
-const RED_LIGHT = '#e8705a';
-const BLUE = '#5b95c0';
-const BLUE_LIGHT = '#a8d0e8';
-const PLUM = '#6b4f74';
+const CREAM_LIGHT = theme.color.creamLight;
+const CREAM_BASE = theme.color.creamBase;
+const CREAM_SHADOW = theme.color.creamShadow;
+const INK = theme.color.ink;
+const RED = theme.color.red;
+const RED_LIGHT = theme.color.redLight;
+const BLUE = theme.color.water;
+const BLUE_LIGHT = theme.color.waterLight;
+const PLUM = theme.color.plum;
 
 export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
   function QueueStrip(
@@ -740,7 +741,7 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM_SHADOW,
     flex: 1,
   },
-  idleGlyph: { color: INK, fontFamily: 'monospace', fontSize: 22, lineHeight: 24 },
+  idleGlyph: { color: INK, fontFamily: FONT.pixel, fontSize: TYPE_SCALE.heading.fontSize, lineHeight: 24 },
   progressRing: {
     width: 44,
     height: 44,
@@ -755,8 +756,8 @@ const styles = StyleSheet.create({
   },
   currentGlyph: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 20,
   },
   currentCopy: {
@@ -767,16 +768,14 @@ const styles = StyleSheet.create({
   },
   currentLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     lineHeight: 11,
   },
   currentFoot: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   rule: {
@@ -803,9 +802,9 @@ const styles = StyleSheet.create({
     borderColor: CREAM_SHADOW,
   },
   emptyQueueText: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 9,
+    color: theme.color.woodShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     letterSpacing: 1,
   },
   cardUnit: {
@@ -834,9 +833,8 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 4,
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 6,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     lineHeight: 11,
     overflow: 'hidden',
   },
@@ -845,7 +843,7 @@ const styles = StyleSheet.create({
     color: CREAM_LIGHT,
   },
   bonusChip: {
-    backgroundColor: '#e8bb55',
+    backgroundColor: theme.color.gold,
   },
   expandedBlock: {
     flexDirection: 'column',
@@ -853,7 +851,7 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: CREAM_SHADOW,
     borderWidth: 2,
-    borderColor: '#5d3a1e',
+    borderColor: theme.color.woodShadow,
     borderRadius: 5,
     padding: 4,
     width: '100%',
@@ -870,9 +868,8 @@ const styles = StyleSheet.create({
   },
   collapseText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   upcomingCard: {
     flex: 1,
@@ -906,10 +903,9 @@ const styles = StyleSheet.create({
     color: CREAM_LIGHT,
     backgroundColor: RED,
     borderWidth: 1,
-    borderColor: '#962e20',
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    borderColor: theme.color.redShadow,
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     lineHeight: 10,
     textAlign: 'center',
     zIndex: 2,
@@ -921,27 +917,26 @@ const styles = StyleSheet.create({
   },
   cardGlyph: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 13,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
     lineHeight: 14,
   },
   ownerGlyph: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 12,
   },
   cardLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     lineHeight: 11,
   },
   cardStart: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 9,
+    color: theme.color.woodShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     fontVariant: ['tabular-nums'],
     lineHeight: 11,
   },
@@ -961,8 +956,8 @@ const styles = StyleSheet.create({
   },
   menuDots: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     letterSpacing: -1,
   },
   blockCard: {
@@ -979,23 +974,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   blockKicker: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 8,
-    fontWeight: '700',
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   blockLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   blockCount: {
     color: PLUM,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   paletteToggle: {
     width: '100%',
@@ -1012,15 +1004,14 @@ const styles = StyleSheet.create({
   },
   palettePlus: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.heading.fontSize,
+    fontFamily: FONT.pixelBold,
     lineHeight: 22,
   },
   paletteCount: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 8,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     fontVariant: ['tabular-nums'],
   },
   controlDisabled: { opacity: 0.4 },
@@ -1048,17 +1039,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   panelEyebrow: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 8,
-    fontWeight: '700',
+    color: theme.color.woodShadow,
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   panelTitle: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   closeButton: {
     minWidth: 44,
@@ -1072,9 +1061,8 @@ const styles = StyleSheet.create({
   },
   closeText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   paletteScroll: { maxHeight: 350 },
   paletteGroup: { marginTop: 8 },
@@ -1087,9 +1075,8 @@ const styles = StyleSheet.create({
   roomMark: { width: 8, height: 16, borderWidth: 1, borderColor: INK },
   roomLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   paletteGrid: {
@@ -1112,45 +1099,43 @@ const styles = StyleSheet.create({
   paletteGlyph: {
     width: 34,
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
     textAlign: 'center',
   },
   paletteCopy: { flex: 1 },
   paletteLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   paletteMeta: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 9,
+    color: theme.color.woodShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     fontVariant: ['tabular-nums'],
   },
   paletteEffect: {
-    color: '#3f7a44',
-    fontFamily: 'monospace',
-    fontSize: 8,
+    color: theme.color.leafShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   preferenceTag: {
     alignSelf: 'flex-start',
-    backgroundColor: '#d7e0b4',
+    backgroundColor: theme.color.creamBase,
     borderRadius: 99,
-    color: '#3c4f35',
-    fontFamily: 'monospace',
-    fontSize: 8,
-    fontWeight: '700',
+    color: theme.color.plumShadow,
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     marginTop: 3,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
   menuPanel: { width: 220 },
   menuHint: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 9,
+    color: theme.color.woodShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 13,
     marginBottom: 6,
   },
@@ -1167,23 +1152,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginTop: 5,
   },
-  actionDestructive: { backgroundColor: RED, borderColor: '#962e20' },
+  actionDestructive: { backgroundColor: RED, borderColor: theme.color.redShadow },
   actionText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   actionDestructiveText: { color: CREAM_LIGHT },
   detailsPanel: { width: 280 },
   detailLine: {
-    color: '#5d3a1e',
-    fontFamily: 'monospace',
-    fontSize: 9,
+    color: theme.color.woodShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 15,
   },
   warningDetail: { color: RED },
-  bonusDetail: { color: '#7a560f' },
+  bonusDetail: { color: theme.color.wood },
   srOnly: {
     position: 'absolute',
     left: -10000,
@@ -1209,9 +1193,8 @@ const styles = StyleSheet.create({
   },
   toastText: {
     color: CREAM_LIGHT,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   undoButton: {
     minWidth: 64,
@@ -1226,9 +1209,8 @@ const styles = StyleSheet.create({
   },
   undoText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
 });

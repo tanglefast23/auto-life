@@ -29,6 +29,7 @@ import {
   wrinkleStrings,
 } from './wrinkle-copy';
 import { goalStrings } from './goal-copy';
+import { FONT, TYPE_SCALE, theme } from './theme';
 
 export interface FirstSessionUIProps {
   session: SessionState;
@@ -62,12 +63,12 @@ export interface FirstSessionUIHandle {
   openGoals: () => boolean;
 }
 
-const CREAM_LIGHT = '#faf1dc';
-const CREAM_BASE = '#f2e4c2';
-const CREAM_SHADOW = '#d9c493';
-const INK = '#2e2119';
-const GOLD = '#f0a840';
-const GREEN = '#5ca860';
+const CREAM_LIGHT = theme.color.creamLight;
+const CREAM_BASE = theme.color.creamBase;
+const CREAM_SHADOW = theme.color.creamShadow;
+const INK = theme.color.ink;
+const GOLD = theme.color.gold;
+const GREEN = theme.color.leaf;
 
 export const FirstSessionUI = forwardRef<
   FirstSessionUIHandle,
@@ -468,14 +469,14 @@ const styles = StyleSheet.create({
   },
   goalChipMark: {
     color: GOLD,
-    fontFamily: 'monospace',
-    fontSize: 16,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
   },
   goalChipText: {
     flex: 1,
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   intentionChip: {
     position: 'absolute',
@@ -511,14 +512,13 @@ const styles = StyleSheet.create({
   },
   wrinkleChipMark: {
     color: GOLD,
-    fontFamily: 'monospace',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   intentionChipMark: {
     color: GREEN,
-    fontFamily: 'monospace',
-    fontSize: 16,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
   },
   goalsPanel: {
     position: 'absolute',
@@ -542,14 +542,13 @@ const styles = StyleSheet.create({
   },
   practiceSummary: {
     color: GOLD,
-    fontFamily: 'monospace',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   routineMemoryCopy: {
-    color: '#4a5f43',
-    fontFamily: 'monospace',
-    fontSize: 10,
+    color: theme.color.leafShadow,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 14,
   },
   panelHeading: {
@@ -560,15 +559,13 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   eyebrow: {
     color: GOLD,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   closeButton: {
@@ -583,8 +580,8 @@ const styles = StyleSheet.create({
   },
   closeText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
   },
   goalRow: {
     flexDirection: 'row',
@@ -601,12 +598,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   preferenceTag: {
-    backgroundColor: '#d7e0b4',
+    backgroundColor: theme.color.creamBase,
     borderRadius: 99,
-    color: '#3c4f35',
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    color: theme.color.plumShadow,
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
@@ -623,8 +619,8 @@ const styles = StyleSheet.create({
   },
   goalStatus: {
     color: CREAM_SHADOW,
-    fontFamily: 'monospace',
-    fontSize: 18,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.body.fontSize,
   },
   goalStatusComplete: {
     color: GREEN,
@@ -635,26 +631,24 @@ const styles = StyleSheet.create({
   },
   goalTitle: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   goalInstruction: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 14,
   },
   goalProgress: {
     color: GREEN,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   goalReward: {
     color: GOLD,
-    fontFamily: 'monospace',
-    fontSize: 9,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   goalRewardChoices: {
     gap: 6,
@@ -679,9 +673,8 @@ const styles = StyleSheet.create({
   },
   goalFilterText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   journalSection: {
     gap: 5,
@@ -692,9 +685,9 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM_LIGHT,
   },
   journalEntry: {
-    color: '#6b4f74',
-    fontFamily: 'monospace',
-    fontSize: 10,
+    color: theme.color.plum,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 14,
   },
   eventCard: {
@@ -752,21 +745,19 @@ const styles = StyleSheet.create({
   },
   eventTitle: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   body: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 11,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 16,
   },
   wrinkleSuccess: {
     color: GREEN,
-    fontFamily: 'monospace',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     lineHeight: 16,
   },
   choice: {
@@ -783,8 +774,8 @@ const styles = StyleSheet.create({
   choiceGlyph: {
     width: 32,
     color: GREEN,
-    fontFamily: 'monospace',
-    fontSize: 22,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.heading.fontSize,
     textAlign: 'center',
   },
   choiceCopy: {
@@ -793,14 +784,13 @@ const styles = StyleSheet.create({
   },
   choiceLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   choiceDescription: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   recapCard: {
     position: 'absolute',
@@ -829,22 +819,21 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.body.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   statLabel: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   missedLine: {
     color: GREEN,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
   },
   missedLineAlert: {
-    color: '#c8402e',
+    color: theme.color.red,
   },
   recapDetails: {
     gap: 4,
@@ -854,21 +843,20 @@ const styles = StyleSheet.create({
   },
   detailHeading: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   detailText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 10,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     lineHeight: 14,
   },
   journalLine: {
-    color: '#6b4f74',
-    fontFamily: 'monospace',
-    fontSize: 10,
+    color: theme.color.plum,
+    fontFamily: FONT.pixel,
+    fontSize: TYPE_SCALE.micro.fontSize,
     fontStyle: 'italic',
   },
   actionRow: {
@@ -892,9 +880,8 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: INK,
-    fontFamily: 'monospace',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: TYPE_SCALE.micro.fontSize,
+    fontFamily: FONT.pixelBold,
   },
   buttonPressed: {
     backgroundColor: CREAM_SHADOW,

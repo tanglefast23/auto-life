@@ -141,6 +141,9 @@ audits agreed, the finding is marked ⚑ and was treated as near-certain.
 
 | # | Finding | Why narrowed |
 |---|---|---|
+| 12b | 60 fps had no numeric definition, so two honest people could disagree on a pass | **Ruled 2026-07-31:** p95 within the 16.7 ms budget and under 1% dropped frames, sampled over 600 frames at 1× and 4×, idle and mid-travel. Implemented in `perf-probe.ts` and asserted in its tests |
+| 12c | Six decorations against design.md §11's "~10" | **Ruled 2026-07-31:** six, matching what the game can actually grant. Authoring four unreachable sprites would be placeholder art under another name. Variance stays recorded with **v2** as owner |
+| 12d | SPEC §3 named NativeWind, which the repo has never used | **Corrected 2026-07-31.** P3 recorded the deviation and named P4 as owner; P4 closed without addressing it. The spec now matches the code and the orphan is closed |
 | 13 | "Gate A is author self-assessment" — proposed a fresh-eyes checker | Accepted: Gate A gains a two-minute name-what-you-see check by one person who will **not** be a counted tester. Rejected the stronger variant (freeze and run P4.5 at Gate A) — it would spend three irreplaceable fresh testers on a build with no audio and no juice, and master §6 requires the frozen build be the shipping one |
 | 14 | "Character authoring is the critical path; Gate A will thrash T2/T4" | Accepted as **process**, and it matches HFM lesson §2.1 (prove the cell size on hard subjects before generating the cast). T2 now ends with an explicit objects-only naming checkpoint, so a silhouette rethink cannot cascade into a 192-sprite preset re-bake |
 
@@ -175,6 +178,18 @@ This is not a workaround; it is the same answer the project already gave for art
   chunky flat pixel art; a licensed orchestral pack would fight design.md, not serve it.
 - **It removes the dependency that made the fun gate hostage.** Nothing in P6 now waits
   on a purchase.
+
+**Joe's ruling, 2026-07-31 — the sound design is explicitly PLACEHOLDER for v1.** The
+*system* ships complete and SPEC §18's "audio mixes with working sliders" is genuinely met;
+what is deferred is the composition and mix, with **v1.1** as the named owner in master §5
+and in `evidence/P6.md`.
+
+That collides with this phase's "no placeholders" exit, and the collision is resolved
+rather than papered over: **the no-placeholder gate is scoped to art** — design.md §12's
+domain, which is what it was written for and what the validator mechanically covers. Audio
+keeps its own real gate: the bill of materials requires a genuine file on disk for every
+declared cue, so nothing can be silently missing, and the bank is diffed in CI like the
+atlas. P4.5's result must be read knowing the sound is placeholder.
 
 **What this does not change:** SPEC §14's required *set* is delivered in full — day and
 evening beds with a 19:00 crossfade, four level-dependent Practice riff layers, room tone
