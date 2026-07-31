@@ -117,6 +117,16 @@ export interface CompletedBoundary {
   observation: GameObservation;
   /** A pure pre-sim game reducer announced today's saved wrinkle. */
   wrinkleDealt?: boolean;
+  /**
+   * Whether a player was actually watching this minute.
+   *
+   * False for every minute inside §11.4's night sleep-skip, which runs the whole span to
+   * wake through this same callback. Persistence wants all of them — the save is state, and
+   * state advanced. Presentation wants none of them: firing a cue per skipped minute would
+   * greet a player at 06:30 with several hundred sounds at once, which is the same failure
+   * the cue router's hydration guard exists to prevent, arriving by a different road.
+   */
+  watched: boolean;
 }
 
 export interface LoopOptions {
@@ -541,6 +551,7 @@ export class GameLoop {
       outcomes: result.outcomes,
       actions: [],
       observation,
+      watched: true,
     });
     if (result.events.length > 0) {
       this.observer.onEvents?.(result.events);
@@ -663,6 +674,9 @@ export class GameLoop {
       actions,
       observation,
       wrinkleDealt: prepared.changed,
+      // `publish` already means "a player is watching this minute" — the sleep-skip runs
+      // every other minute of the night through here with it false.
+      watched: publish,
     });
     if (publish) {
       if (r.events.length > 0) this.observer.onEvents?.(r.events);

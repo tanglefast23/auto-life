@@ -238,7 +238,7 @@ exports[`golden week: digest matches the recorded replay and the pinned ENGINE_V
       "urgentEvents": 0,
     },
   ],
-  "engineVersion": 9,
+  "engineVersion": 10,
   "firstWakeOrder": [
     "toilet",
     "brush",

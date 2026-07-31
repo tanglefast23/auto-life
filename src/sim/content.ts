@@ -166,6 +166,20 @@ export function validateContentRegistry(registry: ContentRegistry): void {
     }
   };
 
+  /**
+   * Activity ids the engine itself names, rather than reading from content.
+   *
+   * The routine planner maps a need to a fixed id (`snack`, `quickwash`, `stretch`) and
+   * falls back to `read` for productive free time. Those four were the only engine-
+   * referenced ids nothing validated, so renaming one in `activities.json` passed every
+   * content gate and then produced a routine plan of cards for activities that do not
+   * exist — a failure that surfaces during play rather than at the content boundary, which
+   * is the whole reason this function exists.
+   */
+  for (const activityId of ['read', 'snack', 'quickwash', 'stretch']) {
+    requireActivity(activityId, 'the routine planner');
+  }
+
   for (const object of registry.objects.objects) {
     for (const activityId of object.activities) {
       requireActivity(activityId, `object "${object.id}"`);

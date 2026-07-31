@@ -401,7 +401,7 @@ function recordedScriptedPlayerReplay() {
 test('scripted player golden covers the P4 command surface and full sim plus game state', () => {
   const replay = recordedScriptedPlayerReplay();
 
-  expect(replay.engineVersion).toBe(9);
+  expect(replay.engineVersion).toBe(10);
   expect(replay.digest.session.goals['meet-the-routine']?.status).toBe('rewarded');
   expect(replay.digest.session.goals['change-of-plans']?.status).toBe(
     'rewarded',

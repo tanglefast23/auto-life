@@ -9,6 +9,9 @@ import {
 import { Canvas } from '@shopify/react-native-skia';
 import { useGameStore } from './game-store';
 import { WorldScene } from '../render/WorldScene';
+import { bubbleFor, type ForecastWarning } from '../render/bubbles';
+import { content as gameContent } from '../sim/content';
+import type { FloorMaterial } from '../sim/content-schemas';
 import { solveScale, HUD_H, QUEUE_W } from '../render/scale';
 import { Hud } from '../ui/Hud';
 import { QueueStrip, type QueueStripHandle } from '../ui/QueueStrip';
@@ -53,6 +56,8 @@ export interface GameScreenProps {
   appearancePresetId?: string;
   /** Active idle variant: an identity preference, or Goal 4's air-guitar reward. */
   idleVariantId?: string | null;
+  /** One walk-cycle contact. The composition root owns the bus; this only reports the step. */
+  onFootstep?: (material: FloorMaterial) => void;
 }
 
 export function GameScreen(props: GameScreenProps = {}) {
@@ -73,6 +78,7 @@ function HydratedGameScreen({
   autonomy = 'full-routine',
   appearancePresetId,
   idleVariantId = null,
+  onFootstep,
 }: { loop: GameLoop } & GameScreenProps) {
   const snapshot = useGameStore((s) => s.snapshot);
   const speed = useGameStore((s) => s.speed);
@@ -336,6 +342,41 @@ function HydratedGameScreen({
           preferenceTags,
         );
 
+  /**
+   * SPEC §11.1's world bubble. The rule lives in `bubbles.ts`; this only gathers its inputs
+   * from state the engine already publishes — no new domain state, per that module's own
+   * bounded-deliberately note.
+   *
+   * The forecast warning is the loudest ⚠ the queue is currently carrying, which is the
+   * same signal the rail's chips read, so the bubble and the card cannot disagree.
+   */
+  const worldBubble = useMemo(() => {
+    if (snapshot === null) return null;
+    // A conflict outranks cap waste: one is a bar about to bottom out, the other is effect
+    // spent above 100. Both are §7.5 ⚠ chips on the rail, and this reads the same two
+    // fields the chips do so the bubble and the card cannot disagree.
+    const conflict = snapshot.forecast.conflicts[0];
+    const wasted = snapshot.queue
+      .flatMap((card) => Object.keys(card.forecast.capWaste))
+      .at(0);
+    const warning: ForecastWarning | null =
+      conflict !== undefined
+        ? { kind: 'conflict', barId: conflict.bar }
+        : wasted !== undefined
+          ? { kind: 'cap-waste', barId: wasted as ForecastWarning['barId'] }
+          : null;
+    return bubbleFor(
+      {
+        bars: snapshot.bars,
+        preferenceReaction: preferenceBubble,
+        warning,
+        idleWithEmptyQueue: snapshot.queue.length === 0,
+        asleep: snapshot.render.pose === 'sleep',
+      },
+      gameContent.rates,
+    );
+  }, [preferenceBubble, snapshot]);
+
   return (
     <View style={styles.root} onTouchStart={() => loop.notePlayerInput()}>
       <View
@@ -355,6 +396,8 @@ function HydratedGameScreen({
                 minuteOfDay={snapshot?.minuteOfDay}
                 reducedMotion={reducedMotion}
                 queueSignature={queueSignature}
+                bubble={worldBubble}
+                onFootstep={onFootstep}
                 alphaRef={alpha}
                 scale={fit.scale}
                 physicalPerArtPixel={fit.physicalPerArtPixel}

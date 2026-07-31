@@ -218,7 +218,7 @@ test('known legacy data migrates before current strict parsing', async () => {
   expect(loaded).toMatchObject({
     status: 'loaded',
     career: {
-      engineVersion: 9,
+      engineVersion: 10,
       payload: {
         sim: {
           current: { type: 'travel', cardId: 'c0' },
@@ -255,10 +255,10 @@ test('engine v8 careers migrate without losing the saved queue', async () => {
   expect(loaded).toMatchObject({
     status: 'loaded',
     career: {
-      engineVersion: 9,
+      engineVersion: 10,
       payload: {
         sim: {
-          engineVersion: 9,
+          engineVersion: 10,
           queue: [{ id: 'saved-v8-card', activityId: 'meal' }],
         },
       },

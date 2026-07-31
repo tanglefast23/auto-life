@@ -134,6 +134,7 @@ const observation = {
 test('accepted queue edits use a 500 ms trailing debounce', async () => {
   const { controller, scheduler, ordinary } = setup();
   controller.observeBoundary({
+    watched: true,
     events: [],
     actions: [],
     observation,
@@ -153,6 +154,7 @@ test('accepted queue edits use a 500 ms trailing debounce', async () => {
 test('ordinary saves coalesce to five seconds and a major decision supersedes the wait', async () => {
   const { controller, scheduler, ordinary } = setup(9_000);
   controller.observeBoundary({
+    watched: true,
     events: [
       {
         type: 'activityCompleted',
@@ -169,6 +171,7 @@ test('ordinary saves coalesce to five seconds and a major decision supersedes th
   expect(ordinary).toHaveLength(0);
 
   controller.observeBoundary({
+    watched: true,
     events: [],
     outcomes: [],
     observation,
@@ -204,6 +207,7 @@ test('lifecycle barriers cancel pending churn and use the barrier writer', async
 test('rejected commands and quiet boundaries do not invent save reasons', async () => {
   const { controller, ordinary } = setup();
   controller.observeBoundary({
+    watched: true,
     events: [],
     actions: [],
     observation,
@@ -223,6 +227,7 @@ test('rejected commands and quiet boundaries do not invent save reasons', async 
 test('a new wrinkle deal saves immediately with its semantic reason', async () => {
   const { controller, ordinary, reasons } = setup();
   controller.observeBoundary({
+    watched: true,
     events: [],
     actions: [],
     observation,
@@ -239,6 +244,7 @@ test('a new wrinkle deal saves immediately with its semantic reason', async () =
 test('a wrinkle decision uses the major-decision save path', async () => {
   const { controller, ordinary, reasons } = setup();
   controller.observeBoundary({
+    watched: true,
     events: [],
     outcomes: [],
     observation,
@@ -260,6 +266,7 @@ test('a wrinkle decision uses the major-decision save path', async () => {
 test('a letter answer uses the major-decision save path', async () => {
   const { controller, ordinary, reasons } = setup();
   controller.observeBoundary({
+    watched: true,
     events: [],
     outcomes: [],
     observation,

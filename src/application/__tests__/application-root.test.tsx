@@ -409,3 +409,137 @@ describe('ApplicationRoot boot composition', () => {
     act(() => tree.unmount());
   });
 });
+
+/**
+ * The audio wire, end to end (P6 audit).
+ *
+ * Every audio unit test passed while the game was completely silent, because router and bus
+ * were only ever tested against each other: `ApplicationRoot` constructed a `CueRouter` and
+ * referenced it nowhere, and nothing in any suite mounted the composition root and listened.
+ * These tests are that missing listener — they boot the real component and assert that a
+ * player would hear something.
+ */
+describe('ApplicationRoot drives the cue router', () => {
+  /** A bus that only records. Structural, so the root treats it as cue-capable. */
+  class RecordingBus {
+    readonly calls: string[] = [];
+    private readonly live = new Set<string>();
+    muted = false;
+
+    apply(): void {}
+    playLoop(key: string, cue: { assetId: string }): void {
+      if (this.live.has(key)) return;
+      this.live.add(key);
+      this.calls.push(`loop:${key}:${cue.assetId}`);
+    }
+    playCue(key: string, cue: { assetId: string }): void {
+      this.calls.push(`cue:${key}:${cue.assetId}`);
+    }
+    stop(key: string): void {
+      this.calls.push(`stop:${key}`);
+    }
+    remove(key: string): void {
+      this.live.delete(key);
+      this.calls.push(`remove:${key}`);
+    }
+    has(key: string): boolean {
+      return this.live.has(key);
+    }
+    fadeTo(key: string, target: number): void {
+      this.calls.push(`fade:${key}:${target}`);
+    }
+  }
+
+  function seedCareer(seed: number): void {
+    const prng = PrngStreams.create(seed).serialize();
+    const career = newCareerState({
+      rootSeed: seed,
+      sim: newGameState('baseline', content.rates, seed, prng),
+      prng,
+    });
+    mockValues.set(
+      CAREER_GENERATION_KEYS[0],
+      JSON.stringify({
+        ...career,
+        generation: 0,
+        savedAtEpochMs: 100,
+        writerId: 'previous-session',
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    mockValues.clear();
+    mockListeners.clear();
+    useGameStore.getState().clearHydratedCareer();
+  });
+
+  afterEach(() => {
+    useGameStore.getState().clearHydratedCareer();
+  });
+
+  test('a booted career starts the music bed and the room ambience', async () => {
+    const bus = new RecordingBus();
+    seedCareer(4242);
+
+    let tree!: ReturnType<typeof create>;
+    act(() => {
+      tree = create(<ApplicationRoot audioBus={bus} />);
+    });
+    await flushEffects();
+    // One minute of watched play — the boundary is what feeds the router.
+    act(() => {
+      useGameStore.getState().loop?.runOneTick();
+    });
+
+    // The single assertion this whole audit turns on: the game makes a sound.
+    expect(bus.calls).not.toEqual([]);
+    expect(bus.calls).toContainEqual(
+      `loop:music.bed.day:${content.audio.music.day.assetId}`,
+    );
+    expect(bus.calls).toContainEqual(
+      `loop:ambience.room:${content.audio.ambience.room.assetId}`,
+    );
+    act(() => tree.unmount());
+  });
+
+  test('a bus with no cue surface is left alone, so the silent stub still works', async () => {
+    // `SilentAudioBus` is what most suites inject; it must stay a valid thing to hand in.
+    const silent = { apply: () => undefined, muted: false };
+    seedCareer(4243);
+
+    let tree!: ReturnType<typeof create>;
+    act(() => {
+      tree = create(<ApplicationRoot audioBus={silent} />);
+    });
+    await flushEffects();
+    act(() => {
+      useGameStore.getState().loop?.runOneTick();
+    });
+
+    expect(
+      tree.root.findByProps({ testID: 'mounted-game-screen' }),
+    ).toBeDefined();
+    act(() => tree.unmount());
+  });
+
+  test('a restored career replays its pending work silently', async () => {
+    // P5 restores by replaying pending boundary work. Without the hydration guard a reload
+    // fires a day of completion cues at once — the loudest possible way to greet someone
+    // reopening a tab. The bed is continuous state and is expected; one-shots are not.
+    const bus = new RecordingBus();
+    seedCareer(4244);
+
+    let tree!: ReturnType<typeof create>;
+    act(() => {
+      tree = create(<ApplicationRoot audioBus={bus} />);
+    });
+    await flushEffects();
+    act(() => {
+      useGameStore.getState().loop?.runOneTick();
+    });
+
+    expect(bus.calls.filter((call) => call.startsWith('cue:'))).toEqual([]);
+    act(() => tree.unmount());
+  });
+});

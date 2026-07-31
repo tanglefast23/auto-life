@@ -61,7 +61,7 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
         "wrinkleId": "slept-great",
       },
     ],
-    "fullStateSha256": "085a81b53d618439b018b8df6766a83ddb76098f5e4619b7db9e51682edf56d4",
+    "fullStateSha256": "4c8742cf99f84aea682d601cb1890f8b9ae00f59947708f0de6992f20131699e",
     "identity": {
       "activePreferenceCategoryIds": [
         "chronotype",
@@ -728,7 +728,7 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
       "brush": 545,
     },
   },
-  "engineVersion": 9,
+  "engineVersion": 10,
   "forecastAgreement": {
     "actualStart": 434,
     "cardId": "c1",

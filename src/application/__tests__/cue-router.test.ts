@@ -16,9 +16,16 @@ import { EVENING_START_MINUTE } from '../../render/lighting';
 class FakeBus implements BusLike {
   readonly events: string[] = [];
   private readonly live = new Set<string>();
+  /** Paused voices stay live, exactly as the real bus keeps a paused player in its map. */
+  private readonly paused = new Set<string>();
 
   playLoop(key: string, cue: { assetId: string; gain: number }, channel: 'music' | 'sfx' = 'music'): void {
-    if (this.live.has(key)) return; // idempotent, like the real bus
+    if (this.live.has(key)) {
+      // Idempotent, like the real bus — except that a paused voice resumes rather than
+      // being ignored, which is what makes the post-resume assertions meaningful.
+      if (this.paused.delete(key)) this.events.push(`resume:${key}`);
+      return;
+    }
     this.live.add(key);
     this.events.push(`start:${key}:${cue.assetId}:${channel}`);
   }
@@ -28,15 +35,33 @@ class FakeBus implements BusLike {
   }
 
   stop(key: string): void {
-    if (this.live.has(key)) this.events.push(`stop:${key}`);
+    if (!this.live.has(key)) return;
+    this.paused.add(key);
+    this.events.push(`stop:${key}`);
   }
 
   remove(key: string): void {
+    this.paused.delete(key);
     if (this.live.delete(key)) this.events.push(`remove:${key}`);
   }
 
   has(key: string): boolean {
     return this.live.has(key);
+  }
+
+  fadeTo(
+    key: string,
+    target: number,
+    durationMs: number,
+    options: { from?: number; removeWhenSilent?: boolean } = {},
+  ): void {
+    if (!this.live.has(key)) return;
+    const tail = options.removeWhenSilent === true ? ':remove' : '';
+    const head = options.from === undefined ? '' : `${options.from}->`;
+    this.events.push(`fade:${key}:${head}${target}:${durationMs}${tail}`);
+    // An instant ramp to silence resolves now; a timed one deliberately does not, so the
+    // outgoing voice is still live during the overlap the crossfade exists to create.
+    if (durationMs <= 0 && target === 0 && options.removeWhenSilent === true) this.remove(key);
   }
 
   cueKeys(): string[] {
@@ -45,6 +70,11 @@ class FakeBus implements BusLike {
 
   playing(): string[] {
     return [...this.live].sort();
+  }
+
+  /** Live and not paused — what a listener would actually be hearing. */
+  audible(): string[] {
+    return [...this.live].filter((key) => !this.paused.has(key)).sort();
   }
 }
 
@@ -77,8 +107,27 @@ describe('music (SPEC §14)', () => {
     expect(starts).toHaveLength(2);
     expect(starts[0]).toContain(content.audio.music.day.assetId);
     expect(starts[1]).toContain(content.audio.music.evening.assetId);
-    // Incoming before outgoing: the overlap is what makes it a fade and not a cut.
-    expect(bus.events.indexOf('remove:music.bed.day')).toBeGreaterThan(bus.events.indexOf(starts[1]!));
+    // Both beds are live at once. The first version of this assertion checked only that
+    // `remove` came after the incoming `start` — which the hard-cut implementation also
+    // satisfied, because it removed the outgoing voice on the very next statement.
+    expect(bus.playing()).toEqual(expect.arrayContaining(['music.bed.day', 'music.bed.evening']));
+  });
+
+  it('spends the authored crossfadeMs ramping both beds, rather than cutting', () => {
+    const bus = new FakeBus();
+    const router = new CueRouter(bus, content.audio);
+    const ms = content.audio.music.crossfadeMs;
+    expect(ms).toBeGreaterThan(0);
+
+    router.onMinute(music('day'));
+    // The session's first bed has nothing to fade from and simply starts at full.
+    expect(bus.events).toContain('fade:music.bed.day:1:0');
+
+    router.onMinute(music('evening'));
+    expect(bus.events).toContain(`fade:music.bed.evening:0->1:${ms}`);
+    expect(bus.events).toContain(`fade:music.bed.day:0:${ms}:remove`);
+    // The outgoing voice is released by the ramp, not detached under it.
+    expect(bus.events).not.toContain('remove:music.bed.day');
   });
 
   it('never double-plays a bed across repeated minutes', () => {
@@ -132,6 +181,54 @@ describe('music (SPEC §14)', () => {
     router.onMinute(music('day'));
     router.setPaused(true);
     expect(bus.events).toContain('stop:music.bed.day');
+  });
+
+  /**
+   * Resume, which pause had no counterpart for.
+   *
+   * Every continuous layer here is started by a *change*, so nothing re-started them after
+   * a pause: the bed waits for the next 06:00/19:00 boundary — up to thirteen game-hours —
+   * and a tracked activity loop waits forever. Ambience recovered on its own because
+   * `onMinute` re-issues it every minute, which is exactly what disguised the gap.
+   */
+  it('puts every voice back when the game resumes', () => {
+    const bus = new FakeBus();
+    const router = new CueRouter(bus, content.audio);
+    router.onMinute({ ...music('day'), practicing: true, practiceLevel: 2, rain: true });
+    router.onEvents([{ kind: 'activity-started', activityId: 'shower' }]);
+    const before = bus.audible();
+    expect(before).toEqual(
+      expect.arrayContaining(['music.bed.day', 'music.riff', 'ambience.room', 'ambience.rain', 'loop.shower']),
+    );
+
+    router.setPaused(true);
+    expect(bus.audible()).toEqual([]);
+
+    router.setPaused(false);
+    expect(bus.audible()).toEqual(before);
+  });
+
+  it('does not resurrect rain that had already stopped', () => {
+    const bus = new FakeBus();
+    const router = new CueRouter(bus, content.audio);
+    router.onMinute({ ...music('day'), rain: true });
+    router.onMinute({ ...music('day'), rain: false });
+    router.setPaused(true);
+    router.setPaused(false);
+    expect(bus.audible()).toContain('ambience.room');
+    expect(bus.audible()).not.toContain('ambience.rain');
+  });
+
+  it('ignores a repeated pause or resume rather than re-issuing voices', () => {
+    const bus = new FakeBus();
+    const router = new CueRouter(bus, content.audio);
+    router.onMinute(music('day'));
+    router.setPaused(true);
+    router.setPaused(true);
+    router.setPaused(false);
+    router.setPaused(false);
+    expect(bus.events.filter((e) => e === 'stop:music.bed.day')).toHaveLength(1);
+    expect(bus.events.filter((e) => e === 'resume:music.bed.day')).toHaveLength(1);
   });
 });
 

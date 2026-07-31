@@ -90,6 +90,15 @@ export interface DomainEvent {
     | 'practiceAwarded'
     | 'wrinkleEffectApplied'
     | 'wakeBoundary'
+    /**
+     * An authored §6.7 pair actually paid out at a start.
+     *
+     * Added so the adjacency cue and chip announce what the engine *did*, not what the
+     * forecast predicted. The two disagree whenever the real end-to-start gap misses the
+     * pair's window, and a reward sound for a bonus that was never granted is the same
+     * class of lie as HFM's cancel-inherits-celebration.
+     */
+    | 'adjacencyGranted'
     | 'slept';
   detail: string;
   atMinute: number;
@@ -1461,8 +1470,11 @@ function beginCard(
         s.decayModifiers.push({ bar: eff.bar, factor: eff.factor, untilMinute: now + eff.durationMin, source });
         // Provenance for §6.7 stop-cancels-bonus: stopping THIS activity revokes the grant.
         dto.grantedModifierSources = [...(dto.grantedModifierSources ?? []), source];
+      } else {
+        // scalePoints pairs pay in the practice/sleep paths — never at a plain timed start.
+        continue;
       }
-      // scalePoints pairs pay in the practice/sleep paths — never at a plain timed start.
+      emit('adjacencyGranted', pair.id);
     }
   }
   return { type: 'activity', cardId: card.id, dto };

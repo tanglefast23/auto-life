@@ -108,6 +108,11 @@ describe('every motion reaches a surface', () => {
    * passed throughout, because it asserts what the table *contains*, not that anything
    * draws it. A tested table with no consumer is indistinguishable from a finished feature
    * when you are reading test output, which is precisely why this walks source instead.
+   *
+   * A later audit found the gate was right and its scope was too narrow: the world bubble
+   * layer and the cue router failed the identical way and were not covered, so the game
+   * shipped with §11.1's bubbles unrendered and no sound at all while every suite was green.
+   * `reaches a surface` below now covers all three.
    */
   const repoRoot = resolve(__dirname, '../../..');
 
@@ -127,7 +132,22 @@ describe('every motion reaches a surface', () => {
     ...sourceFiles('src/application'),
   ].filter((file) => !file.endsWith('src/render/motion.ts'));
 
-  const corpus = CONSUMERS.map((file) => readFileSync(resolve(repoRoot, file), 'utf8')).join('\n');
+  /**
+   * Source with comments stripped.
+   *
+   * This gate is about what *runs*, and these files document themselves heavily — the
+   * bubble check below passed against a doc comment reading "already decided by
+   * `bubbleFor()`" while the only real call sat deleted three files away. A reachability
+   * test that a comment can satisfy proves nothing, which is the same failure it exists to
+   * catch, one level up.
+   */
+  function code(file: string): string {
+    return readFileSync(resolve(repoRoot, file), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  }
+
+  const corpus = CONSUMERS.map(code).join('\n');
 
   it('is consumed by something that can actually draw it', () => {
     const orphans = Object.keys(MOTION).filter(
@@ -136,13 +156,38 @@ describe('every motion reaches a surface', () => {
     expect(orphans).toEqual([]);
   });
 
+  /**
+   * The two surfaces the gate above did not cover, and that shipped dead because of it.
+   *
+   * Both were built, unit-tested, and then referenced by nothing but their own tests:
+   * `bubbleFor` had no caller in `WorldScene`, and the `CueRouter` was constructed in
+   * `ApplicationRoot` and never handed a single event. This asserts the *entry points* are
+   * called from production source, which is the cheapest thing that can tell "shipped" from
+   * "tested" without a browser.
+   */
+  it.each([
+    ['bubbleFor', /\bbubbleFor\(/],
+    ['CueRouter.onMinute', /\.onMinute\(/],
+    ['CueRouter.onEvents', /\.onEvents\(/],
+    ['CueRouter.onFootstep', /\.onFootstep\(/],
+    ['CueRouter.setPaused', /\.setPaused\(/],
+    ['CueRouter.setHydrating', /\.setHydrating\(/],
+  ])('%s is called by something that ships', (_name, pattern) => {
+    const callers = CONSUMERS.filter(
+      (file) =>
+        // A module calling itself is not a consumer, and neither is its own definition.
+        !/bubbles\.ts$|cue-router\.ts$/.test(file) && pattern.test(code(file)),
+    );
+    expect(callers).not.toEqual([]);
+  });
+
   it('routes every animating consumer through resolveMotion, so §11.6 stays in one place', () => {
     // A surface that reached for its own `if (reducedMotion)` would be re-deriving the
     // accessibility contract, which is how half of a set of animations quietly stops
     // obeying it. "Animating" is the test, not "mentions a motion": a pure selector that
     // hands a motion to a resolver is doing the right thing, and `card-motion.ts` is one.
     const offenders = CONSUMERS.filter((file) => {
-      const text = readFileSync(resolve(repoRoot, file), 'utf8');
+      const text = code(file);
       const animates = /Animated\.|useSharedValue|useDerivedValue/.test(text);
       const resolves = /resolveMotion|useMotionRun|squashInterpolation|useQueueGhosts/.test(text);
       return /\bMOTION\.\w+/.test(text) && animates && !resolves;

@@ -36,18 +36,53 @@ export interface BusEnvironment {
   platform?: string;
 }
 
+/** How often a ramp updates. Matches the renderer's own 32 ms transition cadence. */
+const RAMP_TICK_MS = 32;
+
+export interface FadeOptions {
+  /**
+   * Level to jump to before the ramp begins — how a voice fades *in* from silence. Without
+   * it a newly created voice is already at full and "fade in" would be a no-op.
+   */
+  from?: number;
+  /** Remove the voice once the ramp reaches zero, so a faded-out loop frees its player. */
+  removeWhenSilent?: boolean;
+}
+
 interface Voice {
   player: Player;
   cue: AudioCue;
   channel: 'music' | 'sfx';
   loop: boolean;
   wantsPlay: boolean;
+  /**
+   * Ramp position, 0..1, multiplied onto the computed mix rather than written over it.
+   *
+   * That is the whole reason a fade cannot fight the mixer: `applyVolume` still derives
+   * master × channel × gain and mute still wins, so moving a slider halfway through a
+   * four-second crossfade lands at the right level instead of being stomped 32 ms later.
+   */
+  fade: number;
+  /** The live ramp, held so a second crossfade cancels the first instead of racing it. */
+  ramp: ReturnType<typeof setInterval> | null;
 }
+
+const clamp01 = (value: number): number =>
+  Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 
 export class ExpoAudioBus implements AudioBus {
   private settings: AppPreferences['audio'];
   private readonly voices = new Map<string, Voice>();
   private readonly missing = new Set<string>();
+  /**
+   * SPEC §14 dev hygiene: "web previews auto-muted in dev builds".
+   *
+   * A latch rather than a seeded `settings.muted`, because the composition root applies
+   * stored preferences on mount — so the seeded version was overwritten by the first
+   * `apply()` and the rule lasted until the end of the constructor. Silent while the mixer
+   * itself was silent; audible the moment the cue router was actually wired.
+   */
+  private readonly devMuted: boolean;
   private unlocked: boolean;
   private disposed = false;
 
@@ -58,14 +93,14 @@ export class ExpoAudioBus implements AudioBus {
   ) {
     const dev = env.dev ?? (typeof __DEV__ !== 'undefined' && __DEV__);
     const web = (env.platform ?? 'web') === 'web';
-    // SPEC §14 dev hygiene: "web previews auto-muted in dev builds".
-    this.settings = dev && web ? { ...initial, muted: true } : { ...initial };
+    this.devMuted = dev && web;
+    this.settings = { ...initial };
     // Native has no gesture requirement; web stays locked until the first interaction.
     this.unlocked = !web;
   }
 
   get muted(): boolean {
-    return this.settings.muted;
+    return this.devMuted || this.settings.muted;
   }
 
   apply(settings: AppPreferences['audio']): void {
@@ -114,7 +149,7 @@ export class ExpoAudioBus implements AudioBus {
     if (voice === null) return;
     // Reuse the slot so a rapid repeat retriggers rather than stacking a second voice on
     // top of the first, which is how HFM ended up with doubled clicks.
-    this.voices.get(key)?.player.remove();
+    this.remove(key);
     this.voices.set(key, voice);
     voice.wantsPlay = true;
     this.start(voice);
@@ -131,9 +166,49 @@ export class ExpoAudioBus implements AudioBus {
     return this.voices.has(key);
   }
 
+  /**
+   * Ramp a voice's level over time — the thing `content/audio.json`'s `crossfadeMs` was
+   * always for.
+   *
+   * Before this existed the router's "crossfade" was `playLoop(incoming)` followed by
+   * `remove(outgoing)` in the same synchronous call, and `remove()` detaches the media
+   * element instantly: design.md §7's "coziest beat of the day" was a hard cut with an
+   * authored 4000 ms sitting unread in the schema.
+   */
+  fadeTo(key: string, target: number, durationMs: number, options: FadeOptions = {}): void {
+    const voice = this.voices.get(key);
+    if (voice === undefined) return;
+    this.clearRamp(voice);
+    if (options.from !== undefined) voice.fade = clamp01(options.from);
+    const from = voice.fade;
+    const to = clamp01(target);
+    const finish = (): void => {
+      voice.fade = to;
+      this.applyVolume(voice);
+      if (to === 0 && options.removeWhenSilent === true) this.remove(key);
+    };
+    if (!Number.isFinite(durationMs) || durationMs <= 0 || from === to) {
+      finish();
+      return;
+    }
+    this.applyVolume(voice);
+    const started = Date.now();
+    voice.ramp = setInterval(() => {
+      const t = Math.min(1, (Date.now() - started) / durationMs);
+      if (t >= 1) {
+        this.clearRamp(voice);
+        finish();
+        return;
+      }
+      voice.fade = from + (to - from) * t;
+      this.applyVolume(voice);
+    }, RAMP_TICK_MS);
+  }
+
   remove(key: string): void {
     const voice = this.voices.get(key);
     if (voice === undefined) return;
+    this.clearRamp(voice);
     voice.player.remove();
     this.voices.delete(key);
   }
@@ -141,8 +216,19 @@ export class ExpoAudioBus implements AudioBus {
   /** No orphaned audio after tab close — SPEC §14's QA line, as code. */
   shutdown(): void {
     this.disposed = true;
-    for (const voice of this.voices.values()) voice.player.remove();
+    for (const voice of this.voices.values()) {
+      // A live ramp is a timer, and a timer outlives a removed player. Leaving one running
+      // is the same orphan this method exists to prevent, one indirection further out.
+      this.clearRamp(voice);
+      voice.player.remove();
+    }
     this.voices.clear();
+  }
+
+  private clearRamp(voice: Voice): void {
+    if (voice.ramp === null) return;
+    clearInterval(voice.ramp);
+    voice.ramp = null;
   }
 
   private create(cue: AudioCue, channel: 'music' | 'sfx', loop: boolean): Voice | null {
@@ -153,7 +239,7 @@ export class ExpoAudioBus implements AudioBus {
     }
     const player = createAudioPlayer(source);
     player.loop = loop;
-    const voice: Voice = { player, cue, channel, loop, wantsPlay: false };
+    const voice: Voice = { player, cue, channel, loop, wantsPlay: false, fade: 1, ramp: null };
     this.applyVolume(voice);
     return voice;
   }
@@ -177,8 +263,10 @@ export class ExpoAudioBus implements AudioBus {
    */
   private applyVolume(voice: Voice): void {
     const channel = voice.channel === 'music' ? this.settings.music : this.settings.sfx;
-    const level = this.settings.muted ? 0 : this.settings.master * channel * voice.cue.gain;
-    voice.player.volume = Math.max(0, Math.min(1, level));
+    const level = this.muted
+      ? 0
+      : this.settings.master * channel * voice.cue.gain * voice.fade;
+    voice.player.volume = clamp01(level);
   }
 
   /** Exposed for the cue router, which needs the same content the bus was built with. */

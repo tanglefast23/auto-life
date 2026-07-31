@@ -47,7 +47,15 @@ import { PauseSettings } from '../ui/PauseSettings';
 import { settingsStrings } from '../ui/settings-copy';
 import { SilentAudioBus, type AudioBus } from './audio-bus';
 import { ExpoAudioBus } from './audio/expo-audio-bus';
-import { CueRouter } from './audio/cue-router';
+import { CueRouter, type BusLike } from './audio/cue-router';
+import {
+  cueViewOf,
+  domainCueEvents,
+  musicInputsFor,
+  type CueView,
+} from './audio/cue-source';
+import type { FloorMaterial } from '../sim/content-schemas';
+import type { CompletedBoundary } from './loop';
 import { content } from '../sim/content';
 import { careerPreferenceTags } from '../ui/preference-tags';
 import type { GameLoop } from './loop';
@@ -58,6 +66,19 @@ function writerId(): string {
     | { randomUUID?: () => string }
     | undefined;
   return cryptoValue?.randomUUID?.() ?? 'single-process-writer';
+}
+
+/**
+ * Whether a bus can carry cues, asked structurally rather than by class.
+ *
+ * This was `audioBus instanceof ExpoAudioBus`, which quietly made the cue layer untestable:
+ * the only bus a test can inject is `SilentAudioBus`, so every suite that mounted this
+ * component got a null router and could not have observed a missing wire even in principle.
+ * A nominal check on the one class tests are unable to construct is how a whole subsystem
+ * ends up with green tests and no sound.
+ */
+function supportsCues(bus: AudioBus): bus is AudioBus & BusLike {
+  return typeof (bus as Partial<BusLike>).playLoop === 'function';
 }
 
 function isHidden(): boolean {
@@ -146,14 +167,78 @@ export function ApplicationRoot({
     () => injectedAudioBus ?? new ExpoAudioBus(gameContent.audio, preferences.preferences.audio),
     [injectedAudioBus],
   );
+  /**
+   * P6 audit: the router is *driven* here.
+   *
+   * It used to be constructed in this `useMemo` and referenced nowhere else — no caller for
+   * `onMinute`, `onEvents`, `setPaused`, `setHydrating`, or `onFootstep` anywhere in the
+   * tree — so all 25 committed WAVs, the mixer, the sliders and the `M` binding drove a bus
+   * that was never asked to make a sound, and the game shipped completely silent. Every
+   * audio test passed throughout, because router and bus were only ever tested in isolation.
+   */
   const cueRouter = useMemo(
-    () => (audioBus instanceof ExpoAudioBus ? new CueRouter(audioBus, gameContent.audio) : null),
+    () => (supportsCues(audioBus) ? new CueRouter(audioBus, gameContent.audio) : null),
     [audioBus],
   );
+  const cueView = useRef<CueView | null>(null);
+  const speed = useGameStore((state) => state.speed);
+  const [tabHidden, setTabHidden] = useState(isHidden);
 
   useEffect(() => {
     audioBus.apply(preferences.preferences.audio);
   }, [audioBus, preferences.preferences.audio]);
+
+  /**
+   * One completed minute → the continuous layers, and (only if a player watched it) the
+   * discrete cues.
+   *
+   * The loop publishes boundaries before snapshots and `loop.snapshot` is already the
+   * post-tick value here, so this needs no subscription of its own — which matters:
+   * subscribing this component to the snapshot would re-render the whole app up to eight
+   * times a second, the exact cost `game-store.ts` is shaped to avoid.
+   */
+  const observeCues = (boundary: CompletedBoundary) => {
+    const router = cueRouter;
+    const snapshot = useGameStore.getState().loop?.snapshot;
+    if (router === null || snapshot === undefined || snapshot === null) return;
+    const previous = cueView.current;
+    const next = cueViewOf(snapshot, gameContent);
+    cueView.current = next;
+    // Idempotent per voice, so running it on skipped minutes too is free and leaves the bed
+    // already correct at wake instead of a minute behind it.
+    router.onMinute(musicInputsFor(next, false));
+    if (!boundary.watched) return;
+    router.onEvents(domainCueEvents(previous, next, boundary));
+    // The first watched boundary is P5's pending-work replay; after it, the session is live.
+    router.setHydrating(false);
+  };
+
+  const observeFootstep = (material: FloorMaterial) => {
+    cueRouter?.onFootstep(material);
+  };
+
+  // Read through refs by the hydrate effect below. Listing them in its deps instead would
+  // make an audio identity change re-hydrate the career, which is a very expensive way to
+  // rebuild a music bed.
+  const cueRouterRef = useRef(cueRouter);
+  cueRouterRef.current = cueRouter;
+  const observeCuesRef = useRef(observeCues);
+  observeCuesRef.current = observeCues;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onVisibility = () => setTabHidden(isHidden());
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  /**
+   * SPEC §5/C1 hard-pauses the sim when the tab is backgrounded; the music has to follow it,
+   * or a parked tab keeps playing a bed for a world that is not advancing.
+   */
+  useEffect(() => {
+    cueRouter?.setPaused(speed === 0 || tabHidden || pauseOpen);
+  }, [cueRouter, pauseOpen, speed, tabHidden]);
 
   /**
    * Browser autoplay: Chrome — the frozen playtest browser — refuses playback before a
@@ -250,11 +335,19 @@ export function ApplicationRoot({
       },
     );
     saveController.current = controller;
+    // Silent until the replay is done. P5 restores a career by replaying pending boundary
+    // work, so without this a reload would fire a day of completion sounds at once — the
+    // loudest possible way to greet someone reopening a tab.
+    cueRouterRef.current?.setHydrating(true);
+    cueView.current = null;
     hydrateCareer(
       boot.career,
       boot.preferences,
       boot.startSystemPaused,
-      (boundary) => controller.observeBoundary(boundary),
+      (boundary) => {
+        controller.observeBoundary(boundary);
+        observeCuesRef.current(boundary);
+      },
     );
     hydratedKey.current = key;
     controller.start();
@@ -572,6 +665,7 @@ export function ApplicationRoot({
           autonomy={visibleCareer.payload.autonomy}
           appearancePresetId={visibleCareer.payload.identity.appearancePresetId}
           idleVariantId={visibleCareer.payload.identity.idlePreferenceId}
+          onFootstep={observeFootstep}
         />
         <View
           accessibilityLiveRegion="polite"
