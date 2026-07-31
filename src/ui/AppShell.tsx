@@ -14,6 +14,7 @@ import { appShellStrings } from './app-shell-copy';
 import { identityString } from './identity-copy';
 import { settingsStrings } from './settings-copy';
 import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
+import { LAYER } from './layout';
 
 interface ButtonProps {
   label: string;
@@ -598,7 +599,7 @@ const styles = StyleSheet.create({
     padding: 16,
     position: 'absolute',
     top: 24,
-    zIndex: 200,
+    zIndex: LAYER.modal,
   },
   noticeTitle: {
     color: theme.color.ink,

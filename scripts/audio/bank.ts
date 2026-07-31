@@ -216,8 +216,6 @@ const UI_CUES: Record<string, () => Samples> = {
 /** Every asset id the bank renders, and the samples for it. */
 export function renderBank(): Record<string, Samples> {
   const bank: Record<string, Samples> = {
-    'music.day': musicDay(),
-    'music.evening': musicEvening(),
     'ambience.room': ambienceRoom(),
     'ambience.rain': ambienceRain(),
   };

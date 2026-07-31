@@ -1,9 +1,12 @@
 # 07 — UI Architecture: regions, layers, and the end of free-floating panels
 
-**Status:** proposed spec. Nothing here is built yet.
+**Status:** **implemented** (M1–M5), 2026-08-01. `src/ui/layout.ts` is the owner; the
+gates live in `src/ui/__tests__/layout.test.ts`.
 **Owner:** P8.
 **Revised:** 2026-07-31, after the P7 art pass landed a new palette, new `CHROME` recipes
 and new `TYPE_SCALE` metrics. §3.4 and §6 were rewritten; §3.4.1 is new.
+**Revised:** 2026-08-01 on implementation. §1.2's mechanism is no longer a guess — see the
+box below — and §3.3.1 was rewritten because the rule as first stated was unsatisfiable.
 **Supersedes:** nothing. Extends SPEC §11 and design.md §3/§4 rather than replacing them.
 
 ---
@@ -74,7 +77,22 @@ the error changes with the text-size slider rather than staying constant.
 Any region model that adopts 148 and 168 as given inherits this bug. §3.2 therefore derives
 region sizes by measurement, not by copying the existing constants.
 
-### 1.2 An honest gap: who wins collision 1, and why
+### 1.2 Who wins collision 1, and why — **confirmed on implementation**
+
+> **Measured, 2026-08-01.** react-native-web assigns **every** `View` `position: relative;
+> z-index: 0`. Every View is therefore a CSS stacking context, and a z value only ever
+> competes with its siblings inside the nearest one. `FirstSessionUI` wrapped all of its
+> surfaces in an `absoluteFill` View, so the recap's 45 and the chips' 30 competed only
+> with each other while the wrapper as a whole competed at z 0 — and lost to the rail. The
+> numbers in §1's table were never compared to each other at all.
+>
+> This makes §3.3.1 as originally written ("no intermediate wrapper may create a stacking
+> context") **unsatisfiable** — in RNW every wrapper does. The implemented rule is the
+> reachable one: screen-scope surfaces are emitted as **siblings**, so they share a single
+> stacking context and the ladder decides. `FirstSessionUI` now returns a fragment rather
+> than a wrapping View, and Gate 3 fails any file that reintroduces one.
+
+The original note, kept for the record:
 
 Observation (from play): the rail paints over the recap. But `recapCard` is z 45 against
 the rail's z 20, **and** `FirstSessionUI` mounts *after* `QueueStrip`

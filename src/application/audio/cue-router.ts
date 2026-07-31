@@ -53,14 +53,23 @@ export interface MusicInputs {
 /**
  * Stable voice keys, so a repeat retriggers one slot instead of stacking voices.
  *
- * The bed is keyed **per variant**, not one shared `music.bed` slot. `playLoop` is
- * idempotent per key — that is what stops a repeated minute restarting the music — so a
- * shared key meant the 19:00 change re-called the slot that was already live and returned
- * early: the evening bed never started and the day bed simply kept playing. Separate keys
- * let the incoming bed start while the outgoing one is still sounding, which is what makes
- * it a crossfade rather than a cut.
+ * The bed is keyed **per asset**, not per variant and not one shared `music.bed` slot.
+ * `playLoop` is idempotent per key — that is what stops a repeated minute restarting the
+ * music — so a single shared key meant the 19:00 change re-called the slot that was already
+ * live and returned early: the evening bed never started and the day bed simply kept
+ * playing. Distinct keys let the incoming bed start while the outgoing one is still
+ * sounding, which is what makes it a crossfade rather than a cut.
+ *
+ * Keying by *asset* rather than by variant name adds the converse guarantee. When day and
+ * evening are the same track — which is the shipped configuration — the two variants
+ * resolve to one key, `playLoop`'s idempotency keeps the single voice running across the
+ * boundary, and `onMinute` skips the crossfade entirely. Keyed by variant, the same
+ * configuration would have started a second player of the same file and crossfaded it
+ * against itself for four seconds: two copies of one track a few bars apart is audible
+ * phasing, not a transition.
  */
-const bedKey = (bed: MusicBed) => `music.bed.${bed}`;
+const bedKey = (audio: AudioConfig, bed: MusicBed) =>
+  `music.bed.${audio.music[bed].assetId}`;
 const RIFF_KEY = 'music.riff';
 const ROOM_KEY = 'ambience.room';
 const RAIN_KEY = 'ambience.rain';
@@ -94,7 +103,7 @@ export class CueRouter {
     if (paused === this.paused) return;
     this.paused = paused;
     if (paused) {
-      if (this.bed !== null) this.bus.stop(bedKey(this.bed));
+      if (this.bed !== null) this.bus.stop(bedKey(this.audio, this.bed));
       this.bus.stop(RIFF_KEY);
       this.bus.stop(ROOM_KEY);
       this.bus.stop(RAIN_KEY);
@@ -102,7 +111,7 @@ export class CueRouter {
       return;
     }
     if (this.bed !== null) {
-      this.bus.playLoop(bedKey(this.bed), this.audio.music[this.bed], 'music');
+      this.bus.playLoop(bedKey(this.audio, this.bed), this.audio.music[this.bed], 'music');
     }
     if (this.riffLevel !== null) {
       const riff = this.audio.practiceRiffs.find((r) => r.level === this.riffLevel);
@@ -144,16 +153,25 @@ export class CueRouter {
     if (wanted !== this.bed) {
       const outgoing = this.bed;
       const crossfadeMs = this.audio.music.crossfadeMs;
-      // Incoming first, outgoing second — the overlap is the crossfade.
-      this.bus.playLoop(bedKey(wanted), this.audio.music[wanted], 'music');
-      if (outgoing === null) {
-        // The session's first bed has nothing to fade from, so it simply starts.
-        this.bus.fadeTo(bedKey(wanted), 1, 0);
+      const incomingKey = bedKey(this.audio, wanted);
+      const outgoingKey = outgoing === null ? null : bedKey(this.audio, outgoing);
+      if (outgoingKey === incomingKey) {
+        // Both variants are the same track, so there is nothing to cross to. Crossfading
+        // here would fade the one live voice down to silence and back up — a dip in the
+        // middle of a track that never changed. Record the variant and leave it playing.
+        this.bed = wanted;
       } else {
-        this.bus.fadeTo(bedKey(wanted), 1, crossfadeMs, { from: 0 });
-        this.bus.fadeTo(bedKey(outgoing), 0, crossfadeMs, { removeWhenSilent: true });
+        // Incoming first, outgoing second — the overlap is the crossfade.
+        this.bus.playLoop(incomingKey, this.audio.music[wanted], 'music');
+        if (outgoingKey === null) {
+          // The session's first bed has nothing to fade from, so it simply starts.
+          this.bus.fadeTo(incomingKey, 1, 0);
+        } else {
+          this.bus.fadeTo(incomingKey, 1, crossfadeMs, { from: 0 });
+          this.bus.fadeTo(outgoingKey, 0, crossfadeMs, { removeWhenSilent: true });
+        }
+        this.bed = wanted;
       }
-      this.bed = wanted;
     }
 
     // The riff layers over the bed; it never replaces it (SPEC §14).

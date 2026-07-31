@@ -30,9 +30,19 @@ import {
 } from './wrinkle-copy';
 import { goalStrings } from './goal-copy';
 import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
+import { LAYER, type Regions } from './layout';
+import { NoticeColumn, type NoticeItem } from './NoticeColumn';
 
 export interface FirstSessionUIProps {
   session: SessionState;
+  /** Laid-out regions. Notices stack in `regions.notice`; focus surfaces centre on it. */
+  regions?: Regions;
+  /**
+   * Notices owned by the screen rather than by the first session — the undo toast today.
+   * They are merged into the one NOTICE stack here, so the three-visible cap counts every
+   * notice on screen rather than each owner capping its own.
+   */
+  notices?: readonly NoticeItem[];
   /** Stable for one live career; changing it clears presentation-only panels. */
   presentationKey?: object | string | number;
   hudHeight: number;
@@ -80,6 +90,8 @@ export const FirstSessionUI = forwardRef<
     session,
     presentationKey,
     hudHeight,
+    regions,
+    notices = [],
     onChooseDecoration,
     preferenceLabels = [],
     currentDay = session.recap.forDay,
@@ -231,8 +243,58 @@ export const FirstSessionUI = forwardRef<
             entry.wrinkleId === announced.wrinkleId,
         ) ?? null;
 
+  /**
+   * At most one FOCUS surface, chosen by priority (§3.3 rule 5).
+   *
+   * These panels each centre themselves on the stage, so two of them open at once were
+   * simply overlapped — and the conditions that kept them apart were ad-hoc and partial
+   * (`recap === null && wrinkleOpen` guarded exactly one of the five pairs). Naming the
+   * winner once makes the rule total, and makes it testable.
+   *
+   * Order is by consequence: a life decision outranks a letter, a letter outranks the
+   * day's recap, and the recap outranks an informational panel the player opened.
+   */
+  const activeFocus:
+    | 'letter'
+    | 'letter-accepted'
+    | 'package'
+    | 'recap'
+    | 'intention'
+    | 'wrinkle'
+    | null = (() => {
+    if (session.letter.status === 'due' && onRespondToLetter !== undefined) return 'letter';
+    if (
+      session.letter.status === 'accepted' &&
+      acceptedNoticeDay === session.letter.acceptedAtDay
+    ) {
+      return 'letter-accepted';
+    }
+    if (session.wrinkles.choiceReadyId === 'package-delivery') return 'package';
+    if (recap !== null) return 'recap';
+    if (intentionOpen && onSelectIntention !== undefined) return 'intention';
+    if (wrinkleOpen && announcedWrinkle !== null && announcedVariant !== null) {
+      return 'wrinkle';
+    }
+    return null;
+  })();
+
+  /**
+   * A fragment, not a wrapping `View`.
+   *
+   * react-native-web gives **every** `View` `position: relative; z-index: 0`, so every View
+   * is a CSS stacking context. An `absoluteFill` wrapper here therefore trapped all of
+   * these surfaces inside one z-0 box: the recap's `LAYER.focus` and the chips'
+   * `LAYER.notice` competed only with each other, while the wrapper as a whole competed
+   * with the HUD at z 0 and lost. That is the mechanism behind the recap-under-the-rail
+   * collision — the numbers were never compared. Emitting the surfaces as siblings of
+   * `Hud` and `QueueStrip` is what puts them all in one stacking context, which is the only
+   * arrangement in which the ladder decides anything.
+   *
+   * Each child is absolutely positioned and owns its own hit area, so the wrapper's
+   * `pointerEvents="box-none"` is no longer needed to keep touches falling through.
+   */
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+    <>
       <Pressable
         ref={goalChipRef}
         accessibilityLabel={`${goalStrings.ui.open}. ${goalChip.label}`}
@@ -276,27 +338,42 @@ export const FirstSessionUI = forwardRef<
           </Pressable>
         )}
 
-      {announcedVariant !== null && (
-        <Pressable
-          accessibilityLabel={`${wrinkleStrings.ui.chipPrefix}: ${wrinkleString(
-            announcedVariant.titleStringId,
-          )}`}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: wrinkleOpen }}
-          onPress={() => setWrinkleOpen((open) => !open)}
-          style={({ pressed }) => [
-            styles.wrinkleChip,
-            { top: hudHeight + 60 },
-            pressed && styles.buttonPressed,
-          ]}
-          testID="daily-wrinkle-chip"
-        >
-          <Text style={styles.wrinkleChipMark}>!</Text>
-          <Text numberOfLines={1} style={styles.goalChipText}>
-            {wrinkleString(announcedVariant.titleStringId)}
-          </Text>
-        </Pressable>
-      )}
+      {/* Everything that reports something that happened, in one capped stack (§3.2).
+          The wrinkle chip is a notification; the goal and intention chips above are
+          pointers and stay anchored to what they point at (§7.2). */}
+      <NoticeColumn
+        region={regions?.notice}
+        items={[
+          ...(announcedVariant !== null
+            ? [
+                {
+                  id: `wrinkle:${announcedVariant.id}`,
+                  node: (
+                    <Pressable
+                      accessibilityLabel={`${wrinkleStrings.ui.chipPrefix}: ${wrinkleString(
+                        announcedVariant.titleStringId,
+                      )}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: wrinkleOpen }}
+                      onPress={() => setWrinkleOpen((open) => !open)}
+                      style={({ pressed }) => [
+                        styles.wrinkleChip,
+                        pressed && styles.buttonPressed,
+                      ]}
+                      testID="daily-wrinkle-chip"
+                    >
+                      <Text style={styles.wrinkleChipMark}>!</Text>
+                      <Text numberOfLines={1} style={styles.goalChipText}>
+                        {wrinkleString(announcedVariant.titleStringId)}
+                      </Text>
+                    </Pressable>
+                  ),
+                },
+              ]
+            : []),
+          ...notices,
+        ]}
+      />
 
       {goalsOpen && (
         <GoalsPanel
@@ -315,7 +392,7 @@ export const FirstSessionUI = forwardRef<
         />
       )}
 
-      {intentionOpen && onSelectIntention !== undefined && (
+      {activeFocus === 'intention' && onSelectIntention !== undefined && (
         <View
           accessibilityLabel={intentionStrings.prompt.title}
           style={[
@@ -365,7 +442,7 @@ export const FirstSessionUI = forwardRef<
         </View>
       )}
 
-      {session.wrinkles.choiceReadyId === 'package-delivery' && (
+      {activeFocus === 'package' && (
         <PackagePanel
           onChooseDecoration={onChooseDecoration}
           top={hudHeight + 16}
@@ -373,7 +450,7 @@ export const FirstSessionUI = forwardRef<
         />
       )}
 
-      {recap !== null && (
+      {activeFocus === 'recap' && recap !== null && (
         <MorningRecap
           recap={recap}
           session={session}
@@ -389,8 +466,7 @@ export const FirstSessionUI = forwardRef<
         />
       )}
 
-      {recap === null &&
-        wrinkleOpen &&
+      {activeFocus === 'wrinkle' &&
         announcedWrinkle !== null &&
         announcedVariant !== null && (
           <WrinklePanel
@@ -414,8 +490,7 @@ export const FirstSessionUI = forwardRef<
           />
         )}
 
-      {session.letter.status === 'accepted' &&
-        acceptedNoticeDay === session.letter.acceptedAtDay && (
+      {activeFocus === 'letter-accepted' && (
           <LetterAcceptedPanel
             session={session}
             onDone={() => setAcceptedNoticeDay(null)}
@@ -423,15 +498,14 @@ export const FirstSessionUI = forwardRef<
           />
         )}
 
-      {session.letter.status === 'due' &&
-        onRespondToLetter !== undefined && (
+      {activeFocus === 'letter' && onRespondToLetter !== undefined && (
           <LetterPanel
             practicePoints100={practicePoints100}
             onRespond={onRespondToLetter}
             styles={styles}
           />
         )}
-    </View>
+    </>
   );
 });
 
@@ -465,7 +539,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    zIndex: 30,
+    zIndex: LAYER.notice,
   },
   goalChipMark: {
     color: GOLD,
@@ -487,19 +561,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    zIndex: 30,
+    zIndex: LAYER.notice,
   },
   wrinkleChip: {
+    // Positioned by the NOTICE column now, not by its own corner.
     ...CHROME.chip,
-    position: 'absolute',
-    right: 8,
     width: 248,
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 10,
-    zIndex: 30,
+    zIndex: LAYER.notice,
   },
   wrinkleChipMark: {
     color: GOLD,
@@ -518,7 +591,7 @@ const styles = StyleSheet.create({
     width: 336,
     padding: 10,
     gap: 8,
-    zIndex: 31,
+    zIndex: LAYER.notice,
   },
   goalsScroll: {
     maxHeight: 500,
@@ -668,7 +741,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 3,
     borderBottomWidth: 6,
-    zIndex: 50,
+    zIndex: LAYER.focus,
   },
   lifeDecisionOverlay: {
     position: 'absolute',
@@ -680,7 +753,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     backgroundColor: 'rgba(36, 31, 46, 0.76)',
-    zIndex: 100,
+    zIndex: LAYER.modal,
   },
   lifeDecisionCard: {
     ...CHROME.panel,
@@ -693,7 +766,7 @@ const styles = StyleSheet.create({
   },
   intentionPanel: {
     maxHeight: 560,
-    zIndex: 55,
+    zIndex: LAYER.focus,
   },
   intentionChoice: {
     ...CHROME.card,
@@ -748,16 +821,26 @@ const styles = StyleSheet.create({
     color: INK,
     ...TYPE_SCALE.caption,
   },
+  /**
+   * FOCUS, centred — and deliberately without a scrim (§7.1).
+   *
+   * It used to anchor at `right: 8`, which is inside the RAIL's column: the recap and the
+   * queue occupied the same pixels every morning. Centring it is the fix. Keeping the
+   * scrim off is the product decision: a day boundary earns a moment of attention, but the
+   * recap is read rather than acted on, so the sim keeps running underneath it. The
+   * surfaces that *do* ask for a decision — event, intention, life decision — keep theirs.
+   */
   recapCard: {
     ...CHROME.panel,
     position: 'absolute',
-    right: 8,
+    left: '50%',
+    marginLeft: -172,
     width: 344,
     padding: 12,
     gap: 8,
     borderWidth: 3,
     borderBottomWidth: 6,
-    zIndex: 45,
+    zIndex: LAYER.focus,
   },
   recapStats: {
     flexDirection: 'row',

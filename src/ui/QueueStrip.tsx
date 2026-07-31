@@ -54,8 +54,47 @@ import {
   PalettePanel,
   buildPaletteGroups,
 } from './QueueStripPanels';
+import { LAYER, local, type Rect } from './layout';
 
 export { buildPaletteGroups } from './QueueStripPanels';
+
+/**
+ * The undo toast, as a NOTICE entry.
+ *
+ * Lifted out of the rail so it stacks with the other notices instead of anchoring itself
+ * beside the rail at `right: QUEUE_W + 10`. Its markup, test ids and live-region
+ * announcement are unchanged — only who positions it moved.
+ */
+export function UndoToastNotice({
+  undoToast,
+  onUndo,
+}: {
+  undoToast: UndoToast;
+  onUndo: (receiptId: string) => void;
+}) {
+  return (
+    <View style={styles.toast} testID="queue-undo-toast">
+      <Text
+        accessible
+        accessibilityLiveRegion="polite"
+        accessibilityLabel="Removed from queue. Undo available for 5 seconds."
+        testID="queue-undo-announcement"
+        style={styles.toastText}
+      >
+        Removed from queue
+      </Text>
+      <Pressable
+        onPress={() => onUndo(undoToast.receiptId)}
+        accessibilityRole="button"
+        accessibilityLabel="Undo removed activity"
+        testID={`queue-undo:${undoToast.receiptId}`}
+        style={styles.undoButton}
+      >
+        <Text style={styles.undoText}>UNDO</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 export type QueueStripSnapshot = Pick<
   GameSnapshot,
@@ -64,6 +103,8 @@ export type QueueStripSnapshot = Pick<
 
 export interface QueueStripProps {
   snapshot: QueueStripSnapshot | null;
+  /** The RAIL rectangle. Absent in mounted tests, which fall back to the right edge. */
+  region?: Rect;
   topInset?: number;
   undoToast: UndoToast | null;
   onInsertActivity: (activityId: string) => void;
@@ -114,6 +155,7 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
   function QueueStrip(
     {
       snapshot,
+      region,
       topInset = HUD_H,
       undoToast,
       onInsertActivity,
@@ -491,7 +533,14 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
   return (
     <View
       ref={stripRef}
-      style={[styles.root, { top: topInset }]}
+      style={[
+        styles.root,
+        // The region when one is supplied; the historical right-edge anchor otherwise, so
+        // a mounted test without a viewport still renders a rail.
+        region === undefined
+          ? { top: topInset, right: 0, bottom: 0, width: QUEUE_W }
+          : { left: region.x, top: region.y, width: region.width, height: region.height },
+      ]}
       testID="queue-strip"
     >
       <View style={styles.currentSlot}>
@@ -704,28 +753,6 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
         />
       )}
 
-      {undoToast !== null && (
-        <View style={styles.toast} testID="queue-undo-toast">
-          <Text
-            accessible
-            accessibilityLiveRegion="polite"
-            accessibilityLabel="Removed from queue. Undo available for 5 seconds."
-            testID="queue-undo-announcement"
-            style={styles.toastText}
-          >
-            Removed from queue
-          </Text>
-          <Pressable
-            onPress={() => onUndo(undoToast.receiptId)}
-            accessibilityRole="button"
-            accessibilityLabel="Undo removed activity"
-            testID={`queue-undo:${undoToast.receiptId}`}
-            style={styles.undoButton}
-          >
-            <Text style={styles.undoText}>UNDO</Text>
-          </Pressable>
-        </View>
-      )}
     </View>
   );
   },
@@ -745,18 +772,20 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
 const CARD_H = 64;
 
 const styles = StyleSheet.create({
+  /**
+   * The RAIL region. The rectangle arrives from `layout.ts`; only the look lives here.
+   * Previously `right: 0, bottom: 0, width: QUEUE_W` — the same reservation the world
+   * renderer used, restated, with nothing keeping the two in step.
+   */
   root: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: QUEUE_W,
     flexDirection: 'column',
     alignItems: 'stretch',
     backgroundColor: CREAM_BASE,
     borderLeftWidth: 3,
     borderLeftColor: INK,
     padding: 6,
-    zIndex: 20,
+    zIndex: LAYER.chrome,
   },
   currentSlot: {
     height: CARD_H,
@@ -851,13 +880,13 @@ const styles = StyleSheet.create({
   },
   dragSurface: {
     flex: 1,
-    zIndex: 2,
+    zIndex: local(2),
   },
   forecastChips: {
     position: 'absolute',
     left: 3,
     top: -6,
-    zIndex: 4,
+    zIndex: local(4),
     flexDirection: 'row',
     gap: 2,
   },
@@ -917,7 +946,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: CARD_H / 2,
-    zIndex: 3,
+    zIndex: local(3),
   },
   poofPuff: {
     position: 'absolute',
@@ -947,7 +976,7 @@ const styles = StyleSheet.create({
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     textAlign: 'center',
-    zIndex: 2,
+    zIndex: local(2),
   },
   cardTop: {
     flexDirection: 'row',
@@ -1042,7 +1071,7 @@ const styles = StyleSheet.create({
     bottom: 8,
     right: QUEUE_W - 3,
     padding: 8,
-    zIndex: 40,
+    zIndex: LAYER.chromePopover,
   },
   palettePanel: {
     width: 620,
@@ -1176,10 +1205,12 @@ const styles = StyleSheet.create({
     height: 1,
     overflow: 'hidden',
   },
+  /**
+   * The undo toast, now a NOTICE entry rather than a surface anchored beside the rail.
+   * `UndoToastNotice` renders it; the look stays here so the rail's vocabulary stays in
+   * one sheet.
+   */
   toast: {
-    position: 'absolute',
-    right: QUEUE_W + 10,
-    bottom: 10,
     minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1190,7 +1221,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingLeft: 12,
     paddingRight: 4,
-    zIndex: 50,
+    zIndex: LAYER.notice,
   },
   toastText: {
     color: CREAM_LIGHT,

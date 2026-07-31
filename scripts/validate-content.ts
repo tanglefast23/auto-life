@@ -45,8 +45,12 @@ try {
       throw new Error(`floor material "${material}" has no footstep cue`);
     }
   }
+  // Generated cues live in `assets/audio/` as WAV; authored music lives in `assets/music/`
+  // as AAC, because `build-bank` rebuilds the former from empty on every run.
   const missingAudio = declaredAudioAssetIds(content.audio).filter(
-    (id) => !existsSync(resolve(__dirname, `../assets/audio/${id}.wav`)),
+    (id) =>
+      !existsSync(resolve(__dirname, `../assets/audio/${id}.wav`)) &&
+      !existsSync(resolve(__dirname, `../assets/music/${id.replace(/^music\./, '')}.m4a`)),
   );
   if (missingAudio.length > 0) {
     throw new Error(`audio assets declared but not rendered: ${missingAudio.join(', ')} — run npm run audio:bank`);

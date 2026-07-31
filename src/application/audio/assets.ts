@@ -7,8 +7,10 @@
  * `declaredAudioAssetIds(content.audio)` so the two cannot drift.
  */
 export const AUDIO_ASSETS: Record<string, number> = {
-  'music.day': require('../../../assets/audio/music.day.wav'),
-  'music.evening': require('../../../assets/audio/music.evening.wav'),
+  // Authored, not synthesised: lives outside `assets/audio/` because `build-bank` rebuilds
+  // that directory from empty and would delete it. 34s mono AAC at 64 kbps — one tenth the
+  // bytes the equivalent WAV bed would cost, and the format the loop actually ships in.
+  'music.main': require('../../../assets/music/main.m4a'),
   'riff.l0': require('../../../assets/audio/riff.l0.wav'),
   'riff.l1': require('../../../assets/audio/riff.l1.wav'),
   'riff.l2': require('../../../assets/audio/riff.l2.wav'),
