@@ -105,5 +105,7 @@ test('Stop while travelling to an anchor consumes that block instead of restarti
   expect(
     stopped.next.queue.some((card) => card.blockId === 'lunch#1'),
   ).toBe(false);
-  expect(stopped.next.current).toBeNull();
+  // §7.4 starts the next card on the same tick, so the slot is refilled — the point of
+  // this test is that the stopped block is not what refills it.
+  expect(stopped.next.current?.cardId).not.toBe(targetId);
 });

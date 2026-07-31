@@ -25,6 +25,17 @@ export interface KvStore {
   subscribe?(
     listener: (key: string, value: string | null) => void,
   ): () => void;
+  /**
+   * Optional cross-context mutual exclusion, held for the duration of `work`.
+   *
+   * The career repository's save is a read-check-allocate-write transaction, and
+   * localStorage cannot make that atomic on its own: two tabs both read "newest is
+   * generation 4", both allocate 5, and the second silently replaces the first while
+   * BOTH report success (proved by probe). Web maps this to the Web Locks API, which is
+   * scoped to the origin and therefore spans tabs. Native has one process and omits it,
+   * so `enqueueWrite`'s in-process serialisation is already sufficient there.
+   */
+  withLock?<T>(name: string, work: () => Promise<T>): Promise<T>;
 }
 
 export { kv } from './kv-driver';

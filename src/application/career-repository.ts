@@ -18,6 +18,11 @@ export const CAREER_GENERATION_KEYS = [
 ] as const;
 export const CAREER_RESET_FENCE_KEY = 'career/reset-fence';
 export const APP_PREFERENCES_KEY = 'preferences/app';
+/**
+ * One lock name for every career write. Save and reset must exclude each other, not
+ * just their own kind — a reset racing a save is how a brand-new career gets discarded.
+ */
+export const CAREER_WRITE_LOCK = 'career/write';
 
 export interface RecoveryBlob {
   key: string;
@@ -196,7 +201,7 @@ export class CareerRepository {
   ): Promise<StoredCareer> {
     return this.enqueueWrite(async () => {
       this.requireWritable();
-      await this.assertNoNewerExternalGeneration();
+      await this.assertNoConflict();
       if (
         this.loadedCareerId !== null &&
         career.careerId !== this.loadedCareerId
@@ -270,13 +275,23 @@ export class CareerRepository {
   ): Promise<StoredCareer> {
     return this.enqueueWrite(async () => {
       this.requireWritable();
-      await this.assertNoNewerExternalGeneration();
-      const nextFence = this.resetFence + 1;
-      await this.store.setItem(
-        CAREER_RESET_FENCE_KEY,
-        String(nextFence),
-      );
+      await this.assertNoConflict();
+      // Adopt the new fence BEFORE publishing it. `watch()` now parks on a fence it did
+      // not expect, and a store that delivers change events synchronously would
+      // otherwise hand this repository its own reset and park the tab that performed it.
+      // Restored on failure so a rejected write leaves no phantom fence behind.
+      const previousFence = this.resetFence;
+      const nextFence = previousFence + 1;
       this.resetFence = nextFence;
+      try {
+        await this.store.setItem(
+          CAREER_RESET_FENCE_KEY,
+          String(nextFence),
+        );
+      } catch (error) {
+        this.resetFence = previousFence;
+        throw error;
+      }
       const next = StoredCareerSchema.parse({
         ...career,
         generation: this.loadedGeneration + 1,
@@ -298,6 +313,21 @@ export class CareerRepository {
   watch(onParked: () => void): () => void {
     if (this.store.subscribe === undefined) return () => undefined;
     return this.store.subscribe((key, value) => {
+      // A New Game in another tab raises the fence. Watching generations alone missed
+      // it whenever the reset did not also allocate a newer generation, and this tab
+      // then kept playing a career the next load will discard.
+      if (key === CAREER_RESET_FENCE_KEY) {
+        const durable = Number(value);
+        if (
+          value !== null &&
+          Number.isSafeInteger(durable) &&
+          durable > this.resetFence
+        ) {
+          this.parked = true;
+          onParked();
+        }
+        return;
+      }
       if (
         !CAREER_GENERATION_KEYS.includes(
           key as (typeof CAREER_GENERATION_KEYS)[number],
@@ -358,6 +388,40 @@ export class CareerRepository {
     if (this.parked) throw new StaleCareerWriterError();
   }
 
+  /**
+   * The whole conflict test, run inside the write lock so its answer is still true when
+   * the write lands. Two questions, because a newer generation is not the only way
+   * another tab can invalidate this writer:
+   *
+   *  1. Has anyone written a newer generation? (their save wins; this one is stale)
+   *  2. Has anyone raised the durable reset fence? (their New Game wins; every record
+   *     this writer produces from here is already fenced out of the next load)
+   *
+   * Only (1) was checked before, and it only catches a reset that also happens to
+   * allocate a newer generation.
+   */
+  private async assertNoConflict(): Promise<void> {
+    await this.assertFenceUnchanged();
+    await this.assertNoNewerExternalGeneration();
+  }
+
+  private async assertFenceUnchanged(): Promise<void> {
+    const raw = await this.store.getItem(CAREER_RESET_FENCE_KEY);
+    let durable: number;
+    try {
+      durable = parseResetFence(raw);
+    } catch {
+      // A corrupt fence is NOT a conflict. `load()` already routed it to recovery with
+      // `resetFence` reset to 0, and the only way out of that screen is "Start fresh" —
+      // which is a write. Parking here would make the corruption unrecoverable.
+      return;
+    }
+    if (durable > this.resetFence) {
+      this.parked = true;
+      throw new StaleCareerWriterError();
+    }
+  }
+
   private async assertNoNewerExternalGeneration(): Promise<void> {
     const values = await Promise.all(
       CAREER_GENERATION_KEYS.map((key) => this.store.getItem(key)),
@@ -395,8 +459,20 @@ export class CareerRepository {
     }
   }
 
+  /**
+   * In-process ordering AND cross-tab exclusion.
+   *
+   * `writeTail` alone only orders this tab's writes; the lock is what makes the
+   * read-check-allocate-write one transaction across every tab on the origin. Drivers
+   * without a lock (native, which is single-process) run the work unchanged.
+   */
   private enqueueWrite<T>(work: () => Promise<T>): Promise<T> {
-    const result = this.writeTail.then(work, work);
+    const withLock = this.store.withLock?.bind(this.store);
+    const locked =
+      withLock === undefined
+        ? work
+        : () => withLock(CAREER_WRITE_LOCK, work);
+    const result = this.writeTail.then(locked, locked);
     this.writeTail = result.then(
       () => undefined,
       () => undefined,

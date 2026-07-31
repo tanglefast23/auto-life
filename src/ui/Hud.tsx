@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { content } from '../sim/content';
 import type { SimSnapshot } from '../sim/step';
@@ -9,7 +9,7 @@ import { formatClock } from './clock-format';
 import { practiceLevel } from '../sim/practice-level';
 import { fillGoalCopy, goalStrings } from './goal-copy';
 import { settingsStrings } from './settings-copy';
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { FONT, TYPE_SCALE, scaledType, theme } from './theme';
 
 /**
  * The HUD (SPEC §11.1, P3 T7).
@@ -42,12 +42,32 @@ export interface HudProps {
   reducedMotion?: boolean;
   nonColorUrgency?: boolean;
   screenReaderVerbosity?: 'brief' | 'full';
+  /**
+   * The effective "HUD text size" preference (§11.6), already combined with the OS font
+   * scale by `GameScreen`. It is the SAME number that reserves the HUD's height, so the
+   * type and the box it lives in can never disagree.
+   *
+   * `allowFontScaling` below covers the OS setting on native and does nothing at all on
+   * react-native-web — which is the v1 target — so without this the slider only ever
+   * shrank the world and left every glyph exactly where it was (audit finding).
+   */
+  textScale?: number;
 }
 
 const SCALABLE_TEXT = {
   allowFontScaling: true,
   maxFontSizeMultiplier: 2,
 } as const;
+
+/**
+ * Fixed widths that hold scaled text. Scaling the type without these clips the glyphs
+ * against a 1× box; `crispSize` already snaps the type to the legal 8 px steps, so these
+ * round to 4 to stay on Joe's spacing grid.
+ */
+function scaledWidth(base: number, scale: number): number {
+  const wanted = base * (Number.isFinite(scale) && scale > 0 ? scale : 1);
+  return Math.round(wanted / 4) * 4;
+}
 
 function accessibleBandName(band: BandName): string {
   return band === 'tick' ? 'warning' : band;
@@ -109,7 +129,25 @@ export function Hud({
   reducedMotion = false,
   nonColorUrgency = true,
   screenReaderVerbosity = 'brief',
+  textScale = 1,
 }: HudProps) {
+  // One recipe per Track-A step, so a size change lands on every HUD string at once
+  // instead of fourteen places drifting apart again (design.md §4 caps the scale at four).
+  const type = useMemo(
+    () => ({
+      micro: scaledType('micro', textScale),
+      body: scaledType('body', textScale),
+      bodyBold: {
+        ...scaledType('body', textScale),
+        fontFamily: FONT.pixelBold,
+      },
+      healthWidth: scaledWidth(168, textScale),
+      barWidth: scaledWidth(120, textScale),
+      iconWidth: scaledWidth(14, textScale),
+      valueWidth: scaledWidth(24, textScale),
+    }),
+    [textScale],
+  );
   const health = snapshot?.health ?? 0;
   const healthBand = bandForDefault(health, content.rates).band;
   const practicePoints = snapshot?.practicePoints ?? 0;
@@ -140,8 +178,8 @@ export function Hud({
     <View style={styles.root} pointerEvents="box-none">
       {/* Top-left: Health block (§11.1) */}
       <View style={styles.block}>
-        <View style={styles.healthRow}>
-          <Text {...SCALABLE_TEXT} style={styles.healthLabel}>HEALTH</Text>
+        <View style={[styles.healthRow, { width: type.healthWidth }]}>
+          <Text {...SCALABLE_TEXT} style={[styles.healthLabel, type.micro]}>HEALTH</Text>
           <Text
             {...SCALABLE_TEXT}
             accessible
@@ -151,7 +189,7 @@ export function Hud({
                 : briefValueLabel('Health', health, healthBand)
             }
             testID="hud-health-value"
-            style={styles.healthValue}
+            style={[styles.healthValue, type.body]}
           >
             {Math.round(health)}
           </Text>
@@ -163,7 +201,7 @@ export function Hud({
         <Bar
           value={health}
           color={INK}
-          width={168}
+          width={type.healthWidth}
           height={10}
           band={healthBand}
           pulseOpacity={pulse}
@@ -181,7 +219,12 @@ export function Hud({
               <Text
                 {...SCALABLE_TEXT}
                 accessible
-                style={[styles.icon, style.band === 'alert' && styles.iconAlert]}
+                style={[
+                  styles.icon,
+                  type.body,
+                  { width: type.iconWidth },
+                  style.band === 'alert' && styles.iconAlert,
+                ]}
                 accessibilityLabel={
                   screenReaderVerbosity === 'full'
                     ? `${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${accessibleBandName(style.band)}`
@@ -198,12 +241,17 @@ export function Hud({
               <Bar
                 value={value}
                 color={BAR_COLOR[bar]}
-                width={120}
+                width={type.barWidth}
                 height={6}
                 band={style.band}
                 pulseOpacity={pulse}
               />
-              <Text {...SCALABLE_TEXT} style={styles.subValue}>{Math.round(value)}</Text>
+              <Text
+                {...SCALABLE_TEXT}
+                style={[styles.subValue, type.micro, { width: type.valueWidth }]}
+              >
+                {Math.round(value)}
+              </Text>
             </View>
           );
         })}
@@ -220,7 +268,7 @@ export function Hud({
             },
           )}
           testID="hud-practice"
-          style={styles.practice}
+          style={[styles.practice, type.micro]}
         >
           {fillGoalCopy(goalStrings.ui.practiceSummary, {
             level: currentPracticeLevel,
@@ -238,7 +286,7 @@ export function Hud({
           {...SCALABLE_TEXT}
           accessible
           accessibilityLabel={snapshot === null ? 'Game clock unavailable' : formatClock(snapshot.day, snapshot.minuteOfDay)}
-          style={styles.clock}
+          style={[styles.clock, type.body]}
           testID="hud-clock"
         >
           {snapshot === null ? 'Day — · — · --:--' : formatClock(snapshot.day, snapshot.minuteOfDay)}
@@ -254,7 +302,16 @@ export function Hud({
               testID={`speed-${s}`}
               style={[styles.speedBtn, speed === s && styles.speedBtnActive]}
             >
-              <Text {...SCALABLE_TEXT} style={[styles.speedText, speed === s && styles.speedTextActive]}>{s === 0 ? '❚❚' : `${s}×`}</Text>
+              <Text
+                {...SCALABLE_TEXT}
+                style={[
+                  styles.speedText,
+                  type.micro,
+                  speed === s && styles.speedTextActive,
+                ]}
+              >
+                {s === 0 ? '❚❚' : `${s}×`}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -266,7 +323,7 @@ export function Hud({
             style={styles.metaButton}
             testID="open-pause-menu"
           >
-            <Text {...SCALABLE_TEXT} style={styles.metaButtonText}>
+            <Text {...SCALABLE_TEXT} style={[styles.metaButtonText, type.bodyBold]}>
               ⚙
             </Text>
           </Pressable>
@@ -281,7 +338,7 @@ export function Hud({
             style={styles.metaButton}
             testID="toggle-mute"
           >
-            <Text {...SCALABLE_TEXT} style={styles.metaButtonText}>
+            <Text {...SCALABLE_TEXT} style={[styles.metaButtonText, type.bodyBold]}>
               {muted ? '🔇' : '♪'}
             </Text>
           </Pressable>

@@ -383,6 +383,7 @@ function HydratedGameScreen({
         }}
         muted={preferences.audio.muted}
         reducedMotion={reducedMotion}
+        textScale={hudTextScale}
         nonColorUrgency={preferences.accessibility.nonColorUrgency}
         screenReaderVerbosity={
           preferences.accessibility.screenReaderVerbosity
