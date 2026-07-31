@@ -12,6 +12,32 @@ import { EVENING_START_MINUTE } from '../../render/lighting';
  * rather than patched afterwards.
  */
 
+/**
+ * The one bed the shipped content declares.
+ *
+ * `content/audio.json` points day and evening at the same authored track, so the router
+ * keys both to one voice — see `bedKey`. Tests that assert *which* voice is live read this
+ * rather than hard-coding a variant name.
+ */
+const BED = `music.bed.${content.audio.music.day.assetId}`;
+
+/**
+ * A two-bed configuration, for the crossfade mechanism itself.
+ *
+ * The shipped config has nothing to cross to, so these fixtures keep the day/evening
+ * transition under test even though no shipped content exercises it today.
+ */
+const twoBedAudio = {
+  ...content.audio,
+  music: {
+    ...content.audio.music,
+    day: { ...content.audio.music.day, assetId: 'music.fixture.day' },
+    evening: { ...content.audio.music.evening, assetId: 'music.fixture.evening' },
+  },
+};
+const DAY_BED = 'music.bed.music.fixture.day';
+const EVE_BED = 'music.bed.music.fixture.evening';
+
 /** A recording double, so ordering and count are assertable without an audio device. */
 class FakeBus implements BusLike {
   readonly events: string[] = [];
@@ -100,34 +126,50 @@ describe('music (SPEC §14)', () => {
 
   it('starts the incoming bed before stopping the outgoing one — a crossfade, not a gap', () => {
     const bus = new FakeBus();
-    const router = new CueRouter(bus, content.audio);
+    const router = new CueRouter(bus, twoBedAudio);
     router.onMinute(music('day'));
     router.onMinute(music('evening'));
     const starts = bus.events.filter((e) => e.startsWith('start:music.bed'));
     expect(starts).toHaveLength(2);
-    expect(starts[0]).toContain(content.audio.music.day.assetId);
-    expect(starts[1]).toContain(content.audio.music.evening.assetId);
+    expect(starts[0]).toContain(twoBedAudio.music.day.assetId);
+    expect(starts[1]).toContain(twoBedAudio.music.evening.assetId);
     // Both beds are live at once. The first version of this assertion checked only that
     // `remove` came after the incoming `start` — which the hard-cut implementation also
     // satisfied, because it removed the outgoing voice on the very next statement.
-    expect(bus.playing()).toEqual(expect.arrayContaining(['music.bed.day', 'music.bed.evening']));
+    expect(bus.playing()).toEqual(expect.arrayContaining([DAY_BED, EVE_BED]));
   });
 
   it('spends the authored crossfadeMs ramping both beds, rather than cutting', () => {
     const bus = new FakeBus();
-    const router = new CueRouter(bus, content.audio);
-    const ms = content.audio.music.crossfadeMs;
+    const router = new CueRouter(bus, twoBedAudio);
+    const ms = twoBedAudio.music.crossfadeMs;
     expect(ms).toBeGreaterThan(0);
 
     router.onMinute(music('day'));
     // The session's first bed has nothing to fade from and simply starts at full.
-    expect(bus.events).toContain('fade:music.bed.day:1:0');
+    expect(bus.events).toContain(`fade:${DAY_BED}:1:0`);
 
     router.onMinute(music('evening'));
-    expect(bus.events).toContain(`fade:music.bed.evening:0->1:${ms}`);
-    expect(bus.events).toContain(`fade:music.bed.day:0:${ms}:remove`);
+    expect(bus.events).toContain(`fade:${EVE_BED}:0->1:${ms}`);
+    expect(bus.events).toContain(`fade:${DAY_BED}:0:${ms}:remove`);
     // The outgoing voice is released by the ramp, not detached under it.
-    expect(bus.events).not.toContain('remove:music.bed.day');
+    expect(bus.events).not.toContain(`remove:${DAY_BED}`);
+  });
+
+  it('spans the day boundary on one voice when both beds are the same track', () => {
+    // The shipped configuration. Keyed by variant this crossfaded the single track against
+    // a second copy of itself — four seconds of phasing at 19:00 — and, worse, ramped the
+    // live voice down to silence and back up because both ramps addressed one key.
+    const bus = new FakeBus();
+    const router = new CueRouter(bus, content.audio);
+    router.onMinute(music('day'));
+    router.onMinute(music('evening'));
+
+    expect(bus.events.filter((e) => e.startsWith('start:music.bed'))).toHaveLength(1);
+    expect(bus.playing()).toEqual(expect.arrayContaining([BED]));
+    // No ramp touched the live voice at the boundary, in either direction.
+    expect(bus.events.filter((e) => e.startsWith(`fade:${BED}:0`))).toEqual([]);
+    expect(bus.events).not.toContain(`remove:${BED}`);
   });
 
   it('never double-plays a bed across repeated minutes', () => {
@@ -142,7 +184,7 @@ describe('music (SPEC §14)', () => {
   it('layers the Practice riff over the bed rather than replacing it', () => {
     const bus = new FakeBus();
     new CueRouter(bus, content.audio).onMinute({ ...music('day'), practicing: true, practiceLevel: 2 });
-    expect(bus.playing()).toEqual(expect.arrayContaining(['music.bed.day', 'music.riff']));
+    expect(bus.playing()).toEqual(expect.arrayContaining([BED, 'music.riff']));
   });
 
   it('picks a distinct riff asset per Practice level', () => {
@@ -180,7 +222,7 @@ describe('music (SPEC §14)', () => {
     const router = new CueRouter(bus, content.audio);
     router.onMinute(music('day'));
     router.setPaused(true);
-    expect(bus.events).toContain('stop:music.bed.day');
+    expect(bus.events).toContain(`stop:${BED}`);
   });
 
   /**
@@ -198,7 +240,7 @@ describe('music (SPEC §14)', () => {
     router.onEvents([{ kind: 'activity-started', activityId: 'shower' }]);
     const before = bus.audible();
     expect(before).toEqual(
-      expect.arrayContaining(['music.bed.day', 'music.riff', 'ambience.room', 'ambience.rain', 'loop.shower']),
+      expect.arrayContaining([BED, 'music.riff', 'ambience.room', 'ambience.rain', 'loop.shower']),
     );
 
     router.setPaused(true);
@@ -227,8 +269,8 @@ describe('music (SPEC §14)', () => {
     router.setPaused(true);
     router.setPaused(false);
     router.setPaused(false);
-    expect(bus.events.filter((e) => e === 'stop:music.bed.day')).toHaveLength(1);
-    expect(bus.events.filter((e) => e === 'resume:music.bed.day')).toHaveLength(1);
+    expect(bus.events.filter((e) => e === `stop:${BED}`)).toHaveLength(1);
+    expect(bus.events.filter((e) => e === `resume:${BED}`)).toHaveLength(1);
   });
 });
 
@@ -326,7 +368,13 @@ describe('audio content and the rendered bank agree', () => {
       content.audio.ambience.room.assetId,
       content.audio.ambience.rain.assetId,
     ]));
-    expect(new Set(ids).size).toBe(ids.length);
+    // Day and evening may legitimately name the same track — that is the shipped
+    // configuration — so the no-duplicates rule applies to the layers *other than* the two
+    // beds. Its purpose is catching an accidental collision between unrelated layers.
+    const beds = [content.audio.music.day.assetId, content.audio.music.evening.assetId];
+    const nonBed = ids.filter((id) => !beds.includes(id));
+    expect(new Set(nonBed).size).toBe(nonBed.length);
+    expect(nonBed).not.toEqual(expect.arrayContaining(beds));
   });
 
   it('covers Practice levels 0..3 exactly once', () => {

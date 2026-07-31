@@ -12,9 +12,10 @@ import { WorldScene } from '../render/WorldScene';
 import { bubbleFor, type ForecastWarning } from '../render/bubbles';
 import { content as gameContent } from '../sim/content';
 import type { FloorMaterial } from '../sim/content-schemas';
-import { solveScale, HUD_H, QUEUE_W } from '../render/scale';
+import { solveScale } from '../render/scale';
 import { Hud } from '../ui/Hud';
-import { QueueStrip, type QueueStripHandle } from '../ui/QueueStrip';
+import { QueueStrip, UndoToastNotice, type QueueStripHandle } from '../ui/QueueStrip';
+import { type NoticeItem } from '../ui/NoticeColumn';
 import {
   WorldInteractions,
   type WorldInteractionsHandle,
@@ -36,6 +37,7 @@ import { preferenceReaction } from '../ui/preference-tags';
 import { intentionStrings } from '../ui/intention-copy';
 import type { AutonomyMode } from '../sim/rules';
 import { CHROME, FONT, TYPE_SCALE, theme } from '../ui/theme';
+import { LAYER, regionsFor, worldReservation } from '../ui/layout';
 
 /**
  * P3's screen: the composition root's view (master §4).
@@ -118,7 +120,21 @@ function HydratedGameScreen({
       0.75,
       Math.min(2, Number.isFinite(fontScale) ? fontScale : 1),
     ) * preferences.display.hudTextScale;
-  const hudHeight = HUD_H * hudTextScale;
+  /**
+   * Regions first, world second (§3.1). `HUD_H * hudTextScale` used to stand in for the
+   * HUD's real height and was wrong twice: 148 against a block that measures 198, and a
+   * linear scaling of a box whose borders and padding do not scale. `regionsFor` derives
+   * both reservations from the same recipe that sizes the content.
+   */
+  const regions = useMemo(
+    () => regionsFor({ width, height, textScale: hudTextScale }),
+    [width, height, hudTextScale],
+  );
+  const reservation = useMemo(
+    () => worldReservation({ width, height, textScale: hudTextScale }),
+    [width, height, hudTextScale],
+  );
+  const hudHeight = reservation.hudHeight;
   const fit = useMemo(
     () =>
       solveScale({
@@ -126,6 +142,7 @@ function HydratedGameScreen({
         height,
         devicePixelRatio: dpr,
         hudHeight,
+        queueWidth: reservation.queueWidth,
         fractionalScaling: preferences.display.fractionalScaling,
       }),
     [
@@ -133,9 +150,27 @@ function HydratedGameScreen({
       height,
       dpr,
       hudHeight,
+      reservation.queueWidth,
       preferences.display.fractionalScaling,
     ],
   );
+  /**
+   * Everything that reports something that happened, in one stack (§3.2).
+   *
+   * A surface belongs here if it *reports*; it stays anchored if it *points* at something
+   * on screen — which is why the goal and intention chips are not in this list (§7.2).
+   */
+  const notices = useMemo<NoticeItem[]>(() => {
+    const items: NoticeItem[] = [];
+    if (undoToast !== null) {
+      items.push({
+        id: `undo:${undoToast.receiptId}`,
+        node: <UndoToastNotice undoToast={undoToast} onUndo={undoLastRemove} />,
+      });
+    }
+    return items;
+  }, [undoToast, undoLastRemove]);
+
   const reducedMotion = useReducedMotionPreference(
     preferences.display.reducedMotion,
   );
@@ -382,7 +417,12 @@ function HydratedGameScreen({
       <View
         style={[
           styles.stage,
-          { top: hudHeight, right: QUEUE_W },
+          {
+            top: regions.stage.y,
+            left: regions.stage.x,
+            width: regions.stage.width,
+            height: regions.stage.height,
+          },
         ]}
       >
         <View style={{ width: fit.width, height: fit.height }}>
@@ -413,6 +453,7 @@ function HydratedGameScreen({
         </View>
       </View>
       <Hud
+        regions={regions}
         snapshot={snapshot}
         speed={speed}
         onSpeed={setSpeed}
@@ -456,6 +497,7 @@ function HydratedGameScreen({
         </View>
       )}
       <QueueStrip
+        region={regions.rail}
         ref={queueStripRef}
         snapshot={snapshot}
         topInset={hudHeight}
@@ -475,6 +517,8 @@ function HydratedGameScreen({
       />
       {snapshot !== null && (
         <FirstSessionUI
+          regions={regions}
+          notices={notices}
           ref={firstSessionRef}
           session={snapshot.session}
           presentationKey={loop}
@@ -540,7 +584,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 70,
     width: 192,
-    zIndex: 19,
+    zIndex: LAYER.worldOverlay,
   },
   // The tag is a short label, so it keeps the pixel face at the body step; the sentence
   // under it is prose and takes the sans caption.
@@ -555,9 +599,7 @@ const styles = StyleSheet.create({
   },
   stage: {
     alignItems: 'center',
-    bottom: 0,
     justifyContent: 'center',
-    left: 0,
     position: 'absolute',
   },
   fatalOverlay: {
@@ -570,7 +612,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(36, 31, 46, 0.88)',
     justifyContent: 'center',
     padding: 24,
-    zIndex: 100,
+    zIndex: LAYER.modal,
   },
   fatalPanel: {
     ...CHROME.panel,

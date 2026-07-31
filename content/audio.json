@@ -1,11 +1,11 @@
 {
   "music": {
     "day": {
-      "assetId": "music.day",
+      "assetId": "music.main",
       "gain": 0.9
     },
     "evening": {
-      "assetId": "music.evening",
+      "assetId": "music.main",
       "gain": 0.9
     },
     "crossfadeMinute": 1140,

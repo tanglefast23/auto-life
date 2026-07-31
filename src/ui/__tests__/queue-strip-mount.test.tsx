@@ -1,14 +1,16 @@
 import { createRef } from 'react';
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from 'react-test-renderer';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated, StyleSheet, Text } from 'react-native';
 import type { PublishedQueueCard } from '../../application/snapshot';
 import { QUEUE_W } from '../../render/scale';
 import {
   QueueStrip,
+  UndoToastNotice,
   type QueueStripHandle,
   type QueueStripProps,
   type QueueStripSnapshot,
 } from '../QueueStrip';
+import { NoticeColumn } from '../NoticeColumn';
 import { MOTION } from '../../render/motion';
 
 const card = (
@@ -392,24 +394,64 @@ test('every anchor action is visible and editable without expanding a block', ()
 });
 
 test('the mounted Undo toast has a 44 px action and returns only its opaque receipt id', () => {
-  const { tree, handlers } = setup({
-    undoToast: { receiptId: 'r9', remainingMs: 5000 },
+  // The toast is a NOTICE entry now, not a rail surface — it used to anchor itself at
+  // `right: QUEUE_W + 10` beside the rail. Its markup, ids and live region are unchanged;
+  // only who positions it moved, so this mounts it where it now lives.
+  const onUndo = jest.fn();
+  let tree: ReactTestRenderer;
+  act(() => {
+    tree = create(
+      <NoticeColumn
+        region={{ x: 8, y: 400, width: 320, height: 200 }}
+        items={[
+          {
+            id: 'undo:r9',
+            node: (
+              <UndoToastNotice
+                undoToast={{ receiptId: 'r9', remainingMs: 5000 }}
+                onUndo={onUndo}
+              />
+            ),
+          },
+        ]}
+      />,
+    );
   });
-  const announcement = tree.root.findByProps({
+  const announcement = tree!.root.findByProps({
     testID: 'queue-undo-announcement',
   });
   expect(announcement.props.accessibilityLiveRegion).toBe('polite');
   expect(announcement.props.accessibilityLabel).toContain(
     'Undo available for 5 seconds',
   );
-  const undo = tree.root.findByProps({ testID: 'queue-undo:r9' });
+  const undo = tree!.root.findByProps({ testID: 'queue-undo:r9' });
   const undoStyle = StyleSheet.flatten(undo.props.style);
   expect(undoStyle.minWidth).toBeGreaterThanOrEqual(44);
   expect(undoStyle.minHeight).toBeGreaterThanOrEqual(44);
   press(undo);
-  expect(handlers.onUndo).toHaveBeenCalledWith('r9');
+  expect(onUndo).toHaveBeenCalledWith('r9');
 
-  act(() => tree.unmount());
+  act(() => tree!.unmount());
+});
+
+test('the NOTICE stack shows at most three, then collapses the rest to a count', () => {
+  const items = Array.from({ length: 5 }, (_, i) => ({
+    id: `n${i}`,
+    node: <Text testID={`notice-body:${i}`}>{`notice ${i}`}</Text>,
+  }));
+  let tree: ReactTestRenderer;
+  act(() => {
+    tree = create(
+      <NoticeColumn region={{ x: 8, y: 400, width: 320, height: 200 }} items={items} />,
+    );
+  });
+  // An uncapped alert column is how RimWorld's right edge became a wall.
+  expect(tree!.root.findAllByProps({ testID: 'notice-body:0' }).length).toBeGreaterThan(0);
+  expect(tree!.root.findAllByProps({ testID: 'notice-body:2' }).length).toBeGreaterThan(0);
+  expect(tree!.root.findAllByProps({ testID: 'notice-body:3' })).toHaveLength(0);
+  expect(tree!.root.findByProps({ testID: 'notice-overflow' }).props.children).toBe('+2 more');
+
+  act(() => tree!.unmount());
 });
 
 test('reduced motion removes animation while urgency keeps a visible non-colour badge', () => {

@@ -494,8 +494,10 @@ describe('ApplicationRoot drives the cue router', () => {
 
     // The single assertion this whole audit turns on: the game makes a sound.
     expect(bus.calls).not.toEqual([]);
+    // Keyed by asset, not by variant: day and evening share one authored track, so the
+    // voice key is derived from the asset id rather than the word "day".
     expect(bus.calls).toContainEqual(
-      `loop:music.bed.day:${content.audio.music.day.assetId}`,
+      `loop:music.bed.${content.audio.music.day.assetId}:${content.audio.music.day.assetId}`,
     );
     expect(bus.calls).toContainEqual(
       `loop:ambience.room:${content.audio.ambience.room.assetId}`,

@@ -16,6 +16,7 @@ import { ENGINE_VERSION } from '../sim/version';
 import { APP_VERSION } from '../application/app-version';
 import { settingsStrings } from './settings-copy';
 import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
+import { LAYER } from './layout';
 
 type Page = 'pause' | 'settings';
 type Confirmation = 'new-game' | 'reset' | null;
@@ -691,7 +692,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    zIndex: 200,
+    zIndex: LAYER.modal,
   },
   panel: {
     ...CHROME.panel,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { content } from '../sim/content';
 import type { SimSnapshot } from '../sim/step';
 import type { BarId } from '../sim/types';
@@ -12,6 +12,7 @@ import { practiceLevel } from '../sim/practice-level';
 import { fillGoalCopy, goalStrings } from './goal-copy';
 import { settingsStrings } from './settings-copy';
 import { CHROME, FONT, scaledType, TABULAR, TYPE_SCALE, theme } from './theme';
+import { LAYER, local, type Regions, type Rect } from './layout';
 
 /**
  * The HUD (SPEC §11.1, P3 T7).
@@ -54,6 +55,17 @@ export interface HudProps {
    * shrank the world and left every glyph exactly where it was (audit finding).
    */
   textScale?: number;
+  /**
+   * The laid-out regions. Optional so a mounted test can render the HUD without a
+   * viewport; when absent each block falls back to its historical corner.
+   */
+  regions?: Pick<Regions, 'status' | 'temporal'>;
+}
+
+/** Turn a region rectangle into absolute insets. */
+function regionStyle(rect: Rect | undefined): ViewStyle {
+  if (rect === undefined) return {};
+  return { left: rect.x, top: rect.y, width: rect.width, height: rect.height };
 }
 
 /**
@@ -158,10 +170,13 @@ export function Hud({
   nonColorUrgency = true,
   screenReaderVerbosity = 'brief',
   textScale = 1,
+  regions,
 }: HudProps) {
   // One recipe per Track-A step, so a size change lands on every HUD string at once
   // instead of fourteen places drifting apart again (design.md §4 caps the scale at four).
   const type = useMemo(() => hudType(textScale), [textScale]);
+  /** Narrow: `TEMPORAL` has no rectangle of its own and rides inside `STATUS`. */
+  const temporalCollapsed = regions !== undefined && regions.temporal.width === 0;
   // One tip at a time: four stacked panels would cover the sim, and the rows are 6px
   // apart, so a hover moving down the block would otherwise leave a trail open.
   const [openTip, setOpenTip] = useState<BarId | null>(null);
@@ -200,8 +215,12 @@ export function Hud({
     return () => loop.stop();
   }, [pulse, pulseMs]);
   return (
-    <View style={styles.root} pointerEvents="box-none">
-      {/* Top-left: Health block (§11.1) */}
+    <>
+      {/* STATUS — vitals, top-left, never moves (§3.2). */}
+      <View
+        pointerEvents="box-none"
+        style={[styles.region, regionStyle(regions?.status)]}
+      >
       <View style={styles.block}>
         <View style={[styles.healthRow, { width: type.healthWidth }]}>
           <Text {...SCALABLE_TEXT} style={[styles.healthLabel, type.label]}>HEALTH</Text>
@@ -334,8 +353,25 @@ export function Hud({
           })}
         </Text>
       </View>
+      </View>
 
-      {/* Top-right: clock block + speed controls (§11.1) */}
+      {/* TEMPORAL — clock, speed, settings (§11.1). Its own region above the rail on a wide
+          viewport, so the HUD no longer spans `right: 0` and stops crossing the rail's
+          column. On a narrow viewport the region collapses to zero width and STATUS spans
+          the top bar instead (§3.5) — the region *names* are stable across breakpoints,
+          their rectangles are not, and a collapsed region hands its contents to a named
+          sibling rather than vanishing. */}
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.region,
+          styles.temporalRegion,
+          temporalCollapsed
+            ? // Rendered inside the top bar STATUS now owns, right-aligned within it.
+              { left: regions!.status.x, top: regions!.status.y, width: regions!.status.width, height: regions!.status.height }
+            : regionStyle(regions?.temporal),
+        ]}
+      >
       <View
         style={[styles.block, styles.clockBlock]}
         testID="hud-clock-block"
@@ -402,18 +438,21 @@ export function Hud({
           </Pressable>
         </View>
       </View>
-    </View>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  /**
+   * A regioned box, not a full-width bar.
+   *
+   * `root` used to span `left: 0 → right: 0`, which is what put the HUD's own right edge
+   * across the rail's column and buried the onboarding chips underneath it. Each block now
+   * sits in the rectangle `layout.ts` reserved for it.
+   */
+  region: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     padding: 8,
     /**
      * Above the first-session chips, below anything focused.
@@ -426,7 +465,7 @@ const styles = StyleSheet.create({
      * attention. Raising the tip alone could not fix this: the two live in sibling
      * stacking contexts, so DOM order decided and the chips render later.
      */
-    zIndex: 35,
+    zIndex: LAYER.chrome,
   },
   // design.md §3 Track A: thick Ink outline, cream face, cream-shadow bottom lip.
   block: {
@@ -434,6 +473,7 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 4,
   },
+  temporalRegion: { alignItems: 'flex-end' },
   clockBlock: { alignItems: 'flex-end' },
   healthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', width: 168 },
   // Size and family for every entry below come from `hudType(textScale)`, so the
@@ -451,7 +491,7 @@ const styles = StyleSheet.create({
   edgeTick: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: CREAM_SHADOW },
   alertPulse: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: RED },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  barRowRaised: { zIndex: 30 },
+  barRowRaised: { zIndex: local(9) },
   /**
    * Anchored under its own row rather than floating over the scene: the HUD block is
    * already the top-left panel, and a tip that escaped it would sit on the sim. `absolute`
@@ -466,7 +506,7 @@ const styles = StyleSheet.create({
     // The row's own width, not a copy of it: `healthWidth` grows with the text-size
     // preference, and a hardcoded 168 let the bar underneath peek out past the tip.
     width: '100%',
-    zIndex: 30,
+    zIndex: local(9),
     paddingHorizontal: 8,
     paddingVertical: 4,
     gap: 4,

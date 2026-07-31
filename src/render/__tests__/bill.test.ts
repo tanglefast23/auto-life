@@ -149,9 +149,14 @@ describe('bill of materials — no placeholders (SPEC §18)', () => {
     }
   });
 
-  it('has a rendered file on disk for every declared audio asset', () => {
+  it('has a file on disk for every declared audio asset, generated or authored', () => {
+    // Two homes, on purpose. `assets/audio/` is rebuilt from empty by `build-bank`, so
+    // anything authored there would be deleted by the next bank build; authored music
+    // lives in `assets/music/` and ships as compressed AAC rather than WAV.
     const missing = declaredAudioAssetIds(content.audio).filter(
-      (id) => !existsSync(resolve(repoRoot, `assets/audio/${id}.wav`)),
+      (id) =>
+        !existsSync(resolve(repoRoot, `assets/audio/${id}.wav`)) &&
+        !existsSync(resolve(repoRoot, `assets/music/${id.replace(/^music\./, '')}.m4a`)),
     );
     expect(missing).toEqual([]);
   });

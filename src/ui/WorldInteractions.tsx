@@ -11,6 +11,7 @@ import { activityByIdIn, content } from '../sim/content';
 import type { ObjectsConfig } from '../sim/content-schemas';
 import { activityCopy } from './queue-presenter';
 import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
+import { LAYER, local } from './layout';
 
 type ObjectDef = ObjectsConfig['objects'][number];
 
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
     borderRadius: 3,
-    zIndex: 2,
+    zIndex: local(2),
   },
   hotspotVisible: {
     borderColor: BLUE,
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
     width: PANEL_WIDTH,
     padding: 8,
     gap: 4,
-    zIndex: 20,
+    zIndex: LAYER.worldOverlay,
   },
   choiceHeading: {
     minHeight: 32,
