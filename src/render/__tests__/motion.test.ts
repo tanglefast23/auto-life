@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { theme } from '../../ui/theme';
 import {
   MOTION,
@@ -95,6 +97,57 @@ describe('reduced motion (SPEC §11.6)', () => {
   it('finishes instantly once resolved, so nothing waits on a zero-length tween', () => {
     expect(motionProgress(resolveMotion(MOTION.cardSlide, reduced), 0)).toBe(1);
     expect(effectFrame(resolveMotion(MOTION.poof, reduced), 0)).toBeNull();
+  });
+});
+
+describe('every motion reaches a surface', () => {
+  /**
+   * The gate this file was missing.
+   *
+   * P6 shipped the table with full coverage and wired exactly one entry — `motion.test.ts`
+   * passed throughout, because it asserts what the table *contains*, not that anything
+   * draws it. A tested table with no consumer is indistinguishable from a finished feature
+   * when you are reading test output, which is precisely why this walks source instead.
+   */
+  const repoRoot = resolve(__dirname, '../../..');
+
+  function sourceFiles(dir: string): string[] {
+    return readdirSync(resolve(repoRoot, dir)).flatMap((entry) => {
+      const path = resolve(repoRoot, dir, entry);
+      if (statSync(path).isDirectory()) {
+        return entry === '__tests__' ? [] : sourceFiles(`${dir}/${entry}`);
+      }
+      return /\.tsx?$/.test(entry) ? [`${dir}/${entry}`] : [];
+    });
+  }
+
+  const CONSUMERS = [
+    ...sourceFiles('src/render'),
+    ...sourceFiles('src/ui'),
+    ...sourceFiles('src/application'),
+  ].filter((file) => !file.endsWith('src/render/motion.ts'));
+
+  const corpus = CONSUMERS.map((file) => readFileSync(resolve(repoRoot, file), 'utf8')).join('\n');
+
+  it('is consumed by something that can actually draw it', () => {
+    const orphans = Object.keys(MOTION).filter(
+      (name) => !new RegExp(`MOTION\\.${name}\\b`).test(corpus),
+    );
+    expect(orphans).toEqual([]);
+  });
+
+  it('routes every animating consumer through resolveMotion, so §11.6 stays in one place', () => {
+    // A surface that reached for its own `if (reducedMotion)` would be re-deriving the
+    // accessibility contract, which is how half of a set of animations quietly stops
+    // obeying it. "Animating" is the test, not "mentions a motion": a pure selector that
+    // hands a motion to a resolver is doing the right thing, and `card-motion.ts` is one.
+    const offenders = CONSUMERS.filter((file) => {
+      const text = readFileSync(resolve(repoRoot, file), 'utf8');
+      const animates = /Animated\.|useSharedValue|useDerivedValue/.test(text);
+      const resolves = /resolveMotion|useMotionRun|squashInterpolation|useQueueGhosts/.test(text);
+      return /\bMOTION\.\w+/.test(text) && animates && !resolves;
+    });
+    expect(offenders).toEqual([]);
   });
 });
 

@@ -56,6 +56,8 @@ export interface FirstSessionUIProps {
   onRespondToLetter?: (
     decision: 'accept' | 'decline',
   ) => void;
+  /** SPEC §11.6 — the recap still arrives, it just stops sliding (P6 T11). */
+  reducedMotion?: boolean;
 }
 
 export interface FirstSessionUIHandle {
@@ -90,6 +92,7 @@ export const FirstSessionUI = forwardRef<
     onTakeWrinkleAction,
     onChooseGoalReward,
     onRespondToLetter,
+    reducedMotion = false,
   },
   ref,
 ) {
@@ -376,6 +379,7 @@ export const FirstSessionUI = forwardRef<
           session={session}
           expanded={expandedRecap}
           top={hudHeight + 16}
+          reducedMotion={reducedMotion}
           styles={styles}
           onToggle={() => setExpandedRecap((expanded) => !expanded)}
           onDone={() => {

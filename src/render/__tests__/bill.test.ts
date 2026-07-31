@@ -78,6 +78,42 @@ describe('bill of materials — no placeholders (SPEC §18)', () => {
     }
   });
 
+  /**
+   * The bill runs one way only, and the ship pass found the other direction open.
+   *
+   * Every test above asks "does an asset exist for what the game declares?". None asks
+   * "can the game reach every asset we authored?" — so art that nothing can display passes
+   * the whole gate. It is the same class of hole as a placeholder, arriving from the
+   * opposite side: not a missing sprite, a sprite with no way in.
+   */
+  it('can actually reach every pose it packs', () => {
+    const IDLE_UNREACHABLE = ['idle', 'idle-window-gazing', 'idle-slow-stretching', 'idle-air-guitar'];
+
+    const reachable = new Set<string>();
+    // Travel drives the four walk cycles; the droop frame is the tiredness flag, not an
+    // activity. Neither is declared in `activities.json`, and both are genuinely drawn.
+    for (const facing of ['up', 'down', 'left', 'right']) reachable.add(`walk-${facing}`);
+    reachable.add('stand-droop');
+    for (const activity of content.activities.activities) {
+      // `render-view.ts` derives a pose from `s.current`, and an `idle`-kind activity never
+      // becomes current — `step.ts` removes the card and leaves `current` null, which reads
+      // as `stand`. Declaring a pose is therefore not the same as being able to strike it.
+      if (activity.kind === 'idle') continue;
+      reachable.add(activity.pose);
+    }
+
+    const unreachable = Object.keys(index.poses).filter((pose) => !reachable.has(pose));
+
+    // ACCEPTED EXCEPTION, awaiting a ruling: 5 frames × 4 appearances = 20 sprites.
+    // `window-gazing` and `slow-stretching` are identity preferences and `air-guitar` is
+    // Goal 4's entire reward, so the game grants all three and can display none of them.
+    // Verified 2026-07-31 by a seven-day seeded run: pose `idle` occurred in 0 of 10,080
+    // ticks. Making it reachable is a design decision (when *should* she idle?) and a
+    // mechanics change, so it is Joe's call, not the ship pass's — see evidence/P6.md.
+    // This assertion is exact rather than a subset so a NEW unreachable pose still fails.
+    expect(unreachable.sort()).toEqual(IDLE_UNREACHABLE.sort());
+  });
+
   it('gives every grantable decoration its own sprite', () => {
     const used = new Set<string>();
     for (const [id, placement] of Object.entries(DECORATION_PLACEMENTS)) {
