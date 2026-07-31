@@ -30,6 +30,21 @@ export interface CueView {
   currentCardId: string | null;
   /** What is running, if anything — the loop key for an activity's own sound. */
   currentActivityId: string | null;
+  /**
+   * Whether the sim is *executing* that card rather than still walking to it.
+   *
+   * `currentCardId` is set the moment travel toward a card begins, so a start derived
+   * from the id alone opened `loop.shower` while she was crossing the house — and all
+   * eight authored loops are activities you travel to.
+   */
+  running: boolean;
+  /**
+   * The day the morning recap on screen belongs to, or null when none is up.
+   *
+   * The day rather than a boolean, so the recap for a *new* day still sounds when the
+   * previous one was never dismissed — a boolean would read that as "still showing".
+   */
+  recapDay: number | null;
   practiceLevel: 0 | 1 | 2 | 3;
   practicing: boolean;
 }
@@ -47,6 +62,10 @@ export function cueViewOf(
     minuteOfDay: snapshot.minuteOfDay,
     currentCardId: snapshot.currentCardId,
     currentActivityId: current,
+    // `processed` is what stage 4 actually ran this tick, which is the only field that
+    // separates "walking to the shower" from "in the shower".
+    running: snapshot.processed === 'activity',
+    recapDay: snapshot.session.morningRecap?.forDay ?? null,
     practiceLevel: practiceLevel(
       Math.max(0, Math.round(snapshot.practicePoints * 100)),
       content.practice.levels,
@@ -93,16 +112,29 @@ export function domainCueEvents(
 ): DomainCueEvent[] {
   const cues: DomainCueEvent[] = [];
 
-  // A different card is running than was running a minute ago. Derived from the snapshot
-  // rather than from an outcome because most activities start with no command at all —
-  // the planner starts them, and the queue verbs below are only the player's half.
+  // A different card is *executing* than was executing a minute ago. Derived from the
+  // snapshot rather than from an outcome because most activities start with no command at
+  // all — the planner starts them, and the queue verbs below are only the player's half.
+  //
+  // The transition is into `running`, not into a new card id. Keying on the id alone
+  // announced the start at the moment travel began; requiring `running` *and* keying on
+  // the id would then never fire at all, because the id does not change again on arrival —
+  // it was already the travel target. So the edge that matters is entering `running`, plus
+  // the id changing for a card that follows another with no walk between them.
   const startedId = next.currentActivityId;
   if (
     startedId !== null &&
     previous !== null &&
-    next.currentCardId !== previous.currentCardId
+    next.running &&
+    (!previous.running || next.currentCardId !== previous.currentCardId)
   ) {
     cues.push({ kind: 'activity-started', activityId: startedId });
+  }
+
+  // SPEC §11.4's recap arriving is a state change, not a command, so it is read here for
+  // the same reason a started activity is: the player did not ask for it.
+  if (next.recapDay !== null && previous !== null && next.recapDay !== previous.recapDay) {
+    cues.push({ kind: 'recap-shown' });
   }
 
   for (const event of boundary.events) {

@@ -90,4 +90,21 @@
  * Nothing about that widens either change; it only stops the recorded number from
  * describing an engine that has since moved twice. Both goldens re-recorded.
  */
-export const ENGINE_VERSION = 10 as const;
+/**
+ * v11 (2026-07-31, audit): §9.2's food mood reaches the **routine** planner.
+ *
+ * `refillRoutineQueue` booked `snack` for every nutrition need and never received
+ * `rules` at all, so under the default `full-routine` autonomy a `proper-meals` career
+ * played out byte-identically to one with no food preference — the reactive path had
+ * honoured the preference since v2, which is what made the gap look covered. Food mood is
+ * one of only two preferences a player is given in the identity flow, so a rolled
+ * `proper-meals` now books the 30-minute meal where a grazer books the 10-minute snack.
+ *
+ * Neither golden moved, and that is worth recording rather than celebrating: both golden
+ * careers have `foodMoodId: null`, so the suite could never have caught this and still
+ * cannot. The new coverage is in `routine-queue.test.ts`.
+ *
+ * A career with no food preference is unchanged, so v8–v10 envelopes still stamp forward
+ * in place.
+ */
+export const ENGINE_VERSION = 11 as const;

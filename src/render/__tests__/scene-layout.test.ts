@@ -9,6 +9,8 @@ import {
   buildTileQuads,
   characterSprite,
   CHAR_H,
+  dwelledPose,
+  IDLE_DWELL_MS,
   lookup,
   snapToPhysicalPixel,
   TILE,
@@ -285,5 +287,46 @@ describe('walk tempo tracks m_speed (SPEC §11.3)', () => {
 
   test('a zero-length frame does not advance the cycle', () => {
     expect(advancePhase(0.25, 0, 1)).toBeCloseTo(0.25, 10);
+  });
+});
+
+/**
+ * The idle dwell guard.
+ *
+ * Making `idle` reachable exposed a second problem the read-model cannot see: measured on
+ * a seven-day seeded run, *every* idle stretch under the default autonomy is exactly one
+ * tick — 428 of them, mean run length 1.00. One tick is 0.5s of real time at 1× and 0.125s
+ * at 4×, so the sim struck a pose 428 times a week and never held it long enough to read
+ * as anything but a flicker. Goal 4's air-guitar reward is a *single frame*, which is the
+ * worst case of all.
+ *
+ * So the read-model still says `idle` — that is the truth about what she is doing — and
+ * the renderer declines to *draw* it until it has lasted long enough to be seen. A pose
+ * you cannot hold is not a pose.
+ */
+describe('idle dwell', () => {
+  it('keeps standing through a gap too short to read', () => {
+    expect(dwelledPose('idle', 0)).toBe('stand');
+    expect(dwelledPose('idle', IDLE_DWELL_MS - 1)).toBe('stand');
+  });
+
+  it('strikes the pose once it has lasted', () => {
+    expect(dwelledPose('idle', IDLE_DWELL_MS)).toBe('idle');
+    expect(dwelledPose('idle', IDLE_DWELL_MS * 10)).toBe('idle');
+  });
+
+  it('holds a single-tick gap below the threshold at every playback speed', () => {
+    // One tick is 500ms of real time at 1× and 125ms at 4× — the two speeds the DoD
+    // measures. Both must stay standing, or the guard does not guard anything.
+    for (const oneTickMs of [500, 250, 125]) {
+      expect(dwelledPose('idle', oneTickMs)).toBe('stand');
+    }
+  });
+
+  it('never touches a pose that is not idle', () => {
+    for (const pose of ['walk', 'sleep', 'practice', 'eat', 'stand'] as const) {
+      expect(dwelledPose(pose, 0)).toBe(pose);
+      expect(dwelledPose(pose, IDLE_DWELL_MS * 5)).toBe(pose);
+    }
   });
 });

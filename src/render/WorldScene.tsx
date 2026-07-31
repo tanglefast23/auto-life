@@ -22,6 +22,7 @@ import type { RenderView } from '../sim/render-view';
 import atlasIndexJson from '../../assets/generated/atlas-index.json';
 import {
   advancePhase,
+  dwelledPose,
   buildCharacterQuad,
   buildDecorationQuads,
   buildStaticQuads,
@@ -357,6 +358,8 @@ export function WorldScene({
     let raf = 0;
     let phase = 0;
     let last: number | null = null;
+    // How long the read-model has reported idle without interruption.
+    let idleHeldMs = 0;
     // Which half of the walk cycle the last frame was in. A cycle is two strides, so a
     // change here is one foot landing — the same signal the sprite swap reads, which is
     // what keeps the sound on the frame the player sees the foot touch down.
@@ -376,6 +379,10 @@ export function WorldScene({
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
       phase = advancePhase(phase, delta * speed, v.mSpeed);
+      // Real elapsed time, deliberately NOT scaled by `speed`: the guard exists so a human
+      // can see the pose, and an eye does not run at 4×.
+      idleHeldMs = v.pose === 'idle' ? idleHeldMs + delta : 0;
+      const drawnPose = dwelledPose(v.pose, idleHeldMs);
       if (v.pose === 'walk' && footstep !== undefined) {
         const half = Math.floor(phase * 2);
         // `contact === null` is the first walking frame, which is a footfall the player
@@ -390,7 +397,9 @@ export function WorldScene({
       const quad = buildCharacterQuad(
         index,
         paletteKey,
-        v,
+        // Only allocate a substitute view on the frames the guard actually changes, so a
+        // walking or working sim pays nothing for it.
+        drawnPose === v.pose ? v : { ...v, pose: drawnPose },
         getAlpha(),
         phase,
         variant,

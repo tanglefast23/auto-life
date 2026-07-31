@@ -3,6 +3,7 @@ import type { KvStore } from '../../persistence/kv';
 import { content } from '../../sim/content';
 import { PrngStreams } from '../../sim/prng';
 import { newGameState } from '../../sim/state';
+import { ENGINE_VERSION } from '../../sim/version';
 import { bootApplication, type BootState } from '../boot';
 import {
   APP_PREFERENCES_KEY,
@@ -15,6 +16,7 @@ import {
 import {
   newAppPreferencesEnvelope,
   newCareerState,
+  STAMP_FORWARD_ENGINE_VERSIONS,
   type StoredCareer,
 } from '../career-state';
 
@@ -218,7 +220,7 @@ test('known legacy data migrates before current strict parsing', async () => {
   expect(loaded).toMatchObject({
     status: 'loaded',
     career: {
-      engineVersion: 10,
+      engineVersion: ENGINE_VERSION,
       payload: {
         sim: {
           current: { type: 'travel', cardId: 'c0' },
@@ -255,15 +257,81 @@ test('engine v8 careers migrate without losing the saved queue', async () => {
   expect(loaded).toMatchObject({
     status: 'loaded',
     career: {
-      engineVersion: 10,
+      engineVersion: ENGINE_VERSION,
       payload: {
         sim: {
-          engineVersion: 10,
+          engineVersion: ENGINE_VERSION,
           queue: [{ id: 'saved-v8-card', activityId: 'meal' }],
         },
       },
     },
   });
+});
+
+/**
+ * v9 shipped on `main` (the rolling routine queue) before v10 bumped past it, and the
+ * migrator recognised the literal `8` only — so a career saved during v9 fell through to
+ * the *synthetic fixture* path, threw, and opened recovery.
+ *
+ * This iterates the declared list rather than naming versions, because a hand-maintained
+ * list of "versions we remembered to test" is the same shape of mistake as the
+ * hand-maintained literal that caused it. Adding a version to
+ * `STAMP_FORWARD_ENGINE_VERSIONS` now automatically requires it to load.
+ */
+test.each(STAMP_FORWARD_ENGINE_VERSIONS)(
+  'an engine v%i career migrates forward rather than falling into recovery',
+  async (version) => {
+    const store = new FakeKvStore();
+    const prior = JSON.parse(JSON.stringify(freshCareer()));
+    prior.engineVersion = version;
+    prior.payload.sim.engineVersion = version;
+    prior.payload.sim.queue = [{
+      id: `saved-v${version}-card`,
+      activityId: 'meal',
+      owner: 'PINNED',
+      urgent: false,
+      source: 'player',
+      enqueuedTick: prior.payload.sim.clock.absoluteMinute,
+    }];
+    store.values.set(CAREER_GENERATION_KEYS[0], JSON.stringify(prior));
+
+    const loaded = await new CareerRepository(store, content, 'reader').load();
+
+    expect(loaded).toMatchObject({
+      status: 'loaded',
+      career: {
+        engineVersion: ENGINE_VERSION,
+        payload: {
+          sim: {
+            engineVersion: ENGINE_VERSION,
+            queue: [{ id: `saved-v${version}-card`, activityId: 'meal' }],
+          },
+        },
+      },
+    });
+  },
+);
+
+test('every engine version below the current one is either migrated or deliberately not', () => {
+  // The gap this closes: v10 was current, v9 had shipped, and nothing anywhere asserted
+  // that the set of loadable versions reached back to the current one without a hole.
+  const covered = [...STAMP_FORWARD_ENGINE_VERSIONS];
+  expect(Math.max(...covered)).toBe(ENGINE_VERSION - 1);
+  for (let v = Math.min(...covered); v < ENGINE_VERSION; v += 1) {
+    expect(covered).toContain(v);
+  }
+});
+
+test('a career from an unknown future engine still fails closed into recovery', async () => {
+  const store = new FakeKvStore();
+  const future = JSON.parse(JSON.stringify(freshCareer()));
+  future.engineVersion = 99;
+  future.payload.sim.engineVersion = 99;
+  store.values.set(CAREER_GENERATION_KEYS[0], JSON.stringify(future));
+
+  const loaded = await new CareerRepository(store, content, 'reader').load();
+
+  expect(loaded).toMatchObject({ status: 'recovery' });
 });
 
 test('writes serialize and a rejected write does not skip a generation', async () => {
