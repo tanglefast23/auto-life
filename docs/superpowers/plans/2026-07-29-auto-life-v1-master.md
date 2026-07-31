@@ -210,6 +210,32 @@ only from state the engine already publishes (the `bandFor()` bands, P5's prefer
 reaction, P4's forecast warnings). No new domain state, no new event. Because bubbles are
 *information*, they ship in P6's Milestone A and are part of Gate A — not with the juice.
 
+### Rolling routine queue — adopted into v1 scope, `ENGINE_VERSION` 9 (2026-07-31)
+
+The feature arrived from concurrent work, was swept into P6's commit `bf1a4cc` by a
+`git add -A` that §8 convention 2 forbids, and was recorded in evidence/P6.md as a
+contamination with an open question for Joe.
+
+**Joe's ruling, 2026-07-31: the feature stays and ships in the build P4.5 runs against.**
+It is now v1 scope, specified in SPEC §7.2a, and not an orphan.
+
+What that ruling costs, stated plainly rather than left implicit:
+
+1. **P6's golden pin is retired, not met.** The P6 plan's DoR row 5 and completion item 4
+   required `ENGINE_VERSION` 8 with byte-identical goldens. The engine is at **9** and both
+   goldens moved. P6's own work did not move them — `pose`, `materials`, `lamps`, `audio`,
+   and the T11 motion wiring are all presentation-only and were verified byte-neutral — so
+   the pin did its job: it proved the art phase stayed out of the domain. It is retired
+   because the *reason* for it (no mechanics change beneath finished art before the fun
+   gate) has been overridden by a deliberate decision, which is the one thing §7's version
+   rules allow.
+2. **It carries no P6 review.** Its correctness is asserted by its own six tests plus both
+   re-recorded goldens and the balance harness. It was not reviewed as P6 work and this
+   record says so.
+3. **P4.5 tests it.** The rolling queue is the most visible mechanic on the queue rail, so
+   the fun gate now judges it. If §6's loop fires on "the plan is noisy" or "I could not
+   tell why she was reading", this feature is the first suspect.
+
 ### §11.4 sleep-skip — owner assigned to P4 (2026-07-30)
 
 §11.4's dissolve-to-morning was in no phase's owned list: P3's list did not contain it, P4 was given "the first-night recap" and P5 "remaining recap", and the *skip* is neither. Master §3 requires a deferral to name an owner, so this closes that gap.

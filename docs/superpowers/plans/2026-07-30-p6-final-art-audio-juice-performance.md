@@ -220,7 +220,7 @@ Checked against the current tree, not inherited. **Rows 1 and 10 are red today.*
 | 2 | Repository inspected | Done — the snapshot above is read from the live tree, file and line referenced. |
 | 3 | Owned clauses mapped | §3 maps design.md §§2–13 and SPEC §§10, 11.1, 11.3, 11.5, 11.6, 13, 14, 18 to tasks and automated checks. **One clause had no owner at all** — §11.1's world bubbles; Q5 assigns them to P6 and T0 records the assignment in the master plan, the same way §11.4's sleep-skip was assigned to P4. |
 | 4 | Dependency assumptions verified | `expo-audio` and `expo-font` are SDK 57 packages named in SPEC §3; neither is installed. Current `expo-audio` API confirmed 2026-07-30 against Expo SDK 56/57 docs: `createAudioPlayer(source, options)`, `useAudioPlayer`, `preload()`, `setAudioModeAsync()`, and mutable `player.volume` / `player.loop` / `player.play()` / `player.pause()`. **T8 step 1 re-confirms against the exact installed version before wiring.** |
-| 5 | Determinism / `ENGINE_VERSION` effect | **P6 must not change `ENGINE_VERSION`.** Pose is a *derived* render concern (`render-view.ts` is derived-never-stored by design), audio and motion are presentation, and the atlas is a build artifact. `content/activities.json` gains a `pose` field and `content/home-map.json` gains `materials` — both are read by presentation only and are asserted not to enter `SimState`. T13 re-runs both goldens and requires byte-identical digests. If any task believes it needs an engine bump, it stops and escalates. |
+| 5 | Determinism / `ENGINE_VERSION` effect | **P6 must not change `ENGINE_VERSION`** — and it did not. Pose is a *derived* render concern (`render-view.ts` is derived-never-stored by design), audio and motion are presentation, and the atlas is a build artifact. `content/activities.json` gains a `pose` field and `content/home-map.json` gains `materials` — both are read by presentation only and are asserted not to enter `SimState`. **Superseded 2026-07-31 as a tree-level pin:** the engine is at 9 and both goldens moved, entirely from the concurrent rolling-routine-queue feature that Joe has since adopted into v1 scope (master §5, SPEC §7.2a). The pin's *purpose* — proving the art phase stayed out of the domain — is still met and is what identifies the mover. See §8 item 4. |
 | 6 | Cut-line effect | The §17 cut line lists audio as cuttable. Cutting audio would leave P5's shipped sliders and `M` binding controlling nothing, which SPEC §11.7 and §18 both forbid — so the honest cut is **audio scope**, not audio. §7 records the exact reduced set and its owner. Art and the legibility gate are not cuttable: SPEC §18 requires "no placeholders". |
 | 7 | Writing gate | P6 authors almost no new prose. Any new string (T8's audio labels, T13's credits) goes through Humanizer 2.2.0 + the `writing.md` checklist and joins `content/strings/review-manifest.json` like every other batch. |
 | 8 | Plan audit | **Pending.** Master §3.7 requires it before phase code starts. |
@@ -3141,13 +3141,20 @@ P6 is complete only when:
    only execution, so P6 cannot exit without it;
 3. the bill gate is green: no debug sprite, no placeholder comment, and an authored asset
    for every object, pose, appearance, decoration, icon, and audio cue the game can reach;
-4. **P6 itself moved neither golden** — both digests are byte-identical to the pre-P6
-   values and `ENGINE_VERSION` is still 8 *on the build P4.5 first runs against*. This pin
-   scopes P6's own work only: if master §6's failure loop later prescribes a mechanics
-   retune, that retune re-pins the goldens and bumps the engine under master §7's rules,
-   and doing so does **not** violate this item. (An earlier draft made the pin absolute,
-   which deadlocked completion the moment a single legal fix followed a failed playtest —
-   an invariant written across a retry loop.)
+4. **P6 itself moved neither golden.** This pin always scoped P6's own work only: if master
+   §6's failure loop later prescribes a mechanics retune, that retune re-pins the goldens
+   and bumps the engine under master §7's rules, and doing so does **not** violate this
+   item. (An earlier draft made the pin absolute, which deadlocked completion the moment a
+   single legal fix followed a failed playtest — an invariant written across a retry loop.)
+
+   **Resolved 2026-07-31.** The tree is at `ENGINE_VERSION` **9** with both goldens moved,
+   and this item is nevertheless **met**, because P6 did not move them. The mover is the
+   rolling routine queue, which arrived from concurrent work and which Joe has adopted into
+   v1 scope — now specified in SPEC §7.2a and recorded in master §5. Two things make that
+   claim checkable rather than asserted: P6's own content additions (`pose`, `materials`,
+   `lamps`, `audio`) were verified golden-neutral *before* the contaminating commit, and the
+   T11 juice wiring that followed was verified golden-neutral after it. The build P4.5
+   freezes against is therefore engine 9 by decision, not by drift.
 5. measured desktop frame times are recorded for MBA-13 and 1366×768 and **meet the bar**:
    p95 frame time ≤ 16.7 ms with ≤ 1% dropped frames, over a 600-frame sample, at 1× and
    4×, idle and mid-travel. A miss is a SPEC §18 DoD failure that Joe must explicitly
