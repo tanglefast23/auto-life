@@ -1,7 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { authoredIdleVariantIds } from '../../game/idle-variant';
 import { content } from '../../sim/content';
 import { declaredAudioAssetIds } from '../../sim/content-schemas';
+import { PrngStreams } from '../../sim/prng';
+import { deriveRenderView } from '../../sim/render-view';
+import { newGameState } from '../../sim/state';
 import atlasIndexJson from '../../../assets/generated/atlas-index.json';
 import { APPEARANCE_PALETTES } from '../appearance';
 import { CHARACTER_BILL } from '../sprites/character';
@@ -87,31 +91,39 @@ describe('bill of materials — no placeholders (SPEC §18)', () => {
    * opposite side: not a missing sprite, a sprite with no way in.
    */
   it('can actually reach every pose it packs', () => {
-    const IDLE_UNREACHABLE = ['idle', 'idle-window-gazing', 'idle-slow-stretching', 'idle-air-guitar'];
-
     const reachable = new Set<string>();
     // Travel drives the four walk cycles; the droop frame is the tiredness flag, not an
     // activity. Neither is declared in `activities.json`, and both are genuinely drawn.
     for (const facing of ['up', 'down', 'left', 'right']) reachable.add(`walk-${facing}`);
     reachable.add('stand-droop');
+    // Asked of the production read-model rather than asserted here. A sim with empty
+    // hands is exactly what `derivePose` has to answer, and a gate that hard-codes the
+    // answer is a gate that cannot notice it changing back — which is how these four
+    // poses stayed undrawable through an entire phase in the first place.
+    reachable.add(
+      deriveRenderView(
+        newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize()),
+        content,
+      ).pose,
+    );
+    // Which flourish decorates that pose is `activeIdleVariantId`'s decision: an identity
+    // preference, or Goal 4's reward once "First chord" is rewarded.
+    for (const variant of authoredIdleVariantIds(content)) reachable.add(`idle-${variant}`);
     for (const activity of content.activities.activities) {
-      // `render-view.ts` derives a pose from `s.current`, and an `idle`-kind activity never
-      // becomes current — `step.ts` removes the card and leaves `current` null, which reads
-      // as `stand`. Declaring a pose is therefore not the same as being able to strike it.
+      // An `idle`-kind activity still never becomes current — `step.ts` removes the card.
+      // The idle pose is reached through the empty-hands path above, not through this one,
+      // so declaring a pose is still not the same as being able to strike it.
       if (activity.kind === 'idle') continue;
       reachable.add(activity.pose);
     }
 
     const unreachable = Object.keys(index.poses).filter((pose) => !reachable.has(pose));
 
-    // ACCEPTED EXCEPTION, awaiting a ruling: 5 frames × 4 appearances = 20 sprites.
-    // `window-gazing` and `slow-stretching` are identity preferences and `air-guitar` is
-    // Goal 4's entire reward, so the game grants all three and can display none of them.
-    // Verified 2026-07-31 by a seven-day seeded run: pose `idle` occurred in 0 of 10,080
-    // ticks. Making it reachable is a design decision (when *should* she idle?) and a
-    // mechanics change, so it is Joe's call, not the ship pass's — see evidence/P6.md.
-    // This assertion is exact rather than a subset so a NEW unreachable pose still fails.
-    expect(unreachable.sort()).toEqual(IDLE_UNREACHABLE.sort());
+    // Was an accepted exception of 20 sprites — `idle` plus its three variants — carrying
+    // both a creation preference and Goal 4's entire reward with no way to display either.
+    // Joe ruled the render-only fix on 2026-07-31; the exception is now closed. Exact
+    // rather than a subset, so a NEW unreachable pose still fails.
+    expect(unreachable.sort()).toEqual([]);
   });
 
   it('gives every grantable decoration its own sprite', () => {

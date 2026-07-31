@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { activeIdleVariantId } from '../game/idle-variant';
 import type { GameAction } from '../game/tick';
 import {
   SessionStateSchema,
@@ -465,7 +466,15 @@ export function deriveSimRules(
     intention,
     preferences: {
       foodMood: payload.identity.foodMoodId,
-      idleVariantId: payload.identity.idlePreferenceId,
+      // The *variant*, not the preference option that selects it. `foodMoodId` gets away
+      // with being passed straight through because its option id and mechanic value are
+      // spelled the same; `window-gazer` and `window-gazing` are not, and a field named
+      // `idleVariantId` holding an option id is what made every idle flourish undrawable.
+      idleVariantId: activeIdleVariantId(
+        payload.identity.idlePreferenceId,
+        payload.game.goals,
+        content,
+      ),
     },
     objectBlocks,
     activitySlowdowns,
@@ -771,12 +780,26 @@ const LegacyFixtureSchema = z.looseObject({
   game: z.unknown(),
 });
 
-const EngineV8CareerSchema = z.looseObject({
+/**
+ * Engine versions whose envelope shape is identical to the current one, so a save can be
+ * stamped forward without transforming a field.
+ *
+ * A **set**, not a literal, and that is the whole point. This recognised `8` alone, so
+ * when v10 landed, every career written during v9 — the rolling routine queue, which
+ * shipped on `main` — fell through to the *synthetic fixture* migrator, threw, and opened
+ * the recovery UI. v9's own note says v8 envelopes migrate in place and v10's says the
+ * state shape was unchanged; both are true, which is exactly why nobody noticed that the
+ * one line deciding it had been left behind. A bump that does not change the envelope
+ * belongs on this list, and a bump that does needs its own branch above.
+ */
+export const STAMP_FORWARD_ENGINE_VERSIONS = [8, 9, 10] as const;
+
+const StampForwardCareerSchema = z.looseObject({
   schemaVersion: z.literal(1),
-  engineVersion: z.literal(8),
+  engineVersion: z.literal(STAMP_FORWARD_ENGINE_VERSIONS),
   payload: z.looseObject({
     sim: z.looseObject({
-      engineVersion: z.literal(8),
+      engineVersion: z.literal(STAMP_FORWARD_ENGINE_VERSIONS),
     }),
   }),
 });
@@ -823,17 +846,17 @@ export function migrateKnownCareer(
   raw: unknown,
   content: ContentRegistry,
 ): StoredCareer {
-  const engineV8 = EngineV8CareerSchema.safeParse(raw);
-  if (!engineV8.success) {
+  const stampForward = StampForwardCareerSchema.safeParse(raw);
+  if (!stampForward.success) {
     return migrateLegacyCareerFixture(raw, content);
   }
   const career = restoreCareerState({
-    ...engineV8.data,
+    ...stampForward.data,
     engineVersion: ENGINE_VERSION,
     payload: {
-      ...engineV8.data.payload,
+      ...stampForward.data.payload,
       sim: {
-        ...engineV8.data.payload.sim,
+        ...stampForward.data.payload.sim,
         engineVersion: ENGINE_VERSION,
       },
     },

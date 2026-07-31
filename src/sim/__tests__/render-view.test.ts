@@ -186,6 +186,28 @@ describe('interpolateTravel — the anti-teleport guarantee (SPEC §5)', () => {
     expect(interpolateTravel({ path: [], elapsedTicks: 0, totalTicks: 0 }, 0.5)).toEqual({ x: 0, y: 0 });
   });
 
+  /**
+   * SPEC §5's loop is `if !current: startNext() or idle()`, and until Joe's 2026-07-31
+   * ruling the second half had no renderer: nothing running read as `stand`, so the
+   * authored `idle` pose, its three variants, and `scene-layout.ts`'s `droop && idle`
+   * branch were all unreachable — 20 baked sprites with no way in.
+   */
+  test('nothing running is idle, not standing', () => {
+    const s = fresh();
+    expect(s.current).toBeNull();
+    expect(deriveRenderView(s, content).pose).toBe('idle');
+  });
+
+  test('a running activity still poses as that activity, not idle', () => {
+    const { s } = advanceUntil((x) => x.next.current?.type === 'activity');
+    expect(deriveRenderView(s, content).pose).not.toBe('idle');
+  });
+
+  test('travelling still walks, so the gap rule cannot swallow a journey', () => {
+    const { s, r } = advanceUntil((x) => x.snapshot.render.travel !== null);
+    expect(deriveRenderView(s, content, r.snapshot.render.travel).pose).toBe('walk');
+  });
+
   test('a real journey from the engine interpolates without leaving the path bounds', () => {
     const { r } = advanceUntil((x) => x.snapshot.render.travel !== null);
     const travel = r.snapshot.render.travel!;

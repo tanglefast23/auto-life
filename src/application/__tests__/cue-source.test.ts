@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { content } from '../../sim/content';
 import type { CommandOutcome, DomainEvent } from '../../sim/step';
+import type { DomainCueEvent } from '../audio/cue-router';
 import {
   domainCueEvents,
   musicInputsFor,
@@ -20,6 +23,8 @@ const view = (over: Partial<CueView> = {}): CueView => ({
   minuteOfDay: 8 * 60,
   currentCardId: 'c1',
   currentActivityId: 'shower',
+  running: true,
+  recapDay: null,
   practiceLevel: 0,
   practicing: false,
   ...over,
@@ -47,11 +52,65 @@ describe('activity lifecycle', () => {
     expect(cues).toContainEqual({ kind: 'activity-started', activityId: 'meal' });
   });
 
+  /**
+   * `currentCardId` is set the moment the sim starts *walking toward* a card, so a start
+   * derived from it alone opened `loop.shower` while she was still crossing the house —
+   * every one of the eight authored loops is an activity you travel to. Announcing what
+   * the engine is about to do rather than what it did is the same class of mistake as a
+   * reward sound for a bonus that was never granted, one layer earlier.
+   */
+  it('waits for arrival — no start cue while still travelling to the card', () => {
+    const cues = domainCueEvents(
+      view({ currentCardId: 'c1', currentActivityId: 'shower', running: true }),
+      view({ currentCardId: 'c2', currentActivityId: 'meal', running: false }),
+      boundary(),
+    );
+    expect(cues).not.toContainEqual(
+      expect.objectContaining({ kind: 'activity-started' }),
+    );
+  });
+
+  it('starts the loop on the tick the activity actually begins', () => {
+    const travelling = view({ currentCardId: 'c2', currentActivityId: 'meal', running: false });
+    const arrived = view({ currentCardId: 'c2', currentActivityId: 'meal', running: true });
+
+    // The card id does not change on arrival — it was already the travel target — so a
+    // rule keyed on the id alone would never fire at all once travel is excluded.
+    expect(domainCueEvents(travelling, arrived, boundary())).toContainEqual({
+      kind: 'activity-started',
+      activityId: 'meal',
+    });
+  });
+
   it('does not re-announce the same card on every minute it keeps running', () => {
     // A three-tick shower is one start, not three. The router's loop key would survive it
     // either way; the completion cue would not.
     const running = view({ currentCardId: 'c1', currentActivityId: 'shower' });
     expect(domainCueEvents(running, running, boundary())).toEqual([]);
+  });
+
+  /**
+   * The router has always known what a recap sounds like and `ui.recap` has always been a
+   * committed WAV; nothing ever produced the event, so `recap-shown` was the last piece of
+   * the bank still driving a bus that never heard from it.
+   */
+  it('sounds the recap once, on the morning it appears', () => {
+    const before = view({ recapDay: null });
+    const shown = view({ recapDay: 3 });
+
+    expect(domainCueEvents(before, shown, boundary())).toContainEqual({
+      kind: 'recap-shown',
+    });
+    // Still on screen a minute later is not a second recap.
+    expect(domainCueEvents(shown, shown, boundary())).not.toContainEqual({
+      kind: 'recap-shown',
+    });
+  });
+
+  it('sounds a new day\'s recap even though the previous one never cleared', () => {
+    expect(
+      domainCueEvents(view({ recapDay: 3 }), view({ recapDay: 4 }), boundary()),
+    ).toContainEqual({ kind: 'recap-shown' });
   });
 
   it('treats the first published minute as continuity, not as a start', () => {
@@ -188,5 +247,54 @@ describe('music inputs', () => {
     // the router already treats it as off.
     expect(musicInputsFor(view(), false).rain).toBeUndefined();
     expect(content.audio.ambience.rain.assetId).toBeDefined();
+  });
+});
+
+/**
+ * The composition gate.
+ *
+ * Three times now a cue, a bubble or a motion has been built, unit-tested, and then
+ * produced by nothing: the router was constructed and never handed an event, `bubbleFor`
+ * had no caller, and `recap-shown` was handled by the router and emitted by no one while
+ * `ui.recap` sat committed on disk. Every one of those suites was green throughout,
+ * because each half was tested against the other half's *shape* rather than its use.
+ *
+ * `cue-router.test.ts` proves each kind earns the right sound. This proves each kind can
+ * actually happen. A cue nothing produces is dead content, and dead content that a bank
+ * test still counts is worse than none — it reads as covered.
+ */
+describe('every cue the router can route is one the game can raise', () => {
+  const ROUTED_KINDS: DomainCueEvent['kind'][] = [
+    'queue-card-inserted',
+    'queue-card-removed',
+    'activity-started',
+    'activity-completed',
+    'activity-stopped',
+    'adjacency-granted',
+    'urgent-raised',
+    'recap-shown',
+  ];
+
+  const source = readFileSync(
+    resolve(__dirname, '../audio/cue-source.ts'),
+    'utf8',
+  )
+    // Comments stripped: this file documents itself heavily, and a gate a doc comment can
+    // satisfy is the same failure it exists to catch, one level up.
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  it.each(ROUTED_KINDS)('%s is produced by cue-source', (kind) => {
+    expect(source).toContain(`kind: '${kind}'`);
+  });
+
+  it('routes exactly the kinds the union declares, so a new cue cannot be forgotten', () => {
+    const declared = readFileSync(
+      resolve(__dirname, '../audio/cue-router.ts'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .matchAll(/\{ kind: '([a-z-]+)'/g);
+    expect([...declared].map((m) => m[1]).sort()).toEqual([...ROUTED_KINDS].sort());
   });
 });

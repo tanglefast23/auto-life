@@ -36,6 +36,7 @@ function refill(
   currentBars: Bars,
   suppression: SuppressionMap = {},
   absoluteMinute = 600,
+  foodMood: 'proper-meals' | 'grazer' | null = null,
 ): QueueCard[] {
   let sequence = 1;
   return refillRoutineQueue({
@@ -48,8 +49,35 @@ function refill(
     content,
     createCardId: () => `routine-${sequence++}`,
     suppression,
+    foodMood,
   });
 }
+
+/**
+ * SPEC §9.2 sells food mood as "which variant the planner reaches for first", and it is
+ * one of only two preferences a player is given in the 60-second identity flow. The
+ * reactive path honoured it; the routine planner — which is the *default* autonomy and
+ * therefore almost all real play — booked `snack` unconditionally and never saw `rules`
+ * at all, so a full day under `proper-meals` was byte-identical to one under `null`.
+ * A rolled preference the player can never observe is a broken promise at the most
+ * memorable moment the game has.
+ */
+test('a proper-meals person is booked meals, not snacks, for the same hunger', () => {
+  const hungry = bars(100, ROUTINE_NEED_THRESHOLD - 10, 100, 100);
+
+  const properMeals = refill([], null, hungry, {}, 600, 'proper-meals');
+  const grazer = refill([], null, hungry, {}, 600, 'grazer');
+
+  expect(properMeals.map((card) => card.activityId)).toContain('meal');
+  expect(properMeals.map((card) => card.activityId)).not.toContain('snack');
+  expect(grazer.map((card) => card.activityId)).toContain('snack');
+  expect(grazer.map((card) => card.activityId)).not.toContain('meal');
+});
+
+test('an unrolled food mood keeps the snack default, so no existing career shifts', () => {
+  const hungry = bars(100, ROUTINE_NEED_THRESHOLD - 10, 100, 100);
+  expect(refill([], null, hungry).map((card) => card.activityId)).toContain('snack');
+});
 
 test('healthy free time fills all five visible slots with reading', () => {
   const queue = refill([], null, bars(100, 100, 100, 100));

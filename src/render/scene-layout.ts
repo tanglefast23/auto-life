@@ -319,6 +319,33 @@ export function snapToPhysicalPixel(
  * promises is visible, and it comes from the same number that scales durations.
  */
 export const WALK_CYCLES_PER_SECOND = 2;
+/**
+ * How long the sim must have nothing to do before the idle pose is actually drawn.
+ *
+ * Real milliseconds, not game minutes, because this guards against a *visual* flicker and
+ * a human's eye does not speed up at 4×. One tick is 500ms at 1× and 125ms at 4×, so a
+ * one-tick gap — which is every gap the default autonomy currently produces — stays
+ * standing at every speed the DoD measures.
+ */
+export const IDLE_DWELL_MS = 900;
+
+/**
+ * The pose to *draw*, given how long the read-model has been reporting idle.
+ *
+ * `render-view.ts` is right that she is idle in the gap between two cards; it is simply
+ * that the gap is one tick long, and a single-frame air-guitar flashed 428 times a week
+ * reads as a glitch rather than a reward. The read-model keeps telling the truth and the
+ * renderer waits for a pose it can hold — which is why this lives here and not there.
+ *
+ * Honest consequence, recorded rather than hidden: while every gap is one tick, this means
+ * the idle flourishes are drawn *approximately never* under `full-routine`. Making Goal 4's
+ * reward genuinely visible needs downtime the planner does not currently leave.
+ */
+export function dwelledPose(pose: Pose, idleHeldMs: number): Pose {
+  if (pose !== 'idle') return pose;
+  return idleHeldMs >= IDLE_DWELL_MS ? 'idle' : 'stand';
+}
+
 export function advancePhase(phase: number, deltaMs: number, mSpeed: number): number {
   // Frame deltas are hostile input. `performance.now()` differences can come back
   // non-finite on a first frame and negative when the timestamp source steps backward

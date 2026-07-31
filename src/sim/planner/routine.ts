@@ -33,6 +33,15 @@ export interface RefillRoutineQueueArgs {
    * handoff. Honouring suppression here is what lets that guard go.
    */
   suppression?: SuppressionMap;
+  /**
+   * §9.2's rolled food preference — "which variant the planner reaches for first".
+   *
+   * The reactive path has always honoured it (`step.ts` upgrades snack→meal), but this
+   * planner books the default autonomy and never saw it, so a `proper-meals` career
+   * played out identically to one with no preference at all. Optional and defaulting to
+   * the snack behaviour, so a career that never rolled the food category is unchanged.
+   */
+  foodMood?: 'proper-meals' | 'grazer' | null;
 }
 
 function activityForNeed(
@@ -40,7 +49,11 @@ function activityForNeed(
   args: RefillRoutineQueueArgs,
   projectedBars: Bars,
 ): string | null {
-  if (bar === 'nutrition') return 'snack';
+  // A proper-meals person reaches for the 30-minute meal; a grazer (and a career with no
+  // food preference) reaches for the 10-minute snack.
+  if (bar === 'nutrition') {
+    return args.foodMood === 'proper-meals' ? 'meal' : 'snack';
+  }
   if (bar === 'hygiene') return 'quickwash';
   if (bar === 'movement') return 'stretch';
 

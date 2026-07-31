@@ -464,6 +464,7 @@ export function step(
       content,
       createCardId: () => `c${s.nextCardSeq++}`,
       suppression: s.suppression,
+      foodMood: rules.preferences?.foodMood ?? null,
     });
   };
 
