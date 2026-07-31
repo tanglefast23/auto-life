@@ -7,6 +7,7 @@ import {
   type SessionState,
 } from '../game/session';
 import type { Command } from '../sim/step';
+import type { QueueCard } from '../sim/queue';
 import {
   PrngSnapshotSchema,
   PrngStreams,
@@ -527,6 +528,81 @@ function deriveRoutineMemoryRules(
   };
 }
 
+/**
+ * Every content-backed id the SIM ring persists.
+ *
+ * The game ring was checked here from the start; the sim ring was not, and an audit
+ * proved what the gap costs: a structurally valid save whose queue names an activity the
+ * registry has never heard of passes the recovery boundary, constructs a `GameLoop`, and
+ * then throws `unknown activity id "…"` out of a frame callback. That is the worst place
+ * to learn a save is bad — past the one screen built to hand the player their raw blob.
+ *
+ * Rejecting here routes exactly that save into the recovery UI instead, or forces a
+ * deliberate migration, which is what SPEC §15 asks for.
+ */
+function validateSimContentRefs(
+  sim: SimState,
+  known: {
+    activityIds: ReadonlySet<string>;
+    anchorIds: ReadonlySet<string>;
+    wrinkleIds: ReadonlySet<string>;
+  },
+): void {
+  const requireActivity = (activityId: string, where: string): void => {
+    if (!known.activityIds.has(activityId)) {
+      throw new Error(
+        `career ${where} references unknown activity "${activityId}"`,
+      );
+    }
+  };
+  const requireAnchor = (anchorId: string, where: string): void => {
+    if (!known.anchorIds.has(anchorId)) {
+      throw new Error(
+        `career ${where} references unknown anchor "${anchorId}"`,
+      );
+    }
+  };
+
+  const checkCard = (card: QueueCard, where: string): void => {
+    requireActivity(card.activityId, where);
+    // A block id is `${anchorId}#${day}`; the engine splits it back apart to consume the
+    // anchor, so a card carrying an unknown anchor is as broken as an unknown activity.
+    if (card.blockId !== undefined) {
+      requireAnchor(card.blockId.split('#')[0] ?? '', `${where} block`);
+    }
+    if (card.reason?.kind === 'anchorWindow') {
+      requireAnchor(card.reason.anchorId, `${where} reason`);
+    }
+    if (card.reason?.kind === 'wrinkle' && !known.wrinkleIds.has(card.reason.wrinkleId)) {
+      throw new Error(
+        `career queue reason references unknown wrinkle "${card.reason.wrinkleId}"`,
+      );
+    }
+  };
+
+  for (const card of sim.queue) checkCard(card, 'queued card');
+  if (sim.removalReceipt !== null) {
+    checkCard(sim.removalReceipt.card, 'removal receipt card');
+    const anchorId = sim.removalReceipt.anchorMutation?.anchorId;
+    if (anchorId !== undefined) requireAnchor(anchorId, 'removal receipt');
+  }
+  if (sim.current?.type === 'activity') {
+    requireActivity(sim.current.dto.activityId, 'current activity');
+  }
+  if (sim.lastCompletion !== null) {
+    requireActivity(sim.lastCompletion.activityId, 'last completion');
+  }
+  for (const activityId of Object.keys(sim.suppression)) {
+    requireActivity(activityId, 'suppression');
+  }
+  for (const anchorId of [
+    ...Object.keys(sim.anchorsConsumedOnDay),
+    ...Object.keys(sim.anchorMutationGenerations),
+  ]) {
+    requireAnchor(anchorId, 'anchor ledger');
+  }
+}
+
 export function validateCareerContentRefs(
   career: StoredCareer,
   content: ContentRegistry,
@@ -648,6 +724,11 @@ export function validateCareerContentRefs(
       );
     }
   }
+  validateSimContentRefs(payload.sim, {
+    activityIds,
+    anchorIds: new Set(content.anchors.anchors.map((anchor) => anchor.id)),
+    wrinkleIds,
+  });
   for (const action of payload.pendingGameActions) {
     if (
       action.type === 'intentionSelected' &&

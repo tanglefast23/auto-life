@@ -69,13 +69,25 @@
  * fifth slot in the same tick. Existing v8 career envelopes migrate in place.
  */
 /**
- * v10 (2026-07-31, P6 audit): the routine planner reads §7.4's suppression map. Removing
- * an AUTO routine card suppresses its type for 2 game-hours and stopping one for 1, exactly
- * as the reactive planner has since v2 — the rolling refill introduced in v9 re-created a
- * removed card in the same tick, so under the default `full-routine` autonomy Remove and
- * Stop had no lasting effect on most of the visible queue. Urgency still overrides
- * suppression through the reactive net, so a real crisis is unaffected. A refill that finds
- * every candidate suppressed now leaves the plan short rather than falling back to Read.
- * Both goldens re-recorded.
+ * v10 (2026-07-31, two audits): covers BOTH behaviour changes since v9.
+ *
+ * 1. Stop hands off in the same tick, and the routine planner reads §7.4's suppression map
+ *    (PR #4). Removing an AUTO routine card suppresses its type for 2 game-hours and
+ *    stopping one for 1, exactly as the reactive planner has since v2 — v9's rolling refill
+ *    re-created a removed card in the same tick, so under the default `full-routine`
+ *    autonomy Remove and Stop had no lasting effect on most of the visible queue. Urgency
+ *    still overrides suppression through the reactive net, so a real crisis is unaffected.
+ *
+ * 2. `adjacencyGranted` joins the domain event stream, emitted where an authored §6.7 pair
+ *    actually pays out at a start. The audio layer needs to announce what the engine *did*
+ *    rather than what the forecast predicted — the two disagree whenever the real
+ *    end-to-start gap misses the pair's window, and a reward sound for a bonus that was
+ *    never granted is the same class of lie as HFM's cancel-inherits-celebration.
+ *
+ * PR #4 deliberately left its bump to Joe (SPEC §16), on the grounds that state shape was
+ * unchanged and existing saves still load — both still true. Change 2 forces a bump anyway,
+ * and a version number is per-engine rather than per-change, so this one records both.
+ * Nothing about that widens either change; it only stops the recorded number from
+ * describing an engine that has since moved twice. Both goldens re-recorded.
  */
 export const ENGINE_VERSION = 10 as const;

@@ -295,8 +295,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: CREAM_BASE,
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     textAlign: 'center',
   },
   choicePanel: {

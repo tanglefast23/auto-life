@@ -61,7 +61,7 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
         "wrinkleId": "slept-great",
       },
     ],
-    "fullStateSha256": "174d38892cef34635c6b38726f8f268569071352b13222cf91e27aa5186ea35c",
+    "fullStateSha256": "4c8742cf99f84aea682d601cb1890f8b9ae00f59947708f0de6992f20131699e",
     "identity": {
       "activePreferenceCategoryIds": [
         "chronotype",
@@ -127,15 +127,9 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
     "queue": [
       {
         "activityId": "sleep",
-        "id": "c844",
+        "id": "c845",
         "owner": "AUTO",
         "source": "anchor",
-      },
-      {
-        "activityId": "read",
-        "id": "c840",
-        "owner": "AUTO",
-        "source": "routine",
       },
       {
         "activityId": "read",
@@ -145,13 +139,19 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
       },
       {
         "activityId": "read",
-        "id": "c846",
+        "id": "c842",
         "owner": "AUTO",
         "source": "routine",
       },
       {
         "activityId": "read",
         "id": "c847",
+        "owner": "AUTO",
+        "source": "routine",
+      },
+      {
+        "activityId": "read",
+        "id": "c848",
         "owner": "AUTO",
         "source": "routine",
       },
@@ -193,15 +193,15 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
           "day": 1,
           "midnightBars": {
             "energy": 273500,
-            "hygiene": 575300,
+            "hygiene": 575000,
             "movement": 492000,
             "nutrition": 493200,
           },
           "morningBars": {
             "energy": 540000,
-            "hygiene": 591900,
+            "hygiene": 591600,
             "movement": 336000,
-            "nutrition": 549692,
+            "nutrition": 565846,
           },
           "practiceSessions": 1,
           "resolvedWrinkleId": "package-delivery",
@@ -730,9 +730,9 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
   },
   "engineVersion": 10,
   "forecastAgreement": {
-    "actualStart": 435,
+    "actualStart": 434,
     "cardId": "c1",
-    "predictedStart": 435,
+    "predictedStart": 434,
   },
   "script": [
     {
@@ -823,7 +823,7 @@ exports[`scripted player golden covers the P4 command surface and full sim plus 
       },
     },
     {
-      "atMinute": 623,
+      "atMinute": 622,
       "kind": "action",
       "value": {
         "decorationId": "leafy-plant",

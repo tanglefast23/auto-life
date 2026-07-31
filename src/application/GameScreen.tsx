@@ -426,6 +426,7 @@ function HydratedGameScreen({
         }}
         muted={preferences.audio.muted}
         reducedMotion={reducedMotion}
+        textScale={hudTextScale}
         nonColorUrgency={preferences.accessibility.nonColorUrgency}
         screenReaderVerbosity={
           preferences.accessibility.screenReaderVerbosity
@@ -544,15 +545,16 @@ const styles = StyleSheet.create({
     width: 192,
     zIndex: 19,
   },
+  // The tag is a short label, so it keeps the pixel face at the body step; the sentence
+  // under it is prose and takes the sans caption.
   preferenceBubbleTag: {
     color: theme.color.leaf,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   preferenceBubbleText: {
     color: theme.color.ink,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   stage: {
     alignItems: 'center',

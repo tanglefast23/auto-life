@@ -61,9 +61,26 @@ Soft skin outline = that ramp's shadow, never Ink.
 
 ## 4. Typography
 
+**The scale is 12 / 16 / 24 / 32 [AMENDED 2026-07-31, P7].** It was 8/16/24/32 through P6.
+
+| Token | Size | Face | Owns |
+|---|---:|---|---|
+| `caption` | 12 px | readable sans | Times, effects, secondary explanations, metadata, diagnostics |
+| `body` | 16 px | pixel bold for short labels; sans for prose | Buttons, card names, HUD values, field labels |
+| `heading` | 24 px | pixel bold | Panel and section titles |
+| `display` | 32 px | pixel bold | Logo and major event headings |
+
 - **Silkscreen Bold** (HFM's house pixel face) — labels, headings, buttons, numerals; `tabular-nums` always; integer sizes; never anti-aliased at 1×.
-- **Readable sans** for anything longer than a sentence (storylets, letters, settings copy).
-- ≤4 sizes, 2 weights; text always sits on a Track-A surface.
+- **Readable sans** for anything longer than a sentence (storylets, letters, settings copy) **and for the entire 12 px tier**.
+- ≤4 sizes, 2 **weights**; text always sits on a Track-A surface. The sans is a third *face*, not a third weight — it carries no bold.
+- **No player-facing text below 12 px. No actionable text below 16 px.**
+- The HUD text-size preference must change rendered text, not only reserved space.
+
+**Why the 8 px step was retired.** Silkscreen's em is 8 px, so 8 px is *legal, crisp* pixel type — which is exactly why it survived five phases of review. Crispness was the only property anyone checked, and the P7 desktop audit found 8 px carrying queue activity names, predicted times, need values and the Practice counter: 51 call sites of the most important information in the game, set at the smallest size the face permits.
+
+12 px cannot be Silkscreen — 12 is not a multiple of the em, so it would anti-alias, which §13 rejects on sight. The 12 px tier therefore changes **face**, not just size. This is a deliberate trade: the alternative was promoting all 8 px metadata to 16 px pixel type, which stays purely on-brand and does not fit — the queue rail and the four-need HUD grid do not survive doubling their densest text. Readability wins, and the pixel face keeps everything a player acts on.
+
+A 12 px size declared against the pixel face is the one combination that defeats this rule while passing every size check, so `theme.test.ts` asserts against it directly.
 
 ## 5. Grid, scale, resolution
 

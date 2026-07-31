@@ -479,8 +479,7 @@ const styles = StyleSheet.create({
   goalChipText: {
     flex: 1,
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   intentionChip: {
     position: 'absolute',
@@ -546,14 +545,12 @@ const styles = StyleSheet.create({
   },
   practiceSummary: {
     color: GOLD,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   routineMemoryCopy: {
     color: theme.color.leafShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 14,
+    ...TYPE_SCALE.caption,
   },
   panelHeading: {
     minHeight: 44,
@@ -568,7 +565,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: GOLD,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
@@ -605,7 +602,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.creamBase,
     borderRadius: 99,
     color: theme.color.plumShadow,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -640,19 +637,16 @@ const styles = StyleSheet.create({
   },
   goalInstruction: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 14,
+    ...TYPE_SCALE.caption,
   },
   goalProgress: {
     color: GREEN,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   goalReward: {
     color: GOLD,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   goalRewardChoices: {
     gap: 6,
@@ -677,7 +671,7 @@ const styles = StyleSheet.create({
   },
   goalFilterText: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   journalSection: {
@@ -690,9 +684,7 @@ const styles = StyleSheet.create({
   },
   journalEntry: {
     color: theme.color.plum,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 14,
+    ...TYPE_SCALE.caption,
   },
   eventCard: {
     position: 'absolute',
@@ -754,15 +746,12 @@ const styles = StyleSheet.create({
   },
   body: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 16,
+    ...TYPE_SCALE.caption,
   },
   wrinkleSuccess: {
     color: GREEN,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
-    lineHeight: 16,
   },
   choice: {
     minHeight: 56,
@@ -793,8 +782,7 @@ const styles = StyleSheet.create({
   },
   choiceDescription: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   recapCard: {
     position: 'absolute',
@@ -828,13 +816,11 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   missedLine: {
     color: GREEN,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   missedLineAlert: {
     color: theme.color.red,
@@ -847,20 +833,17 @@ const styles = StyleSheet.create({
   },
   detailHeading: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
   detailText: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 14,
+    ...TYPE_SCALE.caption,
   },
   journalLine: {
     color: theme.color.plum,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     fontStyle: 'italic',
   },
   actionRow: {
@@ -884,7 +867,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   buttonPressed: {

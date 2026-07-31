@@ -580,14 +580,16 @@ const styles = StyleSheet.create({
     fontSize: TYPE_SCALE.body.fontSize,
     marginTop: 16,
   },
+  // Recovery diagnostics are dense technical copy, which is exactly what design.md §4
+  // licenses the sans face for. It was the one surface where 8px was almost defensible
+  // and still the one where a player is most stressed and least able to read it.
   diagnostic: {
     backgroundColor: theme.color.creamLight,
     color: theme.color.woodShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    marginTop: 18,
+    ...TYPE_SCALE.caption,
+    marginTop: 16,
     maxHeight: 240,
-    padding: 10,
+    padding: 12,
   },
   notice: {
     backgroundColor: theme.color.creamBase,

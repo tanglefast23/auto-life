@@ -152,6 +152,9 @@ test('stopping a minty-consuming practice refunds the payment; the next practice
   const stopped = step(started, [{ type: 'stopCurrent' }], content).next;
   expect(stopped.practice.mintyPaidToday).toBe(false); // §6.7: no payout, no burn
   expect(stopped.practice.mintyArmed).toBe(true); // arming survives for the retry
+  // §7.4 handed the freed slot to the routine tail on the stop tick. This scenario is
+  // the player re-queueing Practice instead, so it replaces both the queue and the slot.
+  stopped.current = null;
   stopped.queue = [card({ id: 'p2', activityId: 'practice', owner: 'PINNED', source: 'player', enqueuedTick: 5 })];
   const retried = step(stopped, [], content).next;
   expect(retried.practice.mintyPaidToday).toBe(true); // re-earned by the retry

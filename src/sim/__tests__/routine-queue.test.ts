@@ -174,12 +174,19 @@ test('the real step path moves a Snack into the next slot when Nutrition dips be
 });
 
 /**
- * §7.4 suppression, which the rolling refill did not read until ENGINE_VERSION 10.
+ * §7.4 suppression at the planner's own level.
  *
- * The planner ran one branch below the `step()` code that writes the suppression entry and
- * ignored it, so a removed routine card was re-created in the same tick that removed it —
- * Remove and Stop looked dead against most of the visible queue under the default autonomy,
- * and the Undo toast offered to undo a removal that had already undone itself.
+ * The rolling refill ran one branch below the `step()` code that writes the suppression
+ * entry and ignored it, so a removed routine card was re-created in the same tick that
+ * removed it — Remove and Stop looked dead against most of the visible queue under the
+ * default autonomy, and the Undo toast offered to undo a removal that had already undone
+ * itself. Two audits reached that finding independently; the fix landed in PR #4, which
+ * needed it to lift the blanket "start nothing this tick" guard from the stop path.
+ *
+ * `stop-handoff.test.ts` covers the *stop* window (1 h) end-to-end through `step()`. These
+ * are the unit-level complement: the *remove* window (2 h), the exact minute suppression
+ * lapses, that an unrelated bar still books its maintenance, and — the one case neither
+ * audit's report named — that a refill whose fallback is also suppressed terminates.
  */
 describe('§7.4 suppression', () => {
   it('does not re-plan a suppressed activity, and leaves the slot to the next need', () => {

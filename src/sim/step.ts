@@ -440,7 +440,6 @@ export function step(
   const events: DomainEvent[] = [];
   const outcomes: CommandOutcome[] = [];
   const startedCardIds = new Set<string>();
-  let stoppedCurrentThisTick = false;
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
   const today = dayNumber(now);
@@ -464,8 +463,6 @@ export function step(
       napEffectiveUsesToday: s.napEffectiveUsesToday,
       content,
       createCardId: () => `c${s.nextCardSeq++}`,
-      // §7.4: the same map stage 1 writes above. Without it the refill re-created the card
-      // the player had just removed, in the same tick, and Remove looked dead.
       suppression: s.suppression,
     });
   };
@@ -546,7 +543,6 @@ export function step(
       // removal (§11.8 / T4). Nobody keeps walking to a removed task.
       if (cmd.cardId === currentCardId(s) && s.current !== null) {
         stopRunningUnit(s, now);
-        stoppedCurrentThisTick = true;
         outcomes.push({ type: 'removeCard', status: 'accepted', cardId: cmd.cardId, effect: 'stopped' });
         continue;
       }
@@ -650,7 +646,6 @@ export function step(
     } else if (cmd.type === 'stopCurrent' && s.current) {
       const cardId = currentCardId(s);
       stopRunningUnit(s, now);
-      stoppedCurrentThisTick = true;
       outcomes.push({ type: 'stopCurrent', status: 'accepted', cardId });
     } else if (cmd.type === 'stopCurrent') {
       outcomes.push({ type: 'stopCurrent', status: 'rejected', reason: 'nothingRunning' });
@@ -942,11 +937,14 @@ export function step(
   // drop on arrival is a visible absurdity, and a dropped card yields the slot to
   // the next card the same tick instead of idling. beginCard re-checks on arrival —
   // travel time can change the answer, and arrival-time truth wins.
-  while (
-    !stoppedCurrentThisTick &&
-    s.current === null &&
-    s.queue.length > 0
-  ) {
+  //
+  // A stop does NOT hold this stage for the tick. SPEC §7.4 is explicit — "pro-rata
+  // credit, next card starts" — and `stopRunningUnit` has already removed the stopped
+  // card, so the only thing a blanket guard bought was one dead minute. It existed
+  // because the rolling planner ignored stop suppression and re-proposed the stopped
+  // activity on the same minute; the planner honours suppression now, so the card that
+  // starts here is the next one, never the one just stopped.
+  while (s.current === null && s.queue.length > 0) {
     let card = s.queue[0]!;
     if (!intrinsicCardCanBegin(s, card, content)) {
       s.queue = s.queue.filter((c) => c.id !== card.id);
