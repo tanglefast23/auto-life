@@ -231,7 +231,8 @@ test('names the active activity beside its radial progress and Stop control', ()
   const { tree, handlers } = setup();
   const current = tree.root.findByProps({ testID: 'queue-current-card' });
   const currentStyle = StyleSheet.flatten(current.props.style);
-  expect(currentStyle.flex).toBe(1);
+  // A fixed box in the row, not a stretching one: box 1 is what is running.
+  expect(currentStyle.width).toBeGreaterThan(0);
   expect(currentStyle.height).toBe(64);
   expect(
     tree.root.findByProps({ testID: 'queue-current-label' }).props.children,
@@ -267,41 +268,36 @@ test('an upcoming card is as tall as the running one, so its label cannot be cli
   act(() => tree.unmount());
 });
 
-test('the queue is a right-side one-column rail with one visible task per row', () => {
-  const { tree } = setup();
+test('the queue is one horizontal row of task boxes, scrolled rather than capped', () => {
+  const { tree } = setup({ region: { x: 0, y: 700, width: 1000, height: 128 } });
   const railStyle = StyleSheet.flatten(
     tree.root.findByProps({ testID: 'queue-strip' }).props.style,
   );
+  // The bottom bar's left run: box 1 is what is running, box 2 what is next.
   expect(railStyle).toMatchObject({
-    bottom: 0,
-    flexDirection: 'column',
-    right: 0,
-    top: 148,
-    width: QUEUE_W,
+    flexDirection: 'row',
+    left: 0,
+    top: 700,
+    width: 1000,
+    height: 128,
   });
+
+  const scroll = tree.root.findByProps({ testID: 'queue-scroll' });
+  expect(scroll.props.horizontal).toBe(true);
   expect(
-    tree.root.findByProps({ testID: 'queue-scroll' }).props.horizontal,
-  ).not.toBe(true);
-  expect(
-    StyleSheet.flatten(
-      tree.root.findByProps({ testID: 'queue-scroll' }).props
-        .contentContainerStyle,
-    ).width,
-  ).toBe('100%');
+    StyleSheet.flatten(scroll.props.contentContainerStyle).flexDirection,
+  ).toBe('row');
+
+  // Boxes are a fixed width rather than stretching, so a long queue scrolls instead of
+  // squeezing every card thinner as it grows.
   for (const id of ['meal', 'urgent-shower']) {
-    expect(
-      StyleSheet.flatten(
-        tree.root.findByProps({ testID: `queue-card:${id}` }).props
-          .style,
-      ).flex,
-    ).toBe(1);
-    expect(
-      StyleSheet.flatten(
-        tree.root.findByProps({ testID: `queue-drag:${id}` }).props
-          .style,
-      ).flex,
-    ).toBe(1);
+    const cardStyle = StyleSheet.flatten(
+      tree.root.findByProps({ testID: `queue-card:${id}` }).props.style,
+    );
+    expect(cardStyle.flex).toBeUndefined();
+    expect(cardStyle.width).toBeGreaterThan(0);
   }
+
   act(() => tree.unmount());
 });
 

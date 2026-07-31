@@ -169,11 +169,16 @@ test('gate 4: every region stays inside the viewport', () => {
 // Gate 5 — regions are sized by measurement, not by the stale constants
 // ---------------------------------------------------------------------------
 
-test('gate 5: STATUS reserves at least the height its own content needs', () => {
-  // The defect this replaces: HUD_H was 148 while the block measured 198, so the world
-  // solver was told the HUD was 50px shorter than it is and drew the room underneath it.
-  // Measured at textScale 1 the block is 198 tall; the reserve must cover it.
-  expect(statusHeight(1)).toBeGreaterThanOrEqual(198);
+test('gate 5: the vitals box is tall enough for a bar plus a row of rings', () => {
+  // STATUS is the bottom-right vitals box now: one Health bar with four need rings under
+  // it. `statusHeight` still describes what that content needs at a given text scale, and
+  // the reserved box must cover it — the defect it replaces was HUD_H at 148 against a
+  // block that measured 198, which drew the room underneath the HUD.
+  for (const vp of VIEWPORTS.filter((v) => v.width >= NARROW_MAX)) {
+    const r = regionsFor({ ...vp, textScale: 1 });
+    expect(r.status.height).toBeGreaterThanOrEqual(96);
+    expect(r.status.width).toBeGreaterThanOrEqual(320);
+  }
 });
 
 test('gate 5: the reserve grows with the text-size preference', () => {
@@ -183,15 +188,15 @@ test('gate 5: the reserve grows with the text-size preference', () => {
   }
 });
 
-test('gate 5: the world reservation reports the measured region, not HUD_H', () => {
-  const wide = worldReservation({ width: 1470, height: 956, textScale: 1 });
-  expect(wide.hudHeight).toBe(statusHeight(1));
-  expect(wide.queueWidth).toBeGreaterThan(0);
-
-  // Narrow: the rail is a bottom sheet, so it costs height rather than width.
-  const narrow = worldReservation({ width: 390, height: 844, textScale: 1 });
-  expect(narrow.queueWidth).toBe(0);
-  expect(narrow.hudHeight).toBeGreaterThan(statusHeight(1));
+test('gate 5: the world reservation is exactly what the frame costs the room', () => {
+  for (const vp of VIEWPORTS) {
+    const r = regionsFor({ ...vp, textScale: 1 });
+    const res = worldReservation({ ...vp, textScale: 1 });
+    // The solver must be told the truth, or it draws the room under the frame — which is
+    // precisely what `HUD_H = 148` against a 198px block used to do.
+    expect(res.hudHeight).toBe(vp.height - r.stage.height);
+    expect(res.queueWidth).toBe(vp.width - r.stage.width);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -204,21 +209,35 @@ test('the region set is identical either side of the breakpoint', () => {
   expect(narrow).toEqual(wide);
 });
 
-test('narrow collapses TEMPORAL to zero and hands the top bar to STATUS', () => {
+test('narrow folds the right column into rows without inventing a region', () => {
   const r = regionsFor({ width: 390, height: 844 });
-  expect(r.temporal.width).toBe(0);
-  expect(r.status.width).toBe(390);
-  // The rail becomes a bottom sheet spanning the width.
+  // The column lies down: time on top, queue on the bottom, everything full width.
+  expect(r.temporal.width).toBe(390);
+  expect(r.temporal.y).toBe(0);
   expect(r.rail.width).toBe(390);
   expect(r.rail.y + r.rail.height).toBe(844);
 });
 
-test('wide keeps the rail as a right column under TEMPORAL', () => {
+test('wide puts the queue along the bottom and the vitals at its right end', () => {
   const r = regionsFor({ width: 1470, height: 956 });
-  expect(r.temporal.width).toBeGreaterThan(0);
-  expect(r.rail.x).toBe(r.temporal.x);
-  expect(r.rail.y).toBe(r.temporal.height);
-  expect(r.stage.width).toBe(1470 - r.rail.width);
+  // One bottom bar, split: the queue takes the wide run, the vitals the right end.
+  expect(r.rail.x).toBe(0);
+  expect(r.rail.y + r.rail.height).toBe(956);
+  expect(r.status.y).toBe(r.rail.y);
+  expect(r.status.x).toBe(r.rail.width);
+  expect(r.rail.width + r.status.width).toBe(1470);
+
+  // The right column stacks time, notices, then the information panel.
+  expect(r.temporal.x).toBe(r.notice.x);
+  expect(r.notice.x).toBe(r.focus.x);
+  expect(r.notice.y).toBe(r.temporal.height);
+  expect(r.focus.y).toBe(r.temporal.height + r.notice.height);
+
+  // And the room is the corner they leave — never underneath either of them.
+  expect(r.stage.x).toBe(0);
+  expect(r.stage.y).toBe(0);
+  expect(r.stage.width).toBe(1470 - r.temporal.width);
+  expect(r.stage.height).toBe(956 - r.rail.height);
 });
 
 // ---------------------------------------------------------------------------

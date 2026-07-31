@@ -13,6 +13,7 @@ import { fillGoalCopy, goalStrings } from './goal-copy';
 import { settingsStrings } from './settings-copy';
 import { CHROME, FONT, scaledType, TABULAR, TYPE_SCALE, theme } from './theme';
 import { LAYER, local, type Regions, type Rect } from './layout';
+import { NeedRing } from './NeedRing';
 
 /**
  * The HUD (SPEC §11.1, P3 T7).
@@ -91,6 +92,8 @@ function hudType(scale: number) {
     barWidth: scaledWidth(120, scale),
     iconWidth: scaledWidth(16, scale),
     valueWidth: scaledWidth(32, scale),
+    /** The need ring grows with the preference, so its glyph is never clipped. */
+    ringSize: scaledWidth(34, scale),
   } as const;
 }
 
@@ -221,7 +224,7 @@ export function Hud({
         pointerEvents="box-none"
         style={[styles.region, regionStyle(regions?.status)]}
       >
-      <View style={styles.block}>
+      <View style={[styles.block, styles.vitalsBlock]}>
         <View style={[styles.healthRow, { width: type.healthWidth }]}>
           <Text {...SCALABLE_TEXT} style={[styles.healthLabel, type.label]}>HEALTH</Text>
           <Text
@@ -251,87 +254,70 @@ export function Hud({
           pulseOpacity={pulse}
         />
 
-        {BAR_ORDER.map((bar) => {
-          const value = snapshot?.bars[bar] ?? 0;
-          const style = bandFor(bar, value, content.rates);
-          const icon =
-            nonColorUrgency && style.alertGlyph
-              ? BAR_ICON[bar].alert
-              : BAR_ICON[bar].normal;
-          return (
-            // The row that owns the open tip is lifted as a whole. The tip's own zIndex
-            // only orders it inside this wrapper, so without this the Practice counter
-            // and the row below — both later siblings — painted straight through it.
-            <View key={bar} style={openTip === bar ? styles.barRowRaised : undefined}>
-            <Pressable
-              onPress={() => setOpenTip((open) => (open === bar ? null : bar))}
-              onHoverIn={() => setOpenTip(bar)}
-              onHoverOut={() => setOpenTip((open) => (open === bar ? null : open))}
-              // The row already carries the bar's value in its own accessibility label,
-              // and a screen reader gets the description from `accessibilityHint` — so the
-              // press target must not announce itself as a second, nameless control.
-              accessibilityRole="button"
-              accessibilityLabel={`${BAR_ICON[bar].label} details`}
-              accessibilityHint={BAR_TIP[bar]}
-              testID={`hud-bar-tip-toggle:${bar}`}
-              style={styles.subRow}
-            >
-              <Text
-                {...SCALABLE_TEXT}
-                accessible
-                style={[
-                  styles.icon,
-                  type.icon,
-                  { width: type.iconWidth },
-                  style.band === 'alert' && styles.iconAlert,
-                ]}
-                accessibilityLabel={
-                  screenReaderVerbosity === 'full'
-                    ? `${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${accessibleBandName(style.band)}`
-                    : briefValueLabel(
-                        BAR_ICON[bar].label,
-                        value,
-                        style.band,
-                      )
-                }
-                testID={`hud-bar:${bar}`}
-              >
-                {icon}
-              </Text>
-              <Bar
-                value={value}
-                color={BAR_COLOR[bar]}
-                width={type.barWidth}
-                height={6}
-                band={style.band}
-                pulseOpacity={pulse}
-              />
-              <Text
-                {...SCALABLE_TEXT}
-                style={[styles.subValue, type.subValue, { width: type.valueWidth }]}
-              >
-                {Math.round(value)}
-              </Text>
-            </Pressable>
-            {openTip === bar && (
-              <View
-                pointerEvents="none"
-                accessibilityElementsHidden
-                importantForAccessibility="no"
-                testID={`hud-bar-tip:${bar}`}
-                style={styles.tip}
-              >
-                <Text {...SCALABLE_TEXT} style={[styles.tipLabel, type.label]}>
-                  {BAR_ICON[bar].label.toUpperCase()}
-                </Text>
-                <Text {...SCALABLE_TEXT} style={[type.caption, styles.tipText]}>
-                  {BAR_TIP[bar]}
-                </Text>
+        {/* The four needs as rings under the Health bar (§3.2). Four stacked bars cost
+            four rows; the vitals box is one row of the bottom bar, so the needs become
+            rings — same information, roughly a quarter of the height. Press or hover is
+            unchanged, and the tip still names the bar the glyph cannot. */}
+        <View style={styles.ringRow}>
+          {BAR_ORDER.map((bar) => {
+            const value = snapshot?.bars[bar] ?? 0;
+            const style = bandFor(bar, value, content.rates);
+            return (
+              <View key={bar} style={openTip === bar ? styles.barRowRaised : undefined}>
+                <Pressable
+                  onPress={() => setOpenTip((open) => (open === bar ? null : bar))}
+                  onHoverIn={() => setOpenTip(bar)}
+                  onHoverOut={() =>
+                    setOpenTip((open) => (open === bar ? null : open))
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`${BAR_ICON[bar].label} details`}
+                  accessibilityHint={BAR_TIP[bar]}
+                  testID={`hud-bar-tip-toggle:${bar}`}
+                  style={styles.ringCell}
+                >
+                  <NeedRing
+                    bar={bar}
+                    value={value}
+                    band={style.band}
+                    alertGlyph={nonColorUrgency && style.alertGlyph}
+                    size={type.ringSize}
+                    textScale={textScale}
+                  />
+                  <Text
+                    {...SCALABLE_TEXT}
+                    accessible
+                    accessibilityLabel={
+                      screenReaderVerbosity === 'full'
+                        ? `${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${accessibleBandName(style.band)}`
+                        : briefValueLabel(BAR_ICON[bar].label, value, style.band)
+                    }
+                    testID={`hud-bar:${bar}`}
+                    style={[styles.ringValue, type.caption]}
+                  >
+                    {Math.round(value)}
+                  </Text>
+                </Pressable>
+                {openTip === bar && (
+                  <View
+                    pointerEvents="none"
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                    testID={`hud-bar-tip:${bar}`}
+                    style={styles.tip}
+                  >
+                    <Text {...SCALABLE_TEXT} style={[styles.tipLabel, type.label]}>
+                      {BAR_ICON[bar].label.toUpperCase()}
+                    </Text>
+                    <Text {...SCALABLE_TEXT} style={[type.caption, styles.tipText]}>
+                      {BAR_TIP[bar]}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
 
         {/* §11.1 places the Practice counter beneath the health block. */}
         <Text
@@ -454,6 +440,7 @@ const styles = StyleSheet.create({
   region: {
     position: 'absolute',
     padding: 8,
+    overflow: 'hidden',
     /**
      * Above the first-session chips, below anything focused.
      *
@@ -491,6 +478,11 @@ const styles = StyleSheet.create({
   edgeTick: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: CREAM_SHADOW },
   alertPulse: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: RED },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ringRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  ringCell: { alignItems: 'center', minWidth: 44, gap: 0 },
+  ringValue: { color: INK, textAlign: 'center' },
+  /** The vitals box is one row of the bottom bar; its block must not exceed it. */
+  vitalsBlock: { flex: 1, gap: 2, paddingVertical: 4 },
   barRowRaised: { zIndex: local(9) },
   /**
    * Anchored under its own row rather than floating over the scene: the HUD block is

@@ -84,7 +84,11 @@ test('brief verbosity shortens bar labels and non-color urgency can be toggled',
   expect(hygiene.props.accessibilityLabel).toMatch(
     /^Hygiene \d+, alert$/,
   );
-  expect(hygiene.props.children).toBe('◍');
+  // The glyph moved into the need ring's hub when the four bars became rings; the
+  // non-colour urgency rule it proves is unchanged.
+  expect(
+    tree!.root.findByProps({ testID: 'need-glyph:hygiene' }).props.children,
+  ).toBe('◍');
   act(() => tree!.unmount());
 });
 

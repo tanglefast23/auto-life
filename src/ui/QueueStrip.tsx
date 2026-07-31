@@ -213,7 +213,11 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
       snapshot?.bars.nutrition,
     ],
   );
-  const atPlayerCap = queue.filter((card) => card.source === 'player').length >= 10;
+  const atPlayerCap =
+    queue.filter((card) => card.source === 'player').length >= SLOTS;
+  // One box per activity, in queue order, in a tray of a fixed size.
+  const filledSlots = (current === null ? 0 : 1) + items.length;
+  const emptySlots = Math.max(0, SLOTS - filledSlots);
   // Departures, replayed. Ghosts are deliberately absent from `visualRows` below: focus
   // order, drag indices, and the keyboard handle all read that list.
   const motionFrame = useMemo(
@@ -543,34 +547,6 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
       ]}
       testID="queue-strip"
     >
-      <View style={styles.currentSlot}>
-        {current === null ? (
-          <View style={[styles.currentCard, styles.idleCard]} testID="queue-current-idle">
-            <Text style={styles.idleGlyph}>·</Text>
-            <Text style={styles.currentFoot}>IDLE</Text>
-          </View>
-        ) : (
-          <>
-            <CurrentCard
-              card={current}
-              progress={snapshot?.currentProgress ?? 0}
-              onStop={onStopCurrent}
-              styles={styles}
-              focusRef={registerFocus(cardFocusToken(current.id))}
-              onFocus={() => {
-                focusedToken.current = cardFocusToken(current.id);
-              }}
-            />
-            <MenuButton
-              cardId={current.id}
-              label={`Open ${activityCopy(current.activityId).label} menu`}
-              onPress={() => openCardMenu(current.id)}
-              styles={styles}
-            />
-          </>
-        )}
-      </View>
-
       <Text
         accessible
         accessibilityLiveRegion="polite"
@@ -580,19 +556,44 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
         {forecastAnnouncement}
       </Text>
 
-      <View style={styles.rule} />
-
+      {/* One row, left to right: box 1 is what is running, box 2 what is next, and so on.
+          It scrolls horizontally rather than capping, so a full queue is walked rather than
+          truncated — everything a card carries stays inside that card's own box. */}
       <ScrollView
-        showsVerticalScrollIndicator
+        horizontal
+        showsHorizontalScrollIndicator
         testID="queue-scroll"
         style={styles.queueScroll}
         contentContainerStyle={styles.queueContent}
       >
-        {items.length === 0 && (
-          <View style={styles.emptyQueue}>
-            <Text style={styles.emptyQueueText}>QUEUE CLEAR</Text>
-          </View>
-        )}
+        <View style={styles.currentSlot}>
+          {current === null ? (
+            <View style={[styles.currentCard, styles.idleCard]} testID="queue-current-idle">
+              <Text style={styles.idleGlyph}>·</Text>
+              <Text style={styles.currentFoot}>IDLE</Text>
+            </View>
+          ) : (
+            <>
+              <CurrentCard
+                card={current}
+                progress={snapshot?.currentProgress ?? 0}
+                onStop={onStopCurrent}
+                styles={styles}
+                focusRef={registerFocus(cardFocusToken(current.id))}
+                onFocus={() => {
+                  focusedToken.current = cardFocusToken(current.id);
+                }}
+              />
+              <MenuButton
+                cardId={current.id}
+                label={`Open ${activityCopy(current.activityId).label} menu`}
+                onPress={() => openCardMenu(current.id)}
+                styles={styles}
+              />
+            </>
+          )}
+        </View>
+
         {items.map((item) =>
           item.kind === 'card' ? (
             <UpcomingCard
@@ -660,23 +661,34 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
         {ghosts.map((ghost) => (
           <GhostCard key={ghost.key} ghost={ghost} styles={styles} />
         ))}
-      </ScrollView>
 
-      <Pressable
-        ref={(node) => {
-          paletteToggleRef.current = node;
-        }}
-        onPress={openPalette}
-        accessibilityRole="button"
-        accessibilityLabel="Add an activity"
-        accessibilityState={{ expanded: paletteOpen, disabled: atPlayerCap }}
-        disabled={atPlayerCap}
-        testID="queue-palette-toggle"
-        style={[styles.paletteToggle, atPlayerCap && styles.controlDisabled]}
-      >
-        <Text style={styles.palettePlus}>+</Text>
-        <Text style={styles.paletteCount}>{`${queue.filter((card) => card.source === 'player').length}/10`}</Text>
-      </Pressable>
+        {/* The tray is always ten slots. An empty one is a real, pressable box rather than
+            absent space, so the queue's capacity is legible before it is reached and the
+            bar does not change shape as cards come and go. The first empty slot carries the
+            add affordance — which is why there is no separate `+` button any more. */}
+        {Array.from({ length: emptySlots }, (_, i) => (
+          <Pressable
+            key={`slot:${i}`}
+            ref={i === 0 ? (node) => { paletteToggleRef.current = node; } : undefined}
+            onPress={openPalette}
+            accessibilityRole="button"
+            accessibilityLabel={
+              i === 0 ? 'Add an activity' : `Empty queue slot ${filledSlots + i + 1}`
+            }
+            accessibilityState={{ expanded: paletteOpen, disabled: atPlayerCap }}
+            disabled={atPlayerCap}
+            testID={i === 0 ? 'queue-palette-toggle' : `queue-slot-empty:${i}`}
+            style={[styles.emptySlot, atPlayerCap && styles.controlDisabled]}
+          >
+            {i === 0 && <Text style={styles.palettePlus}>+</Text>}
+            {i === 0 && (
+              <Text style={styles.paletteCount}>
+                {`${queue.filter((card) => card.source === 'player').length}/${SLOTS}`}
+              </Text>
+            )}
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {paletteOpen && (
         <PalettePanel
@@ -771,6 +783,18 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
  */
 const CARD_H = 64;
 
+/**
+ * One task box.
+ *
+ * The rail used to be a right-hand column of full-width rows; it is now the bottom bar's
+ * left run, so a card is a fixed box in a horizontal row rather than a row that stretches.
+ * 116 fits the pixel-bold label on two lines at 1× without truncating the common verbs.
+ */
+const BOX_W = 116;
+
+/** The tray's fixed capacity — and the player-card cap it has always enforced. */
+export const SLOTS = 10;
+
 const styles = StyleSheet.create({
   /**
    * The RAIL region. The rectangle arrives from `layout.ts`; only the look lives here.
@@ -779,23 +803,22 @@ const styles = StyleSheet.create({
    */
   root: {
     position: 'absolute',
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: CREAM_BASE,
-    borderLeftWidth: 3,
-    borderLeftColor: INK,
+    borderTopWidth: 3,
+    borderTopColor: INK,
     padding: 6,
+    gap: 6,
     zIndex: LAYER.chrome,
   },
   currentSlot: {
-    height: CARD_H,
     flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
+    alignItems: 'stretch',
   },
   currentCard: {
     ...CHROME.card,
-    flex: 1,
+    width: BOX_W,
     height: CARD_H,
     flexDirection: 'row',
     alignItems: 'center',
@@ -851,11 +874,10 @@ const styles = StyleSheet.create({
   },
   queueScroll: { flex: 1, width: '100%' },
   queueContent: {
+    flexDirection: 'row',
     alignItems: 'stretch',
     gap: 6,
-    paddingBottom: 6,
-    paddingTop: 2,
-    width: '100%',
+    paddingRight: 6,
   },
   emptyQueue: {
     width: '100%',
@@ -875,8 +897,6 @@ const styles = StyleSheet.create({
     height: CARD_H,
     flexDirection: 'row',
     alignItems: 'stretch',
-    minWidth: '100%',
-    width: '100%',
   },
   dragSurface: {
     flex: 1,
@@ -928,7 +948,7 @@ const styles = StyleSheet.create({
   },
   upcomingCard: {
     ...CHROME.card,
-    flex: 1,
+    width: BOX_W,
     height: CARD_H,
     borderTopLeftRadius: 5,
     borderBottomLeftRadius: 5,
@@ -1021,7 +1041,7 @@ const styles = StyleSheet.create({
   },
   blockCard: {
     ...CHROME.card,
-    flex: 1,
+    width: BOX_W,
     height: CARD_H,
     justifyContent: 'center',
     borderTopLeftRadius: 5,
@@ -1044,14 +1064,38 @@ const styles = StyleSheet.create({
     ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
+  /**
+   * One box at the end of the row, not a full-width bar.
+   *
+   * It kept `width: '100%'` from the vertical rail, where that was right; in a horizontal
+   * bar it made the add button swallow the entire queue whenever the queue was empty.
+   */
+  /** An empty tray socket: the card's box, recessed and dashed rather than raised. */
+  emptySlot: {
+    width: BOX_W,
+    height: CARD_H,
+    // Stated, not merely implied by the box size: this is the add affordance, and §11.6's
+    // 44px minimum target is the reason it can never shrink below one.
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    backgroundColor: CREAM_SHADOW,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: theme.color.woodShadow,
+    borderRadius: 5,
+  },
   paletteToggle: {
     ...CHROME.neutralButton,
-    width: '100%',
+    width: 64,
     minWidth: 44,
-    minHeight: 54,
+    alignSelf: 'center',
+    height: CARD_H,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 8,
-    marginTop: 4,
   },
   palettePlus: {
     color: CREAM_LIGHT,

@@ -411,6 +411,7 @@ export function ResumeNotice({
   onDismiss: () => void;
 }) {
   return (
+    <View pointerEvents="box-none" style={styles.noticeLayer}>
     <View
       accessibilityLiveRegion="polite"
       style={styles.notice}
@@ -427,6 +428,7 @@ export function ResumeNotice({
         onPress={onDismiss}
         secondary
       />
+    </View>
     </View>
   );
 }
@@ -592,14 +594,34 @@ const styles = StyleSheet.create({
     maxHeight: 240,
     padding: 12,
   },
+  /**
+   * Centred, not tucked into the top-left corner.
+   *
+   * At `left: 24, top: 24` it landed on the room — and on the vitals block before the
+   * frame moved them. It is a modal: it interrupts on purpose, so it belongs in the middle
+   * where an interruption is read, not in a corner where it merely covers something.
+   */
+  noticeLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: LAYER.modal,
+  },
+  /**
+   * Centred, not tucked into a corner.
+   *
+   * At `left: 24, top: 24` it landed on the room, and once the frame moved it landed on
+   * the queue tray instead. It is a modal: it interrupts on purpose, so it belongs in the
+   * middle where an interruption is read.
+   */
   notice: {
     ...CHROME.card,
-    left: 24,
     maxWidth: 360,
     padding: 16,
-    position: 'absolute',
-    top: 24,
-    zIndex: LAYER.modal,
   },
   noticeTitle: {
     color: theme.color.ink,

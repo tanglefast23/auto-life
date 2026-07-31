@@ -93,7 +93,6 @@ export function GoalsPanel({
   onAddProtectedPractice,
   onChooseGoalReward,
   onClose,
-  top,
   styles,
 }: {
   session: SessionState;
@@ -109,7 +108,6 @@ export function GoalsPanel({
     choiceId: string,
   ) => void;
   onClose: () => void;
-  top: number;
   styles: FirstSessionStyles;
 }) {
   const [goalFilter, setGoalFilter] = useState<
@@ -144,7 +142,7 @@ export function GoalsPanel({
   return (
     <View
       accessibilityLabel={goalStrings.ui.panelLabel}
-      style={[styles.goalsPanel, { top }]}
+      style={styles.goalsPanel}
       testID="first-session-goals"
     >
       <PanelHeading
@@ -358,13 +356,11 @@ export function GoalsPanel({
 
 export function PackagePanel({
   onChooseDecoration,
-  top,
   styles,
 }: {
   onChooseDecoration: (
     decorationId: 'leafy-plant' | 'sunny-vase',
   ) => void;
-  top: number;
   styles: FirstSessionStyles;
 }) {
   return (
@@ -372,7 +368,7 @@ export function PackagePanel({
       accessible
       accessibilityLabel={`${firstSessionStrings.package.title}. ${firstSessionStrings.package.body}`}
       accessibilityLiveRegion="polite"
-      style={[styles.eventCard, { top }]}
+      style={styles.eventCard}
       testID="first-session-package"
     >
       <Text accessibilityLiveRegion="polite" style={styles.srOnly}>
@@ -417,7 +413,6 @@ export function WrinklePanel({
   resolved,
   onAction,
   onClose,
-  top,
   styles,
 }: {
   variant: WrinkleDef['variants'][number];
@@ -425,7 +420,6 @@ export function WrinklePanel({
   resolved: boolean;
   onAction: () => void;
   onClose: () => void;
-  top: number;
   styles: FirstSessionStyles;
 }) {
   const title = wrinkleString(variant.titleStringId);
@@ -444,7 +438,7 @@ export function WrinklePanel({
         .filter((line): line is string => line !== null)
         .join(' ')}
       accessibilityLiveRegion="polite"
-      style={[styles.eventCard, { top }]}
+      style={styles.eventCard}
       testID="daily-wrinkle-panel"
     >
       <PanelHeading
@@ -477,7 +471,6 @@ export function MorningRecap({
   recap,
   session,
   expanded,
-  top,
   reducedMotion = false,
   onToggle,
   onDone,
@@ -486,7 +479,6 @@ export function MorningRecap({
   recap: DailyRecap;
   session: SessionState;
   expanded: boolean;
-  top: number;
   reducedMotion?: boolean;
   onToggle: () => void;
   onDone: () => void;
@@ -541,7 +533,7 @@ export function MorningRecap({
       accessibilityLabel={accessibilityLabel}
       style={[
         styles.recapCard,
-        { top, opacity: slide, transform: [{ translateY }] },
+        { opacity: slide, transform: [{ translateY }] },
       ]}
       testID="first-session-recap"
     >

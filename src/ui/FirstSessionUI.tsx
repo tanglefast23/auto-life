@@ -30,7 +30,7 @@ import {
 } from './wrinkle-copy';
 import { goalStrings } from './goal-copy';
 import { CHROME, FONT, TYPE_SCALE, theme } from './theme';
-import { LAYER, type Regions } from './layout';
+import { GUTTER, LAYER, type Rect, type Regions } from './layout';
 import { NoticeColumn, type NoticeItem } from './NoticeColumn';
 
 export interface FirstSessionUIProps {
@@ -295,55 +295,65 @@ export const FirstSessionUI = forwardRef<
    */
   return (
     <>
-      <Pressable
-        ref={goalChipRef}
-        accessibilityLabel={`${goalStrings.ui.open}. ${goalChip.label}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: goalsOpen }}
-        onPress={() => setGoalsOpen((open) => !open)}
-        style={({ pressed }) => [
-          styles.goalChip,
-          { top: hudHeight + 8 },
-          pressed && styles.buttonPressed,
-        ]}
-        testID="first-session-goal-chip"
-      >
-        <Text style={styles.goalChipMark}>
-          {goalChip.complete ? '✓' : '◇'}
-        </Text>
-        <Text numberOfLines={1} style={styles.goalChipText}>
-          {goalChip.label}
-        </Text>
-      </Pressable>
-
-      {dailyIntentionPrompt &&
-        todayIntention === null &&
-        onSelectIntention !== undefined && (
-          <Pressable
-            accessibilityLabel={intentionStrings.prompt.chip}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: intentionOpen }}
-            onPress={() => setIntentionOpen(true)}
-            style={({ pressed }) => [
-              styles.intentionChip,
-              { top: hudHeight + 8 },
-              pressed && styles.buttonPressed,
-            ]}
-            testID="daily-intention-chip"
-          >
-            <Text style={styles.intentionChipMark}>◎</Text>
-            <Text style={styles.goalChipText}>
-              {intentionStrings.prompt.chip}
-            </Text>
-          </Pressable>
-        )}
-
-      {/* Everything that reports something that happened, in one capped stack (§3.2).
-          The wrinkle chip is a notification; the goal and intention chips above are
-          pointers and stay anchored to what they point at (§7.2). */}
+      {/* Every informational surface lives in the right column now — goals, the day's
+          intention, the day's wrinkle. They used to anchor themselves at `hudHeight + 8`
+          and `left: 280`, which put them over the room at whatever height the HUD happened
+          to be that frame. A pointer that covers the thing it points at is not a pointer;
+          one column, one order, one width. */}
       <NoticeColumn
         region={regions?.notice}
         items={[
+          {
+            id: 'goal',
+            node: (
+              <Pressable
+                ref={goalChipRef}
+                accessibilityLabel={`${goalStrings.ui.open}. ${goalChip.label}`}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: goalsOpen }}
+                onPress={() => setGoalsOpen((open) => !open)}
+                style={({ pressed }) => [
+                  styles.goalChip,
+                  pressed && styles.buttonPressed,
+                ]}
+                testID="first-session-goal-chip"
+              >
+                <Text style={styles.goalChipMark}>
+                  {goalChip.complete ? '✓' : '◇'}
+                </Text>
+                <Text numberOfLines={1} style={styles.goalChipText}>
+                  {goalChip.label}
+                </Text>
+              </Pressable>
+            ),
+          },
+          ...(dailyIntentionPrompt &&
+          todayIntention === null &&
+          onSelectIntention !== undefined
+            ? [
+                {
+                  id: 'intention',
+                  node: (
+                    <Pressable
+                      accessibilityLabel={intentionStrings.prompt.chip}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: intentionOpen }}
+                      onPress={() => setIntentionOpen(true)}
+                      style={({ pressed }) => [
+                        styles.intentionChip,
+                        pressed && styles.buttonPressed,
+                      ]}
+                      testID="daily-intention-chip"
+                    >
+                      <Text style={styles.intentionChipMark}>◎</Text>
+                      <Text numberOfLines={1} style={styles.goalChipText}>
+                        {intentionStrings.prompt.chip}
+                      </Text>
+                    </Pressable>
+                  ),
+                },
+              ]
+            : []),
           ...(announcedVariant !== null
             ? [
                 {
@@ -387,18 +397,20 @@ export const FirstSessionUI = forwardRef<
           onAddProtectedPractice={onAddProtectedPractice}
           onChooseGoalReward={onChooseGoalReward}
           onClose={closeGoals}
-          top={hudHeight + 60}
           styles={styles}
         />
       )}
 
+      <View
+        pointerEvents="box-none"
+        style={[styles.focusRegion, regionBox(regions?.focus)]}
+      >
       {activeFocus === 'intention' && onSelectIntention !== undefined && (
         <View
           accessibilityLabel={intentionStrings.prompt.title}
           style={[
             styles.eventCard,
             styles.intentionPanel,
-            { top: hudHeight + 16 },
           ]}
           testID="daily-intention-picker"
         >
@@ -445,7 +457,6 @@ export const FirstSessionUI = forwardRef<
       {activeFocus === 'package' && (
         <PackagePanel
           onChooseDecoration={onChooseDecoration}
-          top={hudHeight + 16}
           styles={styles}
         />
       )}
@@ -455,7 +466,6 @@ export const FirstSessionUI = forwardRef<
           recap={recap}
           session={session}
           expanded={expandedRecap}
-          top={hudHeight + 16}
           reducedMotion={reducedMotion}
           styles={styles}
           onToggle={() => setExpandedRecap((expanded) => !expanded)}
@@ -477,7 +487,6 @@ export const FirstSessionUI = forwardRef<
               onTakeWrinkleAction !== undefined
             }
             resolved={announcedDeal?.resolved === true}
-            top={hudHeight + 16}
             styles={styles}
             onClose={() => setWrinkleOpen(false)}
             onAction={() => {
@@ -505,9 +514,21 @@ export const FirstSessionUI = forwardRef<
             styles={styles}
           />
         )}
+      </View>
     </>
   );
 });
+
+/** Turn a region rectangle into absolute insets. */
+function regionBox(rect: Rect | undefined) {
+  if (rect === undefined) return null;
+  return {
+    left: rect.x + GUTTER,
+    top: rect.y,
+    width: Math.max(0, rect.width - GUTTER * 2),
+    height: rect.height,
+  };
+}
 
 function isFreshSession(session: SessionState): boolean {
   return (
@@ -529,10 +550,17 @@ function isFreshSession(session: SessionState): boolean {
 }
 
 const styles = StyleSheet.create({
+  /**
+   * The FOCUS rectangle in the right column. Panels fill it and scroll inside it rather
+   * than centring on the room — the recap used to sit on the bedroom every morning.
+   */
+  focusRegion: {
+    position: 'absolute',
+    overflow: 'hidden',
+    zIndex: LAYER.focus,
+  },
   goalChip: {
     ...CHROME.chip,
-    position: 'absolute',
-    left: 8,
     width: 264,
     minHeight: 44,
     flexDirection: 'row',
@@ -547,15 +575,14 @@ const styles = StyleSheet.create({
     fontSize: TYPE_SCALE.body.fontSize,
   },
   goalChipText: {
+    flexShrink: 1,
     flex: 1,
     color: INK,
     ...TYPE_SCALE.caption,
   },
   intentionChip: {
     ...CHROME.chip,
-    position: 'absolute',
-    left: 280,
-    width: 248,
+    width: '100%',
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
@@ -564,9 +591,9 @@ const styles = StyleSheet.create({
     zIndex: LAYER.notice,
   },
   wrinkleChip: {
-    // Positioned by the NOTICE column now, not by its own corner.
+    // Positioned and sized by the NOTICE column now, not by its own corner.
     ...CHROME.chip,
-    width: 248,
+    width: '100%',
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
@@ -587,8 +614,8 @@ const styles = StyleSheet.create({
   goalsPanel: {
     ...CHROME.panel,
     position: 'absolute',
-    left: 8,
-    width: 336,
+    left: 0,
+    right: 0,
     padding: 10,
     gap: 8,
     zIndex: LAYER.notice,
@@ -734,8 +761,8 @@ const styles = StyleSheet.create({
   eventCard: {
     ...CHROME.panel,
     position: 'absolute',
-    left: '50%',
-    width: 368,
+    left: 0,
+    right: 0,
     marginLeft: -184,
     padding: 12,
     gap: 8,
@@ -833,9 +860,8 @@ const styles = StyleSheet.create({
   recapCard: {
     ...CHROME.panel,
     position: 'absolute',
-    left: '50%',
-    marginLeft: -172,
-    width: 344,
+    left: 0,
+    right: 0,
     padding: 12,
     gap: 8,
     borderWidth: 3,
