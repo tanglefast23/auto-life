@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -16,6 +16,7 @@ import { solveScale } from '../render/scale';
 import { Hud } from '../ui/Hud';
 import { QueueStrip, UndoToastNotice, type QueueStripHandle } from '../ui/QueueStrip';
 import { type NoticeItem } from '../ui/NoticeColumn';
+import { JournalPanel } from '../ui/JournalPanel';
 import {
   WorldInteractions,
   type WorldInteractionsHandle,
@@ -160,6 +161,13 @@ function HydratedGameScreen({
    * A surface belongs here if it *reports*; it stays anchored if it *points* at something
    * on screen — which is why the goal and intention chips are not in this list (§7.2).
    */
+  /**
+   * The journal opens over the information column and closes back to it — same rectangle,
+   * so the screen never changes shape. It is the reason `FOCUS` is a region rather than a
+   * centred overlay.
+   */
+  const [journalOpen, setJournalOpen] = useState(false);
+
   const notices = useMemo<NoticeItem[]>(() => {
     const items: NoticeItem[] = [];
     if (undoToast !== null) {
@@ -454,6 +462,8 @@ function HydratedGameScreen({
       </View>
       <Hud
         regions={regions}
+        journalOpen={journalOpen}
+        onOpenJournal={() => setJournalOpen((open) => !open)}
         snapshot={snapshot}
         speed={speed}
         onSpeed={setSpeed}
@@ -515,6 +525,13 @@ function HydratedGameScreen({
           snapshot?.session.recap.completedActivityIds
         }
       />
+      {snapshot !== null && journalOpen && (
+        <JournalPanel
+          session={snapshot.session}
+          region={regions.focus}
+          onClose={() => setJournalOpen(false)}
+        />
+      )}
       {snapshot !== null && (
         <FirstSessionUI
           regions={regions}

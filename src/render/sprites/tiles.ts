@@ -63,10 +63,21 @@ const MATERIAL_RAMP: Record<FloorMaterial, Record<Lighting, TileRamp>> = {
   },
 };
 
-/** Walls are structure, not floor: one ramp, dimmed the same way. */
+/**
+ * Walls are structure, not floor: one ramp, dimmed the same way.
+ *
+ * **Wood panelling, not grey plaster.** The walls read as pale grout-crossed tile, which
+ * made the room feel like a bathroom and left the whole scene one flat cream field. The
+ * reference this game is being modelled on frames its interior in warm boards, and the
+ * Wood ramp is already in the palette, so the wall now uses it directly: Wood base with a
+ * shadow seam between boards and a light grain flick along them.
+ *
+ * Evening keeps the Dusk plum shift every other surface takes, with Wood's own shadow held
+ * as the seam so the boards stay legible after dark.
+ */
 const WALL_RAMP: Record<Lighting, TileRamp> = {
-  day: { base: CREAM_SHADOW, seam: GREY.shadow, detail: CREAM_BASE },
-  evening: { base: DUSK_PLUM.shadow, seam: DUSK_PLUM.shadow, detail: DUSK_PLUM.base },
+  day: { base: WOOD.base, seam: WOOD.shadow, detail: WOOD.light },
+  evening: { base: DUSK_PLUM.shadow, seam: WOOD.shadow, detail: DUSK_PLUM.base },
 };
 
 /**
@@ -91,6 +102,29 @@ function floorShapes(material: FloorMaterial, ramp: TileRamp): Shape[] {
       }
     }
   }
+  return shapes;
+}
+
+/**
+ * Wall panelling: horizontal boards with staggered butt joints.
+ *
+ * Deliberately different from the wood *floor*, which runs two seams with vertical end
+ * joints. A wall a player is looking at edge-on and a floor they are looking down at must
+ * not share a texture, or the room loses its corners — so the boards here are thicker, the
+ * grain flicks are horizontal rather than vertical, and the joint pattern is offset.
+ */
+function wallShapes(ramp: TileRamp): Shape[] {
+  const shapes: Shape[] = [rect(0, 0, TILE, TILE, ramp.base)];
+  // Three boards to the tile, seams at the board edges.
+  for (const y of [0, 11, 22]) {
+    shapes.push(rect(0, y, TILE, 1, ramp.seam));
+  }
+  // Staggered butt joints, so a wall run does not read as a grid.
+  shapes.push(rect(18, 1, 1, 9, ramp.seam), rect(7, 12, 1, 9, ramp.seam), rect(26, 23, 1, 8, ramp.seam));
+  // Grain: short horizontal flicks in the light step, never touching a seam.
+  shapes.push(rect(3, 5, 9, 1, ramp.detail), rect(21, 4, 7, 1, ramp.detail));
+  shapes.push(rect(11, 16, 10, 1, ramp.detail));
+  shapes.push(rect(4, 27, 8, 1, ramp.detail), rect(19, 26, 5, 1, ramp.detail));
   return shapes;
 }
 
@@ -140,7 +174,7 @@ export function registerTiles(
     }
   }
   for (const state of LIGHTING_STATES) {
-    TILE_SPRITES[`wall.${state}`] = { shapes: floorShapes('tile', WALL_RAMP[state]) };
+    TILE_SPRITES[`wall.${state}`] = { shapes: wallShapes(WALL_RAMP[state]) };
   }
   // Lamp pools exist only after dark; a lit lamp at noon would read as a mistake.
   TILE_SPRITES['lamp.day'] = { shapes: [] };

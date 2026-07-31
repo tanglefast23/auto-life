@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   goalChip: {
     ...CHROME.chip,
-    width: 264,
+    width: '100%',
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     ...CHROME.secondaryButton,
-    width: 44,
+    width: '100%',
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   choiceGlyph: {
-    width: 32,
+    width: '100%',
     color: GREEN,
     fontFamily: FONT.pixel,
     fontSize: TYPE_SCALE.heading.fontSize,
