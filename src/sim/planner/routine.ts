@@ -2,7 +2,7 @@ import { napEligibility } from '../activities';
 import { minuteOfDay } from '../clock';
 import type { ContentRegistry } from '../content';
 import { toDisplay, toFixed } from '../fixed';
-import type { QueueCard } from '../queue';
+import { isSuppressed, type QueueCard, type SuppressionMap } from '../queue';
 import type { BarId, Bars } from '../types';
 
 export const ROUTINE_QUEUE_TARGET = 5;
@@ -26,6 +26,13 @@ export interface RefillRoutineQueueArgs {
   content: ContentRegistry;
   createCardId: () => string;
   targetSize?: number;
+  /**
+   * §7.4's stop/remove suppression. Without it the rolling plan re-proposes the exact
+   * activity the player just stopped, on the same minute, and Stop reads as dead — which
+   * is what forced the blanket "start nothing this tick" guard that broke same-tick
+   * handoff. Honouring suppression here is what lets that guard go.
+   */
+  suppression?: SuppressionMap;
 }
 
 function activityForNeed(
@@ -168,6 +175,12 @@ export function refillRoutineQueue(
     };
   };
 
+  // Routine cards are never urgent, so suppression always applies to them (§7.4 gives
+  // urgency the only override).
+  const suppressed = (activityId: string): boolean =>
+    args.suppression !== undefined &&
+    isSuppressed(activityId, args.absoluteMinute, args.suppression, false);
+
   const additions: QueueCard[] = [];
   while (fixed.length + additions.length < targetSize) {
     const candidates = NEED_ORDER.flatMap((bar, order) => {
@@ -178,7 +191,7 @@ export function refillRoutineQueue(
         return [];
       }
       const activityId = activityForNeed(bar, args, projectedBars);
-      if (activityId === null) return [];
+      if (activityId === null || suppressed(activityId)) return [];
       return [{
         bar,
         activityId,
@@ -191,6 +204,9 @@ export function refillRoutineQueue(
 
     const next = candidates[0];
     if (next === undefined) {
+      // Nothing left to propose. Stopping short of the target is the honest answer —
+      // padding with a suppressed activity is exactly the behaviour being fixed.
+      if (suppressed(PRODUCTIVE_FALLBACK_ACTIVITY_ID)) break;
       additions.push(
         takeOrCreate(PRODUCTIVE_FALLBACK_ACTIVITY_ID, null),
       );

@@ -27,4 +27,19 @@ export const kv: KvStore = {
     globalThis.addEventListener('storage', onStorage);
     return () => globalThis.removeEventListener('storage', onStorage);
   },
+  /**
+   * Web Locks: origin-scoped, so one tab's save transaction excludes every other tab's.
+   *
+   * The API has been in every evergreen browser since 2022 and Chrome — the frozen
+   * playtest browser — is well past that. Where it is genuinely absent the work still
+   * runs; the repository's own conflict check then remains the only guard, which is
+   * exactly the pre-lock behaviour rather than a new failure.
+   */
+  async withLock(name, work) {
+    const locks = (
+      globalThis.navigator as { locks?: LockManager } | undefined
+    )?.locks;
+    if (locks === undefined) return work();
+    return locks.request(PREFIX + name, work);
+  },
 };

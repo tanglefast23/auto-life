@@ -132,7 +132,10 @@ test('removeCard aimed at the running activity stops it (suppression + bonus rev
   expect(started.current?.type).toBe('activity');
   expect(started.decayModifiers.some((m) => m.source === 'adjacency:it-sticks')).toBe(true);
   const removed = step(started, [{ type: 'removeCard', cardId: 'm' }], content).next;
-  expect(removed.current).toBeNull(); // stopped, not continuing invisibly
+  // Stopped, not continuing invisibly. `current` is no longer null here: §7.4 gives the
+  // freed slot to the next card on the same tick, so what this pins is that the meal is
+  // not the thing occupying it.
+  expect(removed.current?.cardId).not.toBe('m');
   expect(removed.queue.find((c) => c.id === 'm')).toBeUndefined();
   expect(removed.decayModifiers.some((m) => m.source === 'adjacency:it-sticks')).toBe(false); // §6.7 revoked
   expect(removed.suppression['meal']).toBeDefined(); // AUTO stop suppresses the type
