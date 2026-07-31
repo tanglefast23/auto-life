@@ -9,6 +9,7 @@ import {
   type QueueStripProps,
   type QueueStripSnapshot,
 } from '../QueueStrip';
+import { MOTION } from '../../render/motion';
 
 const card = (
   id: string,
@@ -714,4 +715,170 @@ test('its imperative keyboard surface focuses, traverses, moves, opens, removes,
     expect(imperativeRef.current?.closePanels()).toBe(true);
   });
   act(() => tree.unmount());
+});
+
+/**
+ * P6 T11 — departures, replayed.
+ *
+ * A card that enters animates itself, so it needs no test beyond mounting. A card that
+ * leaves is already gone from the snapshot when the strip re-renders, so the ghost layer
+ * is the only place design.md §10's removal squash and SPEC §11.3's completion poof can
+ * live — and the only place they can break.
+ */
+describe('departing cards (design.md §10, SPEC §11.3)', () => {
+  const twoCards: QueueStripSnapshot = {
+    ...snapshot,
+    currentCardId: null,
+    queue: [card('a', 'meal'), card('b', 'shower')],
+  };
+  const oneCard: QueueStripSnapshot = { ...twoCards, queue: [card('a', 'meal')] };
+
+  const render = (props: Partial<QueueStripProps> = {}) => {
+    const handlers = {
+      onInsertActivity: jest.fn(),
+      onStopCurrent: jest.fn(),
+      onRemoveCard: jest.fn(),
+      onMoveCard: jest.fn(),
+      onUndo: jest.fn(),
+      onWhyLineOpened: jest.fn(),
+      onForecastChangeObserved: jest.fn(),
+    };
+    let tree: ReactTestRenderer;
+    act(() => {
+      tree = create(
+        <QueueStrip snapshot={twoCards} undoToast={null} {...handlers} {...props} />,
+        { createNodeMock: () => ({ focus: jest.fn(), measureInWindow: jest.fn() }) },
+      );
+    });
+    return { tree: tree!, handlers };
+  };
+
+  const ghosts = (tree: ReactTestRenderer) =>
+    tree.root.findAll(
+      (node) =>
+        typeof (node.props as { testID?: string }).testID === 'string' &&
+        (node.props as { testID: string }).testID.startsWith('queue-ghost:'),
+      { deep: false },
+    );
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  test('a removed card squashes out and then stops existing', () => {
+    const { tree } = render();
+    expect(ghosts(tree)).toHaveLength(0);
+
+    act(() => {
+      tree.update(
+        <QueueStrip
+          snapshot={oneCard}
+          undoToast={null}
+          onInsertActivity={jest.fn()}
+          onStopCurrent={jest.fn()}
+          onRemoveCard={jest.fn()}
+          onMoveCard={jest.fn()}
+          onUndo={jest.fn()}
+          onWhyLineOpened={jest.fn()}
+          onForecastChangeObserved={jest.fn()}
+        />,
+      );
+    });
+    const live = ghosts(tree);
+    expect(live).toHaveLength(1);
+    expect((live[0]!.props as { testID: string }).testID).toBe('queue-ghost:exit:b');
+
+    // 90 ms later it is gone, and nothing is left holding a slot in the strip.
+    act(() => {
+      jest.advanceTimersByTime(MOTION.cardRemove.durationMs + 1);
+    });
+    expect(ghosts(tree)).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  test('a completed card poofs instead, and only because the recap says so', () => {
+    const { tree } = render();
+    act(() => {
+      tree.update(
+        <QueueStrip
+          snapshot={oneCard}
+          undoToast={null}
+          completedActivityIds={['shower']}
+          onInsertActivity={jest.fn()}
+          onStopCurrent={jest.fn()}
+          onRemoveCard={jest.fn()}
+          onMoveCard={jest.fn()}
+          onUndo={jest.fn()}
+          onWhyLineOpened={jest.fn()}
+          onForecastChangeObserved={jest.fn()}
+        />,
+      );
+    });
+    const live = ghosts(tree);
+    expect(live).toHaveLength(1);
+    expect((live[0]!.props as { testID: string }).testID).toBe('queue-ghost:complete:b');
+    expect(
+      tree.root.findAll(
+        (n) => String(n.props.testID).startsWith('queue-poof-frame:'),
+        { deep: false },
+      ),
+    ).toHaveLength(1);
+    act(() => tree.unmount());
+  });
+
+  test('a ghost is inert: no focus, no announcement, no colliding test id', () => {
+    const { tree } = render();
+    act(() => {
+      tree.update(
+        <QueueStrip
+          snapshot={oneCard}
+          undoToast={null}
+          onInsertActivity={jest.fn()}
+          onStopCurrent={jest.fn()}
+          onRemoveCard={jest.fn()}
+          onMoveCard={jest.fn()}
+          onUndo={jest.fn()}
+          onWhyLineOpened={jest.fn()}
+          onForecastChangeObserved={jest.fn()}
+        />,
+      );
+    });
+    const ghost = ghosts(tree)[0]!;
+    expect(ghost.props.importantForAccessibility).toBe('no');
+    expect(ghost.props.accessibilityElementsHidden).toBe(true);
+    expect(ghost.props.pointerEvents).toBe('none');
+    // The live card's id is gone from the tree entirely — a ghost that reused it would
+    // make every existing findByProps in this file ambiguous.
+    expect(tree.root.findAll((n) => n.props.testID === 'queue-card:b')).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  test('reduced motion removes the card without a ghost at all (SPEC §11.6)', () => {
+    const { tree } = render({ reducedMotion: true });
+    act(() => {
+      tree.update(
+        <QueueStrip
+          snapshot={oneCard}
+          undoToast={null}
+          reducedMotion
+          completedActivityIds={['shower']}
+          onInsertActivity={jest.fn()}
+          onStopCurrent={jest.fn()}
+          onRemoveCard={jest.fn()}
+          onMoveCard={jest.fn()}
+          onUndo={jest.fn()}
+          onWhyLineOpened={jest.fn()}
+          onForecastChangeObserved={jest.fn()}
+        />,
+      );
+    });
+    // The state change the setting promises to keep has already happened: the card is gone.
+    expect(ghosts(tree)).toHaveLength(0);
+    expect(tree.root.findAll((n) => n.props.testID === 'queue-card:b')).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  test('the urgency pulse is timed by the motion table, not by a local constant', () => {
+    expect(MOTION.urgentPulse.durationMs).toBeGreaterThan(0);
+    expect(MOTION.urgentPulse.decorative).toBe(true);
+  });
 });

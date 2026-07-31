@@ -1,5 +1,5 @@
 import { theme } from './theme';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
   Animated,
   PanResponder,
@@ -29,11 +29,112 @@ import {
   shouldStartQueueDrag,
   type QueueDragGesture,
 } from './queue-drag';
+import { MOTION } from '../render/motion';
+import { squashInterpolation, useMotionRun, type QueueGhost } from './use-motion';
 
 type QueueStyles = Record<string, any>;
 
 const BLUE = theme.color.water;
 const CREAM_SHADOW = theme.color.creamShadow;
+
+/**
+ * design.md §10's card slide+squash, on the unit that just mounted (P6 T11).
+ *
+ * Arrival needs no diff: a card that entered the queue is a component that mounted. The
+ * reduced-motion branch lives in `useMotionRun`, not here, so this wrapper cannot drift
+ * out of step with the other seven motions.
+ */
+function EnteringUnit({
+  reducedMotion,
+  style,
+  testID,
+  children,
+}: {
+  reducedMotion: boolean;
+  style: unknown;
+  testID?: string;
+  children: ReactNode;
+}) {
+  const driver = useMotionRun(MOTION.cardSlide, reducedMotion);
+  const scale = squashInterpolation(MOTION.cardSlide, driver, reducedMotion);
+  return (
+    <Animated.View
+      testID={testID}
+      style={[style as never, { opacity: driver, transform: [{ scale }] }]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/**
+ * A card that has already left the queue, drawn for as long as its motion runs.
+ *
+ * Deliberately inert: no testID that collides with a live card, no accessibility
+ * presence, and no place in the focus order. It exists so a removal reads as a departure
+ * and a completion gets SPEC §11.3's poof — nothing more. The screen reader was already
+ * told the card is gone by the live region; announcing a ghost would say it twice.
+ */
+export function GhostCard({
+  ghost,
+  styles,
+}: {
+  ghost: QueueGhost;
+  styles: QueueStyles;
+}) {
+  const copy = activityCopy(ghost.event.activityId);
+  const driver = useMotionRun(ghost.motion, false, ghost.key);
+  const scale = squashInterpolation(ghost.motion, driver, false);
+  const opacity = driver.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      testID={`queue-ghost:${ghost.event.kind}:${ghost.event.cardId}`}
+      style={[styles.cardUnit, { opacity, transform: [{ scale }] }]}
+    >
+      <View style={styles.upcomingCard}>
+        <Text style={styles.cardGlyph}>{copy.glyph}</Text>
+      </View>
+      {/* Outside the card, which clips its overflow — a poof that stays inside the
+          border it is bursting out of is just a flicker. */}
+      {ghost.frame !== null && <Poof frame={ghost.frame} styles={styles} />}
+    </Animated.View>
+  );
+}
+
+/**
+ * design.md §10's four-frame completion poof.
+ *
+ * Four square puffs pushing outward on the 4px grid — squares rather than a soft burst,
+ * because design.md §13 rejects anti-aliased edges and a blurred gradient here would be
+ * the one un-pixel thing on the screen. Cream shadow, per `MOTION.poof.color`: gold is
+ * reserved for rewards and this is not one.
+ */
+const POOF_OFFSET = [4, 8, 12, 16] as const;
+const POOF_SIZE = [8, 8, 4, 4] as const;
+
+function Poof({ frame, styles }: { frame: number; styles: QueueStyles }) {
+  const step = Math.max(0, Math.min(POOF_OFFSET.length - 1, frame));
+  const distance = POOF_OFFSET[step]!;
+  const size = POOF_SIZE[step]!;
+  return (
+    <View pointerEvents="none" style={styles.poof} testID={`queue-poof-frame:${step}`}>
+      {[
+        { left: -distance, top: -distance },
+        { left: distance, top: -distance },
+        { left: -distance, top: distance },
+        { left: distance, top: distance },
+      ].map((at, index) => (
+        <View
+          key={index}
+          style={[styles.poofPuff, { width: size, height: size, ...at }]}
+        />
+      ))}
+    </View>
+  );
+}
 
 export function CurrentCard({
   card,
@@ -111,6 +212,7 @@ export function CurrentCard({
 export function UpcomingCard({
   card,
   pulse,
+  reducedMotion = false,
   onMenu,
   onDragStart,
   onDragRelease,
@@ -120,6 +222,7 @@ export function UpcomingCard({
 }: {
   card: PublishedQueueCard;
   pulse: Animated.Value;
+  reducedMotion?: boolean;
   onMenu: () => void;
   onDragStart: () => void;
   onDragRelease: (gesture: QueueDragGesture) => void;
@@ -195,7 +298,7 @@ export function UpcomingCard({
     [drag],
   );
   return (
-    <View style={styles.cardUnit}>
+    <EnteringUnit reducedMotion={reducedMotion} style={styles.cardUnit}>
       <ForecastChips cards={[card]} styles={styles} />
       <Animated.View
         {...responder.panHandlers}
@@ -262,13 +365,14 @@ export function UpcomingCard({
         onPress={onMenu}
         styles={styles}
       />
-    </View>
+    </EnteringUnit>
   );
 }
 
 export function CollapsedBlock({
   item,
   pulse,
+  reducedMotion = false,
   onExpand,
   onMenu,
   focusRef,
@@ -277,6 +381,7 @@ export function CollapsedBlock({
 }: {
   item: QueueStripBlockItem;
   pulse: Animated.Value;
+  reducedMotion?: boolean;
   onExpand: () => void;
   onMenu: () => void;
   focusRef: (node: View | null) => void;
@@ -286,7 +391,8 @@ export function CollapsedBlock({
   const urgent = item.cards.some((card) => card.urgent);
   const firstId = item.cards[0]!.id;
   return (
-    <View
+    <EnteringUnit
+      reducedMotion={reducedMotion}
       style={styles.cardUnit}
       testID={`queue-block:${item.blockId}:${firstId}`}
     >
@@ -333,7 +439,7 @@ export function CollapsedBlock({
         onPress={onMenu}
         styles={styles}
       />
-    </View>
+    </EnteringUnit>
   );
 }
 

@@ -164,6 +164,38 @@ describe('the character quad', () => {
     expect(q.y).toBe(7 * TILE - (CHAR_H - TILE));
   });
 
+  test('glances at the queue rail on the right when the queue changes (SPEC §11.3)', () => {
+    expect(buildCharacterQuad(index, 'moss-green', base, 0, 0).sprite)
+      .toBe('char.moss-green.walk-down-0');
+    expect(buildCharacterQuad(index, 'moss-green', base, 0, 0, null, 'right').sprite)
+      .toBe('char.moss-green.walk-right-0');
+  });
+
+  test('a glance never redirects a walking sim — her facing is her direction of travel', () => {
+    const walking: RenderView = {
+      ...base,
+      pose: 'walk',
+      facing: 'left',
+      travel: {
+        path: [
+          { x: 0, y: 0 },
+          { x: 4, y: 0 },
+        ],
+        elapsedTicks: 0,
+        totalTicks: 1,
+      },
+    };
+    // Turning her head mid-path would draw her striding sideways.
+    expect(buildCharacterQuad(index, 'moss-green', walking, 0, 0, null, 'right').sprite)
+      .toBe(buildCharacterQuad(index, 'moss-green', walking, 0, 0).sprite);
+  });
+
+  test('a glance never disturbs a pose with one authored orientation', () => {
+    const asleep: RenderView = { ...base, pose: 'sleep' };
+    expect(buildCharacterQuad(index, 'moss-green', asleep, 0, 0, null, 'right').sprite)
+      .toBe(buildCharacterQuad(index, 'moss-green', asleep, 0, 0).sprite);
+  });
+
   test('movement can be locked to the physical pixel grid without snapping back to tiles', () => {
     const logical = 38.4;
     const snapped = snapToPhysicalPixel(logical, 3);

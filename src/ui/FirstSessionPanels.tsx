@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
+import { MOTION } from '../render/motion';
+import { useMotionRun } from './use-motion';
 import type { DailyRecap, SessionState } from '../game/session';
 import type { AutonomyMode } from '../sim/rules';
 import { content } from '../sim/content';
@@ -463,11 +465,15 @@ export function WrinklePanel({
   );
 }
 
+/** How far above its resting place the recap starts. On the 8px grid, per Joe's rules. */
+const RECAP_SLIDE_FROM = 24;
+
 export function MorningRecap({
   recap,
   session,
   expanded,
   top,
+  reducedMotion = false,
   onToggle,
   onDone,
   styles,
@@ -476,6 +482,7 @@ export function MorningRecap({
   session: SessionState;
   expanded: boolean;
   top: number;
+  reducedMotion?: boolean;
   onToggle: () => void;
   onDone: () => void;
   styles: FirstSessionStyles;
@@ -514,11 +521,23 @@ export function MorningRecap({
     journal,
   ].join('. ');
 
+  // SPEC §11.4: the recap "slides in with wake". Keyed on the day so a fresh recap
+  // slides and a re-render of the same one does not — re-animating on every parent
+  // render would make the card twitch each tick it stayed on screen.
+  const slide = useMotionRun(MOTION.recapSlide, reducedMotion, recap.forDay);
+  const translateY = slide.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-RECAP_SLIDE_FROM, 0],
+  });
+
   return (
-    <View
+    <Animated.View
       accessible
       accessibilityLabel={accessibilityLabel}
-      style={[styles.recapCard, { top }]}
+      style={[
+        styles.recapCard,
+        { top, opacity: slide, transform: [{ translateY }] },
+      ]}
       testID="first-session-recap"
     >
       <Text
@@ -622,7 +641,7 @@ export function MorningRecap({
           styles={styles}
         />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

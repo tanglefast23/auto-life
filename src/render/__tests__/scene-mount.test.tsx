@@ -22,6 +22,7 @@ jest.mock('@shopify/react-native-skia', () => {
     Atlas: passthrough('Atlas'),
     Group: passthrough('Group'),
     Path: passthrough('Path'),
+    Rect: passthrough('Rect'),
     FilterMode: { Nearest: 0, Linear: 1 },
     MipmapMode: { None: 0, Nearest: 1 },
     rect: (x: number, y: number, w: number, h: number) => ({ x, y, width: w, height: h }),
@@ -278,6 +279,115 @@ describe('WorldScene mounts and keeps exactly one animation loop', () => {
     ).toHaveLength(3);
     expect(raf.cancels).toBe(0);
     expect(raf.pending).toBe(1);
+    act(() => tree!.unmount());
+  });
+
+  test('she glances at the queue when its cards change, and not on a mere re-render', () => {
+    // SPEC §11.3. Asserted through the sprite the RAF actually writes, because the glance
+    // lives in a ref precisely so it does NOT re-render React.
+    const raf = installFakeRaf();
+    const loop = new GameLoop(fresh(), content);
+    const captured: { value: unknown }[] = [];
+    (globalThis as { __sv?: unknown[] }).__sv = captured;
+    const standing: RenderView = { ...loop.snapshot!.render, pose: 'stand', facing: 'down', travel: null };
+
+    const props = (queueSignature: string) => ({
+      view: { ...standing },
+      alphaRef: () => 0,
+      scale: 1,
+      effectiveSpeed: 1,
+      queueSignature,
+    });
+    let tree: ReturnType<typeof create> | null = null;
+    act(() => {
+      tree = create(<WorldScene {...props('a|b')} />);
+    });
+    act(() => { raf.frame(16); });
+    const resting = captured[2]?.value;
+
+    // The same signature again is not a queue change.
+    act(() => tree!.update(<WorldScene {...props('a|b')} />));
+    act(() => { raf.frame(16); });
+    expect(captured[2]?.value).toBe(resting);
+
+    act(() => tree!.update(<WorldScene {...props('a|b|c')} />));
+    act(() => { raf.frame(16); });
+    expect(captured[2]?.value).not.toBe(resting);
+    act(() => tree!.unmount());
+  });
+
+  test('a granted decoration sparkles, and a restored save full of them does not', () => {
+    const raf = installFakeRaf();
+    const loop = new GameLoop(fresh(), content);
+    const view = loop.snapshot.render;
+    const sparkles = (tree: ReturnType<typeof create>) =>
+      tree.root.findAll((node) => String(node.type) === 'Rect');
+
+    // A save restored with decorations already granted must not spend the one reward
+    // signal on a reload, so the first list the scene sees is a baseline, never an event.
+    let tree: ReturnType<typeof create> | null = null;
+    act(() => {
+      tree = create(
+        <WorldScene
+          view={view}
+          decorationIds={['leafy-plant']}
+          alphaRef={() => 0}
+          scale={1}
+          effectiveSpeed={1}
+        />,
+      );
+    });
+    expect(sparkles(tree!)).toHaveLength(0);
+
+    act(() => {
+      tree!.update(
+        <WorldScene
+          view={view}
+          decorationIds={['leafy-plant', 'bedroom-plant']}
+          alphaRef={() => 0}
+          scale={1}
+          effectiveSpeed={1}
+        />,
+      );
+    });
+    // design.md §10's gold sparkle: four puffs, and this is the only gold motion drawn.
+    expect(sparkles(tree!)).toHaveLength(4);
+    act(() => tree!.unmount());
+  });
+
+  test('reduced motion grants the decoration and skips the sparkle (SPEC §11.6)', () => {
+    installFakeRaf();
+    const loop = new GameLoop(fresh(), content);
+    const view = loop.snapshot.render;
+    let tree: ReturnType<typeof create> | null = null;
+    act(() => {
+      tree = create(
+        <WorldScene
+          view={view}
+          decorationIds={[]}
+          reducedMotion
+          alphaRef={() => 0}
+          scale={1}
+          effectiveSpeed={1}
+        />,
+      );
+    });
+    act(() => {
+      tree!.update(
+        <WorldScene
+          view={view}
+          decorationIds={['leafy-plant']}
+          reducedMotion
+          alphaRef={() => 0}
+          scale={1}
+          effectiveSpeed={1}
+        />,
+      );
+    });
+    // The state change survives — the decoration is on the wall as its own Atlas layer —
+    // and only the decoration *of the decoration* is gone.
+    expect(tree!.root.findAll((node) => String(node.type) === 'Atlas')).toHaveLength(3);
+    expect(tree!.root.findAll((node) => String(node.type) === 'Rect')).toHaveLength(0);
     act(() => tree!.unmount());
   });
 });

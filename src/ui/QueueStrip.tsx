@@ -40,9 +40,13 @@ import type { ActivePreferenceTag } from './preference-tags';
 import {
   CollapsedBlock,
   CurrentCard,
+  GhostCard,
   MenuButton,
   UpcomingCard,
 } from './QueueStripCards';
+import { MOTION, resolveMotion } from '../render/motion';
+import { queueMotionFrame } from './card-motion';
+import { useQueueGhosts } from './use-motion';
 import {
   BlockMenu,
   CardMenu,
@@ -71,6 +75,13 @@ export interface QueueStripProps {
   onForecastChangeObserved: () => void;
   reducedMotion?: boolean;
   preferenceTags?: readonly ActivePreferenceTag[];
+  /**
+   * The day's completed activities, from `session.recap`. The strip needs it to tell a
+   * card the player removed from one the sim finished — only the second earns the poof.
+   * Passed beside the snapshot rather than widening `QueueStripSnapshot`, which would put
+   * the whole `SessionState` into this component's contract for one array.
+   */
+  completedActivityIds?: readonly string[];
 }
 
 export interface QueueStripHandle {
@@ -115,6 +126,7 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
       onForecastChangeObserved,
       reducedMotion = false,
       preferenceTags = [],
+      completedActivityIds = [],
     },
     imperativeRef,
   ) {
@@ -161,6 +173,13 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
     ],
   );
   const atPlayerCap = queue.filter((card) => card.source === 'player').length >= 10;
+  // Departures, replayed. Ghosts are deliberately absent from `visualRows` below: focus
+  // order, drag indices, and the keyboard handle all read that list.
+  const motionFrame = useMemo(
+    () => queueMotionFrame(queue, completedActivityIds),
+    [queue, completedActivityIds],
+  );
+  const ghosts = useQueueGhosts(motionFrame, reducedMotion);
   const focusTokens = useMemo(() => {
     const tokens: string[] = [];
     if (current !== null) tokens.push(cardFocusToken(current.id));
@@ -168,8 +187,12 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
     return tokens;
   }, [current, visualRows]);
 
+  // SPEC §11.6's urgency pulse, timed by `MOTION.urgentPulse` rather than by a local
+  // constant. The reduced-motion branch is `resolveMotion`'s: a decorative motion resolves
+  // to zero duration, and the badge (§11.6's non-colour signal) carries urgency alone.
   useEffect(() => {
-    if (!hasUrgent || reducedMotion) {
+    const motion = resolveMotion(MOTION.urgentPulse, { reducedMotion });
+    if (!hasUrgent || motion.durationMs <= 0) {
       pulse.setValue(1);
       return;
     }
@@ -177,7 +200,7 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
     const phase = (toValue: number) =>
       Animated.timing(pulse, {
         toValue,
-        duration: 500,
+        duration: motion.durationMs,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver,
       });
@@ -528,6 +551,7 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
               key={item.key}
               card={item.card}
               pulse={pulse}
+              reducedMotion={reducedMotion}
               styles={styles}
               onMenu={() => openCardMenu(item.card.id)}
               onDragStart={measureStrip}
@@ -555,6 +579,7 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
                   key={card.id}
                   card={card}
                   pulse={pulse}
+                  reducedMotion={reducedMotion}
                   styles={styles}
                   onMenu={() => openCardMenu(card.id)}
                   onDragStart={measureStrip}
@@ -573,6 +598,7 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
               key={item.key}
               item={item}
               pulse={pulse}
+              reducedMotion={reducedMotion}
               styles={styles}
               onExpand={() => toggleBlock(item.key)}
               onMenu={() => openBlockMenu(item.key)}
@@ -583,6 +609,9 @@ export const QueueStrip = forwardRef<QueueStripHandle, QueueStripProps>(
             />
           ),
         )}
+        {ghosts.map((ghost) => (
+          <GhostCard key={ghost.key} ghost={ghost} styles={styles} />
+        ))}
       </ScrollView>
 
       <Pressable
@@ -885,6 +914,23 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   urgentCard: { borderColor: RED },
+  /**
+   * design.md §10's completion poof. Centred on the 56px card unit and drawn outside the
+   * card's own clip, in `MOTION.poof.color` rather than a restated hex so the table
+   * remains the single source for what the motion looks like.
+   */
+  poof: {
+    position: 'absolute',
+    left: '50%',
+    top: 28,
+    zIndex: 3,
+  },
+  poofPuff: {
+    position: 'absolute',
+    backgroundColor: MOTION.poof.color,
+    borderWidth: 1,
+    borderColor: INK,
+  },
   urgentPulse: {
     position: 'absolute',
     left: 1,

@@ -348,6 +348,40 @@ Verified steady-state facts (from the trace agents; these become CI assertions i
 
 **Single-rest-card rule [round 3, Q5 — mirrors the food rule]:** never both a Nap and an Urgent Sleep in the queue. Urgent Sleep supersedes and removes a queued-but-unstarted Nap; a *running* Nap finishes (the planner never interrupts). Unit-tested beside the single-food-card test.
 
+### 7.2a Rolling routine queue — the visible plan (`ENGINE_VERSION` 9, adopted 2026-07-31 by Joe)
+
+§7.2's reactive rules are *safety nets*: they fire in the 15–40 band, which means a healthy
+sim's queue held nothing but the two anchor blocks and the player's own cards. The plan the
+queue rail displays was therefore empty for most of the day, and the rail's whole purpose is
+to be the thing the player steers.
+
+Under the default `full-routine` autonomy the planner keeps **current + four upcoming
+cards** continuously published:
+
+- **Maintenance begins below 80**, not at §7.2's reactive thresholds — a second, higher tier
+  that anticipates rather than rescues. Candidates are scored with §7.3's same bar weights,
+  and each planned bar is claimed once so the plan cannot book four Snacks.
+- Need → activity: Nutrition → Snack · Hygiene → Quick wash · Movement → Stretch · Energy →
+  Nap, and **only an EFFECTIVE nap** (§6's budget rule holds — a nap that would do nothing is
+  never offered).
+- **Productive free time** — nothing below 80 — fills with a neutral **Read** on the couch,
+  which has no bar effects and exists so free time is visible and steerable rather than blank.
+- Only **untouched AUTO routine cards** are rewritten. Running cards, anchors, reactive fixes,
+  wrinkles, and anything the player pinned, moved or inserted are fixed points (§7.4's
+  ownership rule, unchanged). Completing the current card refills the fifth slot in the same
+  tick.
+- The other two autonomy modes (`essentials-only`, `reactive-only`) do **not** refill. They
+  are where §7.4's empty-queue row still applies.
+
+Routine cards carry a `routinePlan` reason, so §7.5's why-line explains them like any other
+card. They are AUTO, so they live outside §7.4's ten-card player cap.
+
+**Consequences recorded rather than discovered later:** both goldens re-recorded and
+`ENGINE_VERSION` moved 8 → 9 with in-place migration of v8 career envelopes; the harness
+bands moved with the behaviour (travel 20–50 → **95–125** minutes/day, nutrition minimum
+47–53 → **50–55**, meal cap-waste max 12 → **22**) because a sim who always has somewhere to
+be walks considerably more.
+
 ### 7.3 Priority (verified formula)
 
 Two stages; Stage 1 always outranks Stage 2. Weights: Energy 4 · Nutrition 3 · Hygiene 2 · Movement 1.
@@ -372,7 +406,7 @@ Verified at all-bars-0: Sleep 4.0 > Food 3.0 > Shower 2.0 (the v0.1 formula prod
 | Queue cap | The player may hold **10** cards. Anchor blocks render as **one expandable card** (e.g. "Morning routine ▸ ×4" — tap to expand and edit individual steps) and, together with urgent cards, live outside the player cap entirely — so no queue state can ever lock out the wake block, the bedtime block, or an emergency (round-2 fix: two reserved slots couldn't hold a four-card block). |
 | Object blocked (wrinkle) | The card defers in place with a why-line + ⚠ chip until the object frees. URGENT Hygiene reroutes to the sink Quick wash if reachable; everything else waits. Doorbell-type wrinkles interrupt idle only — if the sim is mid-activity, the visitor card enters at URGENT-front instead. |
 | Cross-midnight | Cards persist across midnight; the bedtime anchor queues *behind* pinned cards and warns (§7.5) if the plan pushes sleep past 00:00. |
-| Empty queue | Idle: couch sit, wander, idle behaviors, storylet triggers. |
+| Empty queue | **Reachable only under `essentials-only` and `reactive-only` autonomy** (§7.2a). Then: idle — couch sit, wander, idle behaviors, storylet triggers. Under the default `full-routine` the queue is refilled to five and never empties; measured **0 empty-queue ticks over a seven-day seeded run** (2026-07-31). |
 
 ### 7.5 Forecasts & explanations — the planner shows its work
 

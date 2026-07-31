@@ -322,6 +322,12 @@ function HydratedGameScreen({
   }, [loop]);
 
   const view = snapshot?.render ?? null;
+  // SPEC §11.3's glance trigger: the cards themselves, not the forecast revision, which
+  // also bumps every game hour and would make her glance at nothing.
+  const queueSignature = useMemo(
+    () => (snapshot?.queue ?? []).map((card) => card.id).join('|'),
+    [snapshot?.queue],
+  );
   const preferenceBubble =
     snapshot === null
       ? null
@@ -348,6 +354,7 @@ function HydratedGameScreen({
                 idleVariantId={idleVariantId}
                 minuteOfDay={snapshot?.minuteOfDay}
                 reducedMotion={reducedMotion}
+                queueSignature={queueSignature}
                 alphaRef={alpha}
                 scale={fit.scale}
                 physicalPerArtPixel={fit.physicalPerArtPixel}
@@ -418,6 +425,9 @@ function HydratedGameScreen({
         onForecastChangeObserved={observeForecastChange}
         reducedMotion={reducedMotion}
         preferenceTags={preferenceTags}
+        completedActivityIds={
+          snapshot?.session.recap.completedActivityIds
+        }
       />
       {snapshot !== null && (
         <FirstSessionUI
@@ -434,6 +444,7 @@ function HydratedGameScreen({
           practicePoints100={Math.round(
             snapshot.practicePoints * 100,
           )}
+          reducedMotion={reducedMotion}
           dailyIntentionPrompt={
             preferences.gameplay.dailyIntentionPrompt
           }
