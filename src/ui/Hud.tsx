@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { content } from '../sim/content';
 import type { SimSnapshot } from '../sim/step';
@@ -9,7 +9,7 @@ import { formatClock } from './clock-format';
 import { practiceLevel } from '../sim/practice-level';
 import { fillGoalCopy, goalStrings } from './goal-copy';
 import { settingsStrings } from './settings-copy';
-import { FONT, TYPE_SCALE, theme } from './theme';
+import { FONT, scaledType, TABULAR, TYPE_SCALE, theme } from './theme';
 
 /**
  * The HUD (SPEC §11.1, P3 T7).
@@ -42,6 +42,32 @@ export interface HudProps {
   reducedMotion?: boolean;
   nonColorUrgency?: boolean;
   screenReaderVerbosity?: 'brief' | 'full';
+  /**
+   * The player's HUD text-size preference (0.75–1.5), applied to actual font sizes.
+   *
+   * P5 added the setting and P6 wrote `scaledType`, but nothing joined them: `GameScreen`
+   * multiplied the *reserved height* by this number and left every size alone, so the
+   * slider moved the layout and not one glyph. That is the defect this prop closes.
+   */
+  textScale?: number;
+}
+
+/**
+ * The scale-dependent half of the HUD's type.
+ *
+ * Split from `StyleSheet.create` because a StyleSheet is created once at module load and
+ * therefore cannot answer to a runtime preference — which is the structural reason the
+ * setting was inert. Layout stays in the sheet; anything the slider moves lives here.
+ */
+function hudType(scale: number) {
+  return {
+    label: { ...scaledType('caption', scale), letterSpacing: 1 },
+    value: { ...scaledType('body', scale), ...TABULAR },
+    subValue: { ...scaledType('body', scale), ...TABULAR },
+    caption: scaledType('caption', scale),
+    icon: scaledType('body', scale),
+    action: scaledType('body', scale),
+  } as const;
 }
 
 const SCALABLE_TEXT = {
@@ -109,7 +135,9 @@ export function Hud({
   reducedMotion = false,
   nonColorUrgency = true,
   screenReaderVerbosity = 'brief',
+  textScale = 1,
 }: HudProps) {
+  const type = useMemo(() => hudType(textScale), [textScale]);
   const health = snapshot?.health ?? 0;
   const healthBand = bandForDefault(health, content.rates).band;
   const practicePoints = snapshot?.practicePoints ?? 0;
@@ -141,7 +169,7 @@ export function Hud({
       {/* Top-left: Health block (§11.1) */}
       <View style={styles.block}>
         <View style={styles.healthRow}>
-          <Text {...SCALABLE_TEXT} style={styles.healthLabel}>HEALTH</Text>
+          <Text {...SCALABLE_TEXT} style={[styles.healthLabel, type.label]}>HEALTH</Text>
           <Text
             {...SCALABLE_TEXT}
             accessible
@@ -151,7 +179,7 @@ export function Hud({
                 : briefValueLabel('Health', health, healthBand)
             }
             testID="hud-health-value"
-            style={styles.healthValue}
+            style={[styles.healthValue, type.value]}
           >
             {Math.round(health)}
           </Text>
@@ -181,7 +209,7 @@ export function Hud({
               <Text
                 {...SCALABLE_TEXT}
                 accessible
-                style={[styles.icon, style.band === 'alert' && styles.iconAlert]}
+                style={[styles.icon, type.icon, style.band === 'alert' && styles.iconAlert]}
                 accessibilityLabel={
                   screenReaderVerbosity === 'full'
                     ? `${BAR_ICON[bar].label} ${Math.round(value)} of 100, ${accessibleBandName(style.band)}`
@@ -203,7 +231,7 @@ export function Hud({
                 band={style.band}
                 pulseOpacity={pulse}
               />
-              <Text {...SCALABLE_TEXT} style={styles.subValue}>{Math.round(value)}</Text>
+              <Text {...SCALABLE_TEXT} style={[styles.subValue, type.subValue]}>{Math.round(value)}</Text>
             </View>
           );
         })}
@@ -220,7 +248,7 @@ export function Hud({
             },
           )}
           testID="hud-practice"
-          style={styles.practice}
+          style={[styles.practice, type.caption]}
         >
           {fillGoalCopy(goalStrings.ui.practiceSummary, {
             level: currentPracticeLevel,
@@ -238,7 +266,7 @@ export function Hud({
           {...SCALABLE_TEXT}
           accessible
           accessibilityLabel={snapshot === null ? 'Game clock unavailable' : formatClock(snapshot.day, snapshot.minuteOfDay)}
-          style={styles.clock}
+          style={[styles.clock, type.value]}
           testID="hud-clock"
         >
           {snapshot === null ? 'Day — · — · --:--' : formatClock(snapshot.day, snapshot.minuteOfDay)}
@@ -254,7 +282,7 @@ export function Hud({
               testID={`speed-${s}`}
               style={[styles.speedBtn, speed === s && styles.speedBtnActive]}
             >
-              <Text {...SCALABLE_TEXT} style={[styles.speedText, speed === s && styles.speedTextActive]}>{s === 0 ? '❚❚' : `${s}×`}</Text>
+              <Text {...SCALABLE_TEXT} style={[styles.speedText, type.action, speed === s && styles.speedTextActive]}>{s === 0 ? '❚❚' : `${s}×`}</Text>
             </Pressable>
           ))}
         </View>
@@ -266,7 +294,8 @@ export function Hud({
             style={styles.metaButton}
             testID="open-pause-menu"
           >
-            <Text {...SCALABLE_TEXT} style={styles.metaButtonText}>
+            {/* `type` first: the sheet's pixelBold must win over the step's regular face. */}
+            <Text {...SCALABLE_TEXT} style={[type.action, styles.metaButtonText]}>
               ⚙
             </Text>
           </Pressable>
@@ -281,7 +310,8 @@ export function Hud({
             style={styles.metaButton}
             testID="toggle-mute"
           >
-            <Text {...SCALABLE_TEXT} style={styles.metaButtonText}>
+            {/* `type` first: the sheet's pixelBold must win over the step's regular face. */}
+            <Text {...SCALABLE_TEXT} style={[type.action, styles.metaButtonText]}>
               {muted ? '🔇' : '♪'}
             </Text>
           </Pressable>
@@ -313,8 +343,10 @@ const styles = StyleSheet.create({
   },
   clockBlock: { alignItems: 'flex-end' },
   healthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', width: 168 },
-  healthLabel: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: INK, letterSpacing: 1 },
-  healthValue: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: INK, fontVariant: ['tabular-nums'] },
+  // Size and family for every entry below come from `hudType(textScale)`, so the
+  // preference has exactly one owner. Colour and geometry stay here.
+  healthLabel: { color: INK },
+  healthValue: { color: INK },
   trough: {
     backgroundColor: CREAM_SHADOW,
     borderWidth: 1,
@@ -326,11 +358,14 @@ const styles = StyleSheet.create({
   edgeTick: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: CREAM_SHADOW },
   alertPulse: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderWidth: 1, borderColor: RED },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  icon: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: INK, width: 14, textAlign: 'center' },
+  icon: { color: INK, width: 16, textAlign: 'center' },
   iconAlert: { color: RED },
-  subValue: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: INK, width: 24, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  practice: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: GOLD, marginTop: 2 },
-  clock: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.body.fontSize, color: INK, fontVariant: ['tabular-nums'] },
+  // 32, not the old 24: at 8px a three-digit value was 12px wide, at 16px it is 24px and
+  // grows further with the scale preference. 24 would have clipped "100" the moment the
+  // type became readable.
+  subValue: { color: INK, width: 32, textAlign: 'right' },
+  practice: { color: GOLD, marginTop: 4 },
+  clock: { color: INK },
   speedRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
   metaRow: {
     flexDirection: 'row',
@@ -348,7 +383,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   speedBtnActive: { backgroundColor: INK },
-  speedText: { fontFamily: FONT.pixel, fontSize: TYPE_SCALE.micro.fontSize, color: INK },
+  speedText: { color: INK },
   speedTextActive: { color: CREAM_LIGHT },
   metaButton: {
     alignItems: 'center',
@@ -360,9 +395,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  metaButtonText: {
-    color: INK,
-    fontSize: TYPE_SCALE.body.fontSize,
-    fontFamily: FONT.pixelBold,
-  },
+  metaButtonText: { color: INK, fontFamily: FONT.pixelBold },
 });

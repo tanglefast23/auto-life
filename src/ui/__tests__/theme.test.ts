@@ -1,7 +1,21 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PALETTE_57 } from '../../render/palette';
-import { BUBBLE_TINT, CHROME, crispSize, FONT, PIXEL_EM, PROSE, TABULAR, TYPE_SCALE, theme } from '../theme';
+import {
+  BUBBLE_TINT,
+  CHROME,
+  crispSize,
+  FONT,
+  isPixelStep,
+  MIN_READABLE,
+  PIXEL_EM,
+  PROSE,
+  scaledType,
+  TABULAR,
+  TYPE_SCALE,
+  theme,
+  type TypeStep,
+} from '../theme';
 
 /**
  * P6 T7 — the caps design.md §4 and Joe's global rules set, enforced mechanically.
@@ -64,8 +78,18 @@ describe('typography (design.md §4)', () => {
   it('ships at most two weights, carried by family and never by synthetic bold', () => {
     // HFM §2.5: synthetic bold on a one-weight bitmap face smears the grid. Silkscreen
     // ships 400Regular and 700Bold, so weight is a different file, not a transform.
-    const families = new Set(Object.values(TYPE_SCALE).map((t) => t.fontFamily));
-    expect(families.size).toBeLessThanOrEqual(2);
+    //
+    // P7 counts *pixel* families rather than all families. Before P7 the two were the
+    // same set, so family-count was a sound proxy for the §4 weight cap; now that
+    // `caption` is sans, counting families would read the cap as broken when what
+    // actually changed is that §4's separately-licensed prose face entered the scale.
+    // The cap being enforced is two weights, not two files.
+    const pixelFamilies = new Set(
+      (Object.keys(TYPE_SCALE) as TypeStep[])
+        .filter(isPixelStep)
+        .map((step) => TYPE_SCALE[step].fontFamily),
+    );
+    expect(pixelFamilies.size).toBeLessThanOrEqual(2);
     for (const spec of Object.values(TYPE_SCALE)) {
       expect(spec.fontWeight).toBe('normal');
     }
@@ -73,9 +97,31 @@ describe('typography (design.md §4)', () => {
   });
 
   it('keeps every pixel-font size on Silkscreen’s 8px em, so nothing anti-aliases', () => {
-    for (const spec of Object.values(TYPE_SCALE)) {
-      expect(spec.fontSize % PIXEL_EM).toBe(0);
+    for (const step of Object.keys(TYPE_SCALE) as TypeStep[]) {
+      if (!isPixelStep(step)) continue;
+      expect(TYPE_SCALE[step].fontSize % PIXEL_EM).toBe(0);
     }
+  });
+
+  it('puts no player-facing step below the readable floor', () => {
+    // The P7 audit's headline finding: queue names, predicted times, need values and the
+    // Practice counter all computed at 8px. 8px is *legal Silkscreen*, which is why five
+    // phases of review passed it — the em grid says crisp, and crisp was all anyone checked.
+    for (const spec of Object.values(TYPE_SCALE)) {
+      expect(spec.fontSize).toBeGreaterThanOrEqual(MIN_READABLE);
+    }
+    expect(PROSE.fontSize as number).toBeGreaterThanOrEqual(MIN_READABLE);
+  });
+
+  it('keeps the sub-16px tier on the sans face, because 12px Silkscreen anti-aliases', () => {
+    for (const step of Object.keys(TYPE_SCALE) as TypeStep[]) {
+      if (TYPE_SCALE[step].fontSize >= PIXEL_EM * 2) continue;
+      expect(isPixelStep(step)).toBe(false);
+    }
+  });
+
+  it('retired the 8px micro step entirely', () => {
+    expect(Object.keys(TYPE_SCALE)).not.toContain('micro');
   });
 
   it('uses a readable sans for prose, per design.md §4', () => {
@@ -113,6 +159,53 @@ describe('accessibility scaling stays crisp', () => {
     expect(crispSize(16, Number.NaN)).toBe(16);
     expect(crispSize(16, 0)).toBe(16);
     expect(crispSize(16, -2)).toBe(16);
+  });
+});
+
+describe('scaledType — the function the HUD setting actually moves (P7)', () => {
+  const SLIDER: number[] = [];
+  for (let s = 0.75; s <= 1.5001; s += 0.05) SLIDER.push(Number(s.toFixed(2)));
+
+  it('holds every step at or above the readable floor across the whole slider', () => {
+    // The regression this guards: scaling *down* is how a 12px caption becomes 9px and
+    // the game quietly returns to the state the P7 audit failed it for.
+    for (const scale of SLIDER) {
+      for (const step of Object.keys(TYPE_SCALE) as TypeStep[]) {
+        expect({ step, scale, size: scaledType(step, scale).fontSize }).toEqual({
+          step,
+          scale,
+          size: expect.any(Number),
+        });
+        expect(scaledType(step, scale).fontSize as number).toBeGreaterThanOrEqual(MIN_READABLE);
+      }
+    }
+  });
+
+  it('keeps pixel steps on the em grid and lets the sans step move freely', () => {
+    for (const scale of SLIDER) {
+      for (const step of Object.keys(TYPE_SCALE) as TypeStep[]) {
+        const size = scaledType(step, scale).fontSize as number;
+        if (isPixelStep(step)) expect(size % PIXEL_EM).toBe(0);
+      }
+    }
+    // The sans step genuinely responds rather than snapping back onto 8s: if it were
+    // routed through crispSize it would read 16 at both 1.25 and 1.5.
+    expect(scaledType('caption', 1.5).fontSize).toBeGreaterThan(
+      scaledType('caption', 1).fontSize as number,
+    );
+  });
+
+  it('grows the caption’s line height with its size so prose never collides', () => {
+    const big = scaledType('caption', 1.5);
+    expect(big.lineHeight as number).toBeGreaterThan(TYPE_SCALE.caption.lineHeight);
+    expect(big.lineHeight as number).toBeGreaterThan(big.fontSize as number);
+  });
+
+  it('fails soft on a hostile scale', () => {
+    for (const step of Object.keys(TYPE_SCALE) as TypeStep[]) {
+      expect(scaledType(step, Number.NaN).fontSize).toBe(TYPE_SCALE[step].fontSize);
+      expect(scaledType(step, 0).fontSize).toBe(TYPE_SCALE[step].fontSize);
+    }
   });
 });
 
@@ -160,6 +253,47 @@ describe('the UI reads the theme rather than restating it', () => {
         .forEach((line, i) => {
           if (/fontSize:\s*\d/.test(line)) offenders.push(`${file}:${i + 1}: ${line.trim()}`);
         });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('never pairs the pixel face with the sub-16px step', () => {
+    // The failure this catches is silent and specific: `...TYPE_SCALE.caption` followed by
+    // `fontFamily: FONT.pixel` yields 12px Silkscreen, which anti-aliases — design.md §13's
+    // instant reject — while every size assertion in this file still passes. The caption
+    // step is legible *because* it changes face; re-pinning the face undoes it invisibly.
+    const offenders: string[] = [];
+    for (const file of UI_SOURCES) {
+      const src = readFileSync(resolve(repoRoot, file), 'utf8');
+      // Walk each style object and check the two declarations against each other.
+      for (const block of src.split(/\n\s{2}[a-zA-Z][a-zA-Z0-9_]*:\s*\{/)) {
+        const head = block.split(/\n\s{2}\}/)[0] ?? '';
+        if (!/\.\.\.TYPE_SCALE\.caption/.test(head)) continue;
+        if (/fontFamily:\s*FONT\.pixel/.test(head)) {
+          offenders.push(`${file}: caption step re-pinned to the pixel face`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('leaves no line height below its own step’s size', () => {
+    // Migrating 8px text to 12/16px left 14 line heights of 10–15px behind, each tuned for
+    // the old size and each one clipping its new text. They override the step because they
+    // are declared *after* the spread.
+    const offenders: string[] = [];
+    for (const file of UI_SOURCES) {
+      const src = readFileSync(resolve(repoRoot, file), 'utf8');
+      for (const block of src.split(/\n\s{2}[a-zA-Z][a-zA-Z0-9_]*:\s*\{/)) {
+        const head = block.split(/\n\s{2}\}/)[0] ?? '';
+        const step = head.match(/\.\.\.TYPE_SCALE\.(\w+)/)?.[1];
+        const lh = head.match(/lineHeight:\s*(\d+)/)?.[1];
+        if (step === undefined || lh === undefined) continue;
+        const size = TYPE_SCALE[step as TypeStep]?.fontSize;
+        if (size !== undefined && Number(lh) < size) {
+          offenders.push(`${file}: lineHeight ${lh} under ${step} (${size}px)`);
+        }
+      }
     }
     expect(offenders).toEqual([]);
   });

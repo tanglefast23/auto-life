@@ -768,14 +768,12 @@ const styles = StyleSheet.create({
   },
   currentLabel: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
-    lineHeight: 11,
   },
   currentFoot: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    fontFamily: FONT.pixelBold,
+    ...TYPE_SCALE.caption,
     letterSpacing: 1,
   },
   rule: {
@@ -803,8 +801,7 @@ const styles = StyleSheet.create({
   },
   emptyQueueText: {
     color: theme.color.woodShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     letterSpacing: 1,
   },
   cardUnit: {
@@ -833,9 +830,7 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 4,
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    fontFamily: FONT.pixelBold,
-    lineHeight: 11,
+    ...TYPE_SCALE.caption,
     overflow: 'hidden',
   },
   warningChip: {
@@ -904,9 +899,8 @@ const styles = StyleSheet.create({
     backgroundColor: RED,
     borderWidth: 1,
     borderColor: theme.color.redShadow,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
-    lineHeight: 10,
     textAlign: 'center',
     zIndex: 2,
   },
@@ -923,22 +917,17 @@ const styles = StyleSheet.create({
   },
   ownerGlyph: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 12,
+    ...TYPE_SCALE.caption,
   },
   cardLabel: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
-    lineHeight: 11,
   },
   cardStart: {
     color: theme.color.woodShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     fontVariant: ['tabular-nums'],
-    lineHeight: 11,
   },
   menuButton: {
     minWidth: 44,
@@ -956,8 +945,7 @@ const styles = StyleSheet.create({
   },
   menuDots: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     letterSpacing: -1,
   },
   blockCard: {
@@ -975,18 +963,17 @@ const styles = StyleSheet.create({
   },
   blockKicker: {
     color: theme.color.woodShadow,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    fontFamily: FONT.pixelBold,
+    ...TYPE_SCALE.caption,
     letterSpacing: 1,
   },
   blockLabel: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   blockCount: {
     color: PLUM,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   paletteToggle: {
@@ -1010,8 +997,7 @@ const styles = StyleSheet.create({
   },
   paletteCount: {
     color: INK,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     fontVariant: ['tabular-nums'],
   },
   controlDisabled: { opacity: 0.4 },
@@ -1040,8 +1026,7 @@ const styles = StyleSheet.create({
   },
   panelEyebrow: {
     color: theme.color.woodShadow,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    fontFamily: FONT.pixelBold,
+    ...TYPE_SCALE.caption,
     letterSpacing: 1,
   },
   panelTitle: {
@@ -1075,7 +1060,7 @@ const styles = StyleSheet.create({
   roomMark: { width: 8, height: 16, borderWidth: 1, borderColor: INK },
   roomLabel: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
@@ -1106,26 +1091,24 @@ const styles = StyleSheet.create({
   paletteCopy: { flex: 1 },
   paletteLabel: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   paletteMeta: {
     color: theme.color.woodShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
     fontVariant: ['tabular-nums'],
   },
   paletteEffect: {
     color: theme.color.leafShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.caption,
   },
   preferenceTag: {
     alignSelf: 'flex-start',
     backgroundColor: theme.color.creamBase,
     borderRadius: 99,
     color: theme.color.plumShadow,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     marginTop: 3,
     paddingHorizontal: 6,
@@ -1134,9 +1117,7 @@ const styles = StyleSheet.create({
   menuPanel: { width: 220 },
   menuHint: {
     color: theme.color.woodShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 13,
+    ...TYPE_SCALE.caption,
     marginBottom: 6,
   },
   actionButton: {
@@ -1155,16 +1136,14 @@ const styles = StyleSheet.create({
   actionDestructive: { backgroundColor: RED, borderColor: theme.color.redShadow },
   actionText: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   actionDestructiveText: { color: CREAM_LIGHT },
   detailsPanel: { width: 280 },
   detailLine: {
     color: theme.color.woodShadow,
-    fontFamily: FONT.pixel,
-    fontSize: TYPE_SCALE.micro.fontSize,
-    lineHeight: 15,
+    ...TYPE_SCALE.caption,
   },
   warningDetail: { color: RED },
   bonusDetail: { color: theme.color.wood },
@@ -1193,7 +1172,7 @@ const styles = StyleSheet.create({
   },
   toastText: {
     color: CREAM_LIGHT,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
   },
   undoButton: {
@@ -1209,7 +1188,7 @@ const styles = StyleSheet.create({
   },
   undoText: {
     color: INK,
-    fontSize: TYPE_SCALE.micro.fontSize,
+    ...TYPE_SCALE.body,
     fontFamily: FONT.pixelBold,
     letterSpacing: 1,
   },
