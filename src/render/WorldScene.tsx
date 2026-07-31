@@ -5,6 +5,7 @@ import {
   Group,
   MipmapMode,
   Path,
+  Rect,
   rect,
   Skia,
   useImage,
@@ -15,7 +16,7 @@ import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-
 import { content } from '../sim/content';
 import { resolvePaletteId } from './appearance';
 import { lightingAt } from './lighting';
-import { MOTION, motionProgress, resolveMotion } from './motion';
+import { effectFrame, MOTION, motionProgress, resolveMotion } from './motion';
 import type { RenderView } from '../sim/render-view';
 import atlasIndexJson from '../../assets/generated/atlas-index.json';
 import {
@@ -26,11 +27,13 @@ import {
   CHAR_H,
   CHAR_W,
   characterSprite,
+  DECORATION_PLACEMENTS,
   lookup,
   snapToPhysicalPixel,
   TILE,
   type AtlasIndex,
 } from './scene-layout';
+import { theme } from '../ui/theme';
 
 const index = atlasIndexJson as AtlasIndex;
 
@@ -102,6 +105,13 @@ export interface WorldSceneProps {
   minuteOfDay?: number;
   /** SPEC §11.6 — kills pulses and parallax, keeps state changes. */
   reducedMotion?: boolean;
+  /**
+   * Changes exactly when the queue's cards change, so SPEC §11.3's glance fires on
+   * steering and on nothing else. `forecastRevision` was the obvious candidate and is the
+   * wrong one: it also bumps on every new game hour, which would be a glance a minute at
+   * 1× for no player action at all.
+   */
+  queueSignature?: string;
   /** Progress through the current tick, 0..1. Read fresh each frame. */
   alphaRef: () => number;
   scale: number;
@@ -122,6 +132,7 @@ export function WorldScene({
   idleVariantId = null,
   minuteOfDay = 12 * 60,
   reducedMotion = false,
+  queueSignature = '',
   alphaRef,
   scale,
   physicalPerArtPixel = scale,
@@ -224,6 +235,60 @@ export function WorldScene({
     return () => clearInterval(id);
   }, [lighting, reducedMotion, fade]);
 
+  /**
+   * SPEC §11.3's glance. The queue rail is pinned to the right of the world, so "looks at
+   * the queue" is literally a right-facing frame — no new art, and it reads at 1×.
+   *
+   * The flag lives in a ref because the RAF reads it: routing it through React state
+   * would re-render the scene twice per glance, and this component's whole design is that
+   * React is not involved per frame.
+   */
+  const glancing = useRef(false);
+  const firstQueue = useRef(true);
+  useEffect(() => {
+    if (firstQueue.current) {
+      firstQueue.current = false;
+      return;
+    }
+    const motion = resolveMotion(MOTION.queueGlance, { reducedMotion });
+    if (motion.durationMs <= 0) {
+      glancing.current = false;
+      return;
+    }
+    glancing.current = true;
+    const id = setTimeout(() => {
+      glancing.current = false;
+    }, motion.durationMs);
+    return () => {
+      clearTimeout(id);
+      glancing.current = false;
+    };
+  }, [queueSignature, reducedMotion]);
+
+  /**
+   * design.md §10's gold sparkle — "strictly for rewards", and this is the only place in
+   * the game that draws one. Fired when a decoration is granted, at the decoration's own
+   * placement, so the reward is visible where it landed rather than announced in a panel.
+   */
+  const [sparkle, setSparkle] = useState<{ x: number; y: number; startedAt: number } | null>(null);
+  const knownDecorations = useRef<readonly string[] | null>(null);
+  useEffect(() => {
+    const known = knownDecorations.current;
+    knownDecorations.current = decorationIds;
+    // A restored save arrives with every decoration it ever earned. Sparkling all of them
+    // on load would spend the one reward signal on a reload.
+    if (known === null) return;
+    const granted = decorationIds.find((id) => !known.includes(id));
+    if (granted === undefined) return;
+    const motion = resolveMotion(MOTION.sparkle, { reducedMotion });
+    if (motion.durationMs <= 0) return;
+    const placement = DECORATION_PLACEMENTS[granted];
+    if (placement === undefined) return;
+    setSparkle({ x: placement.x + TILE / 2, y: placement.y, startedAt: Date.now() });
+    const id = setTimeout(() => setSparkle(null), motion.durationMs);
+    return () => clearTimeout(id);
+  }, [decorationIds, reducedMotion]);
+
   // ONE RAF for the component's lifetime.
   //
   // The first version listed `view` in its deps. `view` is a fresh object every tick, so
@@ -268,7 +333,15 @@ export function WorldScene({
       last = now;
       // Game-time tempo: real-time delta × playback speed. Paused ⇒ 0 ⇒ frozen legs.
       phase = advancePhase(phase, delta * speed, v.mSpeed);
-      const quad = buildCharacterQuad(index, paletteKey, v, getAlpha(), phase, variant);
+      const quad = buildCharacterQuad(
+        index,
+        paletteKey,
+        v,
+        getAlpha(),
+        phase,
+        variant,
+        glancing.current ? 'right' : null,
+      );
       const drawX = snapToPhysicalPixel(quad.x, pixelGrid);
       const drawY = snapToPhysicalPixel(quad.y, pixelGrid);
       charX.value = drawX;
@@ -312,6 +385,54 @@ export function WorldScene({
       )}
       <Atlas image={image} sprites={charRects} transforms={charTransforms} sampling={NEAREST} />
       <ProgressRing progress={ringProgress} cx={ringX} cy={ringY} />
+      {sparkle !== null && <RewardSparkle {...sparkle} />}
+    </Group>
+  );
+}
+
+/**
+ * design.md §10's gold sparkle, the only gold motion in the game.
+ *
+ * Four squares pushing outward on **integer** steps: the spread is `1 + frame`, so every
+ * edge still lands on a whole art pixel and design.md §13's ban on anti-aliased pixel art
+ * survives a growing effect. The step comes from `effectFrame`, so the six frames the
+ * table declares are the six frames drawn.
+ */
+const SPARKLE_PUFF = 4;
+
+function RewardSparkle({ x, y, startedAt }: { x: number; y: number; startedAt: number }) {
+  const step = useSharedValue(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      step.value = effectFrame(MOTION.sparkle, Date.now() - startedAt) ?? MOTION.sparkle.frames;
+    }, 32);
+    return () => clearInterval(id);
+  }, [startedAt, step]);
+  const transform = useDerivedValue(() => [
+    { translateX: x },
+    { translateY: y },
+    { scale: 1 + step.value },
+  ]);
+  const opacity = useDerivedValue(() =>
+    Math.max(0, 1 - step.value / MOTION.sparkle.frames),
+  );
+  return (
+    <Group transform={transform} opacity={opacity}>
+      {[
+        [-SPARKLE_PUFF, -SPARKLE_PUFF],
+        [SPARKLE_PUFF, -SPARKLE_PUFF],
+        [-SPARKLE_PUFF, SPARKLE_PUFF],
+        [SPARKLE_PUFF, SPARKLE_PUFF],
+      ].map(([dx, dy]) => (
+        <Rect
+          key={`${dx},${dy}`}
+          x={dx!}
+          y={dy!}
+          width={2}
+          height={2}
+          color={MOTION.sparkle.color}
+        />
+      ))}
     </Group>
   );
 }
@@ -349,7 +470,7 @@ function ProgressRing({
         path={ring}
         start={0}
         end={progress}
-        color="#f0a840"
+        color={theme.color.gold}
         style="stroke"
         strokeWidth={2}
         opacity={progress}

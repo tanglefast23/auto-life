@@ -230,13 +230,35 @@ export function buildCharacterQuad(
   alpha: number,
   phase: number,
   variantId: string | null = null,
+  facingOverride: Facing | null = null,
 ): Quad {
   const tile = view.travel !== null ? interpolateTravel(view.travel, alpha) : view.position;
   return {
-    sprite: characterSprite(index, paletteId, view.pose, view.facing, phase, view.droop, variantId),
+    sprite: characterSprite(
+      index,
+      paletteId,
+      view.pose,
+      glanceFacing(view, facingOverride),
+      phase,
+      view.droop,
+      variantId,
+    ),
     x: tile.x * TILE,
     y: tile.y * TILE - CHAR_Y_OFFSET,
   };
+}
+
+/**
+ * SPEC §11.3's "sim glances at the queue when it changes".
+ *
+ * Presentation only — `render-view.ts` stays the sole deriver of real facing, and this
+ * never reaches `SimState`. It applies to a standing or idle sim and to nothing else: a
+ * walking sim's facing *is* her direction of travel, so turning her head mid-path would
+ * draw her striding sideways, and a sleeping sim has one authored orientation.
+ */
+function glanceFacing(view: RenderView, override: Facing | null): Facing {
+  if (override === null || view.travel !== null) return view.facing;
+  return view.pose === 'stand' || view.pose === 'idle' ? override : view.facing;
 }
 
 /**
