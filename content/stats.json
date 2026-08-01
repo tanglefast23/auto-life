@@ -1,8 +1,35 @@
 {
   "stats": [
-    { "id": "strength",  "labelStringId": "character:stats.strength",  "blurbStringId": "character:blurbs.strength" },
-    { "id": "dexterity", "labelStringId": "character:stats.dexterity", "blurbStringId": "character:blurbs.dexterity" },
-    { "id": "vitality",  "labelStringId": "character:stats.vitality",  "blurbStringId": "character:blurbs.vitality" },
-    { "id": "intellect", "labelStringId": "character:stats.intellect", "blurbStringId": "character:blurbs.intellect" }
+    {
+      "id": "strength",
+      "since": 1,
+      "labelStringId": "character:stats.strength",
+      "blurbStringId": "character:blurbs.strength"
+    },
+    {
+      "id": "dexterity",
+      "since": 1,
+      "labelStringId": "character:stats.dexterity",
+      "blurbStringId": "character:blurbs.dexterity"
+    },
+    {
+      "id": "vitality",
+      "since": 1,
+      "labelStringId": "character:stats.vitality",
+      "blurbStringId": "character:blurbs.vitality"
+    },
+    {
+      "id": "intellect",
+      "since": 1,
+      "labelStringId": "character:stats.intellect",
+      "blurbStringId": "character:blurbs.intellect"
+    },
+    {
+      "id": "charisma",
+      "since": 2,
+      "labelStringId": "character:stats.charisma",
+      "blurbStringId": "character:blurbs.charisma",
+      "activatedBy": "docs/02-funds-career.md \u00a75 \u2014 busking, crowd moments and the venue ladder"
+    }
   ]
 }

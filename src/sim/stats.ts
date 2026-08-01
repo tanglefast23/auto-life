@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { StatIdSchema, type RatesConfig, type StatId } from './content-schemas';
 
+export type { StatId };
+
 /**
  * Stat levels and the XP that moves them (docs/08 §7).
  *
@@ -22,24 +24,29 @@ export const StatRecordSchema = z.strictObject({
 });
 export type StatRecord = z.infer<typeof StatRecordSchema>;
 
-export const StatsStateSchema = z.strictObject({
-  strength: StatRecordSchema,
-  dexterity: StatRecordSchema,
-  vitality: StatRecordSchema,
-  intellect: StatRecordSchema,
-});
-export type StatsState = z.infer<typeof StatsStateSchema>;
+/**
+ * Both maps are **derived from the stat enum**, never restated.
+ *
+ * A hand-written `strictObject` with four keys was the drift waiting to happen: the moment
+ * `charisma` joined the roster, `StatsState` and `StatXpToday` would each have had to be
+ * remembered separately, and a strict parse would have failed at load rather than at build.
+ * Deriving them means a future stat is one enum entry and nothing else.
+ */
+const perStat = <T extends z.ZodTypeAny>(value: T) =>
+  z.strictObject(
+    Object.fromEntries(STAT_IDS.map((id) => [id, value])) as Record<StatId, T>,
+  );
 
-export const StatXpTodaySchema = z.strictObject({
-  strength: z.number().int().min(0),
-  dexterity: z.number().int().min(0),
-  vitality: z.number().int().min(0),
-  intellect: z.number().int().min(0),
-});
-export type StatXpToday = z.infer<typeof StatXpTodaySchema>;
+export type StatsState = Record<StatId, StatRecord>;
+export const StatsStateSchema: z.ZodType<StatsState> = perStat(StatRecordSchema);
+
+export type StatXpToday = Record<StatId, number>;
+export const StatXpTodaySchema: z.ZodType<StatXpToday> = perStat(
+  z.number().int().min(0),
+);
 
 export function emptyStatXpToday(): StatXpToday {
-  return { strength: 0, dexterity: 0, vitality: 0, intellect: 0 };
+  return Object.fromEntries(STAT_IDS.map((id) => [id, 0])) as StatXpToday;
 }
 
 /** Cost to advance from `level` to `level + 1`. Linear in the level, so late gains cost more. */

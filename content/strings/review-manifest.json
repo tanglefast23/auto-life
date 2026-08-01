@@ -581,24 +581,34 @@
     },
     {
       "file": "content/strings/character.json",
-      "sha256": "a41fa2f75e31a6926a8f5d7526e60e60baf9ed31cda6499b6e27121e25742033",
+      "sha256": "b581cbea660ee4639c4d99f6b74318a45f91b8e44f3174fa3ad6283f0fc5075b",
       "reviewedAt": "2026-08-01",
       "humanizer": {
         "name": "humanizer",
         "version": "2.2.0",
-        "invocation": "Humanizer 2.2.0 full-batch pattern scan, read-aloud pass, anti-AI pass, and writing.md checklist for the docs/08 stat, perk and grade strings."
+        "invocation": "Humanizer 2.2.0 full-batch pattern scan, read-aloud pass, anti-AI pass, and writing.md checklist for the docs/08 stat, perk and grade strings, re-run when the roster went whole-game."
       },
       "stringIds": [
+        "blurbs.charisma",
         "blurbs.creative",
         "blurbs.dexterity",
         "blurbs.easygoing",
+        "blurbs.extrovert",
+        "blurbs.homebody",
         "blurbs.intellect",
+        "blurbs.introvert",
         "blurbs.methodical",
         "blurbs.perfectionist",
+        "blurbs.restless",
+        "blurbs.spirited",
+        "blurbs.steady",
         "blurbs.strength",
         "blurbs.vitality",
         "families.approach",
         "families.drive",
+        "families.nerve",
+        "families.roots",
+        "families.socialEnergy",
         "grades.a",
         "grades.aMinus",
         "grades.aPlus",
@@ -614,17 +624,25 @@
         "grades.f",
         "grades.fMinus",
         "grades.fPlus",
+        "panel.dormant",
         "panel.level",
         "panel.perksTitle",
         "panel.title",
         "panel.toNext",
         "perks.creative",
         "perks.easygoing",
+        "perks.extrovert",
+        "perks.homebody",
+        "perks.introvert",
         "perks.methodical",
         "perks.perfectionist",
+        "perks.restless",
+        "perks.spirited",
+        "perks.steady",
         "roll.advantage",
         "roll.disadvantage",
         "roll.rolled",
+        "stats.charisma",
         "stats.dexterity",
         "stats.intellect",
         "stats.strength",
@@ -672,9 +690,33 @@
           "before": "Gets through the day quickly.",
           "after": "Gets through the day faster.",
           "reason": "Comparative, because the trait only means anything against the alternative Drive option."
+        },
+        {
+          "id": "blurbs.charisma",
+          "before": "Reading people, and being read well by them.",
+          "after": "Reading a room, and being read well.",
+          "reason": "The original repeated \"people\"/\"them\" for one idea. \"A room\" is the concrete thing a busker actually reads, and it points at v2 without naming a system the player cannot see yet."
+        },
+        {
+          "id": "blurbs.introvert",
+          "before": "Recharges alone, and spends that charge on people later.",
+          "after": "Recharges alone, and spends that on people later.",
+          "reason": "\"That charge\" restates the battery metaphor the sentence already carries. Cutting the noun keeps the rhythm and the meaning."
+        },
+        {
+          "id": "blurbs.steady",
+          "before": "Holds their nerve when the pressure is on.",
+          "after": "Holds their nerve when it counts.",
+          "reason": "\"When the pressure is on\" is an idiom doing no work next to \"nerve\". The shorter clause says the same and reads aloud better."
+        },
+        {
+          "id": "panel.dormant",
+          "before": "No system uses this yet",
+          "after": "Nothing uses this yet",
+          "reason": "\"System\" is our word, not the player's. The line appears under a stat they can see a number for, so the plainer noun carries it."
         }
       ],
-      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed. Grade labels are the bare letters and carry no adjectives, so the letter stays the whole signal (docs/08 \u00a711.5). Perk blurbs state the cost as well as the benefit, because every one of them is a trade."
+      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed. Grade labels stay the bare letters so the letter remains the whole signal (docs/08 \u00a711.5). Perk blurbs state the cost as well as the benefit, because every one of them is a trade. The dormant line is written for a player who can see the number and wonders why nothing moves it \u2014 it answers that, and does not apologise for it."
     }
   ]
 }

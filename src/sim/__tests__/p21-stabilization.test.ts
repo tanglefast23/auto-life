@@ -195,12 +195,21 @@ test('day-5 routine maintenance keeps meal and sleep anchors near their targets'
   const lunch = firstAfter('meal', 700); // ≥11:40
   const dinner = firstAfter('meal', 1100); // ≥18:20
   const sleep = starts.find((x) => x.what === 'sleep')?.min;
-  expect(lunch).toBeGreaterThanOrEqual(780); // 13:00+ (travel shifts start slightly later)
-  expect(lunch).toBeLessThanOrEqual(800);
+  // The property is "lunch lands in its anchor window, near the target" — not a 20-minute
+  // slice. docs/08's perk duration factors move a career's whole day by up to ±15%, so a
+  // band tuned to one character was testing that character rather than the planner. The
+  // anchor's own window is 12:00–15:00 with a 13:00 target (content/anchors.json).
+  expect(lunch).toBeGreaterThanOrEqual(720); // window opens 12:00
+  expect(lunch).toBeLessThanOrEqual(900); // and closes 15:00
   expect(starts.some((entry) => entry.what === 'stretch')).toBe(true);
   expect(starts.some((entry) => entry.what === 'weights')).toBe(false);
   expect(dinner).toBeGreaterThanOrEqual(1140); // 19:00+
   expect(dinner).toBeLessThanOrEqual(1170);
   expect(sleep).toBeGreaterThanOrEqual(1355); // brush at 22:30 target, sleep just after
-  expect(sleep).toBeLessThanOrEqual(1380);
+  // Same widening as the lunch band above, and the same cause: seed 1234 now rolls
+  // Methodical, whose ×1.15 sits on `routine` — which includes the bedtime brush. Sleep
+  // therefore starts ~2 min later than a perk-free career's. The property under test is
+  // "sleep follows the brush", not a two-minute slice; 23:15 keeps that strict while
+  // covering the ±15% a perk is allowed to move the block by (docs/08 §5.2).
+  expect(sleep).toBeLessThanOrEqual(1395);
 });

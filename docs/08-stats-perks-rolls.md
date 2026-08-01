@@ -9,6 +9,8 @@ normal play" and §8's stated L3 pacing — both flagged at §9.4 and §9.5.
 what we refuse.
 **Revised:** 2026-08-01, after a Fable audit rejected the first draft. Eight blocking
 findings; §0 records what moved and why.
+**Revised again:** 2026-08-01, after Joe's note that the set was scoped to v1's ten
+activities rather than to the game. The roster is now whole-game — §0a.
 
 ---
 
@@ -41,6 +43,41 @@ and cost rules make arithmetically impossible, is gone (§7).
 
 ---
 
+## 0a. Changelog — draft 2 → draft 3 (whole-game roster)
+
+Draft 2 chose four stats because v1 has ten activities and a fifth would have been dormant.
+That is the right instinct applied at the wrong scope: it optimises the chapter and mortgages
+every chapter after it, because **a stat added later is a save migration, while a stat
+declared now is a content edit**.
+
+The reference settles it. A RimWorld colonist carries all twelve skills from the first pawn,
+in a colony that will never make art — and four expansions later the list is unchanged,
+because new content attaches to existing skills through `StatPart`s rather than growing the
+roster. The **fixed layer is the roster; the extensible layer is what attaches beneath it.**
+Draft 2 had the fixed layer and no attachment layer.
+
+What changed:
+
+1. **Five stats, not four** — `charisma` ships now and activates with v2's busking. It is a
+   live number in a v1 save, so v2 costs a content edit instead of a migration.
+2. **Five perk families, not two** — Nerve (v2), Social energy (v3) and Roots (v4) are
+   declared with the doc that turns each on. Draft 2's §5.3 proposed *inventing* an
+   Introvert/Extrovert family; docs/03 §1 already specs that personality with its own battery
+   physics, so the family now **is** that system rather than a second copy of it.
+3. **`since` replaces the no-dormant gate** (§10, assertion 4). A stat or family at or below
+   `GAME_VERSION` must be genuinely live; one above it must be genuinely inert *and* name the
+   doc that activates it. Both halves are build failures. Raising `GAME_VERSION` is the one
+   switch that turns a chapter on, and the build fails the moment its content is missing.
+4. **The payout table** (§6.7) — for every currency the game will ever have, whether a grade
+   multiplies it. docs/03 forbids `m_out` on Connection, docs/04 forbids scaling hobby
+   credits, and docs/05's compatibility formula is closed. Writing that down now is what
+   stops v3 rediscovering a bug v3's own verifier already found.
+5. **The draw order is append-only** (§8.5), and a version that activates a family draws from
+   the career's *live* stream rather than restarting from the seed — so nobody is rewritten
+   mid-life.
+
+---
+
 ## 1. What is missing
 
 Every activity in the game produces the same number every time. A meal is +35 Nutrition on
@@ -54,10 +91,12 @@ watching a completion is watching a timer end.
 
 This spec adds three things, in one loop:
 
-1. **Stats** — four numbers saying how good this person is at a kind of thing, which grow
-   from doing it.
-2. **Perks** — two rolled traits saying who this person is, which change the *shape* of the
-   roll rather than its center.
+1. **Stats** — five numbers saying how good this person is at a kind of thing, which grow
+   from doing it. The roster is whole-game: a v1 character already carries the stat v2's
+   busking will use (§4).
+2. **Perks** — one rolled trait per active family, saying who this person is, which change
+   the *shape* of the roll rather than its center. Two are live in v1; three more are
+   declared against the chapters that turn them on (§5.3).
 3. **The roll** — every activity that produces something resolves a `d20` check at start,
    lands a letter grade from **A+ to F−** at completion, and delivers a real, visible bonus
    or penalty to the bar it feeds.
@@ -95,6 +134,12 @@ Four findings drive the design.
    do" is what stops a trait from being a permanent free bonus.
 4. **Incapability makes characters.** A pawn who *cannot* cook is more memorable than one
    who cooks at 80%. Hard gates are a design tool, not a punishment.
+5. **The roster is fixed; the attachment layer is what grows.** Stats are `StatDef`s in a
+   def-driven registry and `StatPart`s are pluggable modifiers that attach to an existing
+   stat — so new content hangs off the skills that are already there. A colonist carries all
+   twelve skills from the first pawn, including ones that colony will never use. **This is
+   the finding draft 2 missed**, and it is the one that decides scope: the roster is a
+   whole-game decision made once, not a per-chapter one made five times (§0a).
 
 **What we refuse.**
 
@@ -124,7 +169,7 @@ Four findings drive the design.
 | **Domain** | every activity that names it | only where its tags match |
 | **Roll effect** | sets the modifier (the center) | grants advantage, or offsets globally (the shape) |
 | **Over time** | grows with use (§7) | never changes |
-| **Count** | all four always present | exactly two, one per family |
+| **Count** | all five always present, live or not | one per **active** family — two in v1, five by v5 |
 | **Cost model** | none — it is earned | paid in time (§5.0) |
 | **Failure it prevents** | "my character is a dashboard" | "every character plays identically" |
 
@@ -141,16 +186,29 @@ cooks well when nobody is watching"* → a perk.
 
 ## 4. The stats
 
-Four, integers **1–10**. Every one governs at least two activities; none ships dormant.
+**Five, integers 1–10, and the roster is whole-game.** A character carries every stat the
+finished game will ever have, from the first save, in the chapter where one of them has
+nothing to do yet. That is the RimWorld shape (§2, finding 5) and it is the difference
+between v2 costing a content edit and v2 costing a save migration.
 
-| Stat | What it is | Grades | Also earns XP from |
-|---|---|---|---|
-| **Strength** | physical output and exertion | `weights`, `treadmill`, `stretch` | — |
-| **Dexterity** | hands, cooking, fine motor | `meal`, `snack` | — |
-| **Vitality** | how well the body takes care | `shower`, `quickwash`, `brush` | `nap` |
-| **Intellect** | attention, learning, craft-of-the-mind | `practice` | `read` |
+| Stat | What it is | Grades in v1 | XP in v1 | Where it opens up |
+|---|---|---|---|---|
+| **Strength** | physical output and exertion | `weights`, `treadmill`, `stretch` | — | v4 gym sessions, the jog commute (docs/04 §2) |
+| **Dexterity** | hands, cooking, fine motor | `meal`, `snack` | — | v2 studio takes, v4 Cook, v5 dinner-for-two |
+| **Vitality** | how well the body takes care | `shower`, `quickwash`, `brush` | `nap` | v2's "winded" after back-to-back sets |
+| **Intellect** | attention, learning, craft-of-the-mind | `practice` | `read` | v2 request cards, v5 tag discovery |
+| **Charisma** | reading a room, and being read well | — (**arrives v2**) | — | v2 busking and crowd moments (docs/02 §5), v3 hangouts, v5 conversation beats |
 
 `sleep`, `nap`, `read`, `toilet`, `package` and `idle` are never graded (§6.6).
+
+**`since` is what keeps a whole-game roster honest.** Every stat declares the chapter that
+gives it something to do, and `content.ts` enforces both directions against `GAME_VERSION`:
+a stat at or below it **must** govern a graded activity, and one above it **must** govern
+none and name the doc that will activate it. A "future" stat that quietly started working
+would be a mechanic nobody specced — the opposite failure to a dormant one, and harder to
+notice. Charisma is therefore rolled, saved, and shown in the character panel with the line
+*"Nothing uses this yet"* — said plainly, because a stat you can see a number for and cannot
+move needs an answer, not a hiding place.
 
 **The modifier.** `statMod = statLevel − 5`, range **−4 … +5**; a stat of 5 is exactly par.
 A D&D ability modifier with the second conversion step removed, because a 1–10 range does
@@ -215,36 +273,55 @@ Worst-case duration stacking is Creative + Perfectionist on an `expressive` acti
 ×1.15 × ×1.15 = **×1.3225**, taking a 30-minute meal to 40. §6.8's routine time cost moves
 from ≈3.2 h to ≈3.7 h of 16 waking hours — inside its own stated ≈6.3 h worst case.
 
-### 5.3 Social energy — specified, deliberately not shipped, flagged for veto
+### 5.3 The families the roadmap already needs
 
-| Perk | Advantage on | Duration |
-|---|---|---|
-| **Introvert** | `solitary` | ×1.15 |
-| **Extrovert** | `social` | ×1.15 |
+Declared now, inert until their chapter ships, each naming the doc that turns it on. One
+option from each **active** family is rolled at creation; a chapter that activates a family
+gives existing characters theirs through §8.5's append-only draw.
 
-**Ruling: this family does not ship in v1.** v1 has no graded `social` activity, so
-Extrovert's tag set would be empty and the perk would be a rolled trait that does nothing —
-§6.7's decoration class, and now a build failure rather than an opinion (§10, assertion 4).
-It lands with the first graded conversation (docs/03, v3) as two lines of content and no
-engine change.
+| Family | Options | Since | Activated by |
+|---|---|---|---|
+| **Approach** | Creative · Methodical | v1 | live |
+| **Drive** | Perfectionist · Easygoing | v1 | live |
+| **Nerve** | Steady (`pressure`) · Spirited (`audience`) | **v2** | docs/02 §5 — crowd moments, studio takes, the L5 hall |
+| **Social energy** | Introvert (`solitary`) · Extrovert (`social`) | **v3** | docs/03 §1 |
+| **Roots** | Homebody (`domestic`) · Restless (`outing`) | **v4** | docs/04 §3 — the weekend contention |
 
-**[FLAGGED FOR JOE — SPEC §0 override convention.]** Introvert/Extrovert was named
-explicitly in the brief and is being deferred on a mechanical argument. If the flavor is
-wanted in v1 regardless, the cheapest honest route is to tag `practice` and `read` as
-`solitary` and ship **Introvert alone as a third Approach option** — a three-way family
-rather than a pair — leaving Extrovert for v3. That keeps every shipped perk live and costs
-one content entry.
+**Social energy is docs/03's personality, not a second copy of it.** Draft 2 proposed
+inventing an Introvert/Extrovert perk family. docs/03 §1 already specs that personality in
+full, with its own physics — interaction charges an extrovert's battery and drains an
+introvert's, solitude does the reverse, and reading is the introvert's sharpening stone.
+Shipping a *separate* perk of the same name would have been two systems with one name, which
+is how a design ends up with a setting in Settings → Sim that disagrees with a trait on the
+character sheet. When v3 lands, this family **is** that setting: the battery physics become
+its effects, and the `solitary`/`social` advantage is the part that reaches the roll.
 
-### 5.4 The mechanism table
+Nerve is the family v1 has no room for and v2 cannot do without: the whole job scene is
+built on moments that go well or badly under pressure — a broken string, a song request, the
+one performance at 16:00 that the L5 day funnels into.
+
+### 5.4 What is still deliberately absent
+
+**Hard gates.** RimWorld's most characterful mechanism (§2, finding 4) and the one this game
+cannot have yet: SPEC §7.2's reactive net assumes every need has an answer, so a sim who
+*cannot* cook would have no fallback. Gates land with v2's job types, where refusing work is
+something the player routes around rather than a wall in a one-room apartment.
+
+### 5.5 The mechanism table
 
 Three mechanisms, kept separate in data exactly as RimWorld keeps them:
 
 | Mechanism | Field | Used by | Reserved for |
 |---|---|---|---|
 | Roll offset | `{ kind: "rollOffset", value }` | Perfectionist | — |
-| Roll shape | `{ kind: "rollShape", shape, tag }` | Creative, Methodical | Introvert/Extrovert (v3) |
-| Duration factor | `{ kind: "durationFactor", percent, tag? }` | all four | — |
-| Hard gate | *not implemented* | — | v2 job types (§2) |
+| Roll shape | `{ kind: "rollShape", shape, tag }` | Creative, Methodical, and every declared family | — |
+| Duration factor | `{ kind: "durationFactor", percent, tag? }` | Approach, Drive | — |
+| Hard gate | *not implemented* | — | v2 job types (§5.4) |
+
+**Tags are the attachment layer** — RimWorld's `StatPart` idea in the small. A future system
+attaches to an existing stat by tagging its activities, never by adding a stat. `pressure`,
+`audience`, `solitary`, `social`, `domestic` and `outing` are declared in `RollTagSchema`
+with no members yet, so the chapter that adds them writes activities rather than schemas.
 
 ---
 
@@ -399,6 +476,37 @@ A **flavor nap** — a later nap whose effect totals are zeroed — would in any
 nothing and award nothing. With `nap` ungraded the case is moot for the roll; it still
 awards no XP, because XP is for an activity that did something.
 
+### 6.7 The payout table — what a grade may and may not multiply
+
+This is the part that has to be written **before** the chapters that need it, because two of
+the three rulings below were paid for by verifiers who found the bug the hard way. Every
+currency the finished game will have, and what a grade does to it:
+
+| Currency | Chapter | Graded? | Why, and what happens instead |
+|---|---|---|---|
+| **Bar effects** | v1 | **yes** | The base case (§6.4). Signed delta at completion, positive outputs only. |
+| **Practice points** | v1 | **yes** | A performance with no bar to feed; the multiplier joins the existing stack (§9.5). |
+| **Stat XP** | v1 | **no** | XP is for *doing* (§7). Scaling it by the grade compounds luck into a permanently better character. |
+| **GP and pay** | v2 | **yes** | Performing *is* the thing being graded — this is what `m_work` already means. Grades the per-set and per-take share, never the guaranteed base appearance pay: docs/02 rules that a bad day is never $0, and a bad day must stay never-$0. |
+| **Venue GP thresholds** | v2 | **no** | Cumulative and normative (docs/02 §4). The grade moves how fast you get there, not where "there" is. |
+| **Connection** | v3 | **no** | docs/03 §1 is explicit: gains scale by battery state **only, never `m_out`** — a verifier showed the stacked version pinned Connection at 100 permanently. A grade on top would repeat that bug with a new name. The check still runs; it pays out in the **storylet and the battery cost**, not the meter. |
+| **Friendship levels** | v3 | **no** | Counted interactions with a variety rule (docs/03 §2). Counting is not a performance. |
+| **Hobby credits** | v4 | **no** | docs/04 §2's credit rule is normative: *one session always grants exactly one credit; `m_out` scales the session's duration, not its learning.* A verifier showed fractional credits broke every session-count band in that doc. The grade scales the **duration and the flavour**. |
+| **Love** | v5 | **no** | docs/05 §2's compatibility formula is closed and its combined multiplier is capped at ×2.5. A stat term would be a sixth factor inside a formula that says it has four. |
+| **Conversation beats** | v5 | **yes** | Not the meter — the **beat**: whether a `?` probe lands, whether an awkward moment turns into a storylet. Fail-soft holds (docs/05 §3: no conversation can lose more than it could gain), so a bad roll is content, not damage. |
+
+Three rules fall out, and they are the ones to apply to anything this table does not yet
+name:
+
+1. **A grade may scale a performance. It may never scale a relationship.** Friendship and
+   love are not performances — docs/03 says so in one line and docs/05 in a formula.
+2. **A grade may never scale a count.** Credits, thresholds, interaction tallies: if the
+   design counts it, the grade changes how long it took or how it felt, not how much it
+   counted for.
+3. **Where a grade cannot pay out in a number, it pays out in the story.** That is not a
+   consolation prize — it is where most of the game's texture lives, and a graded
+   conversation beat is a better use of a die than another multiplier on a meter.
+
 ---
 
 ## 7. Growth
@@ -537,6 +645,32 @@ its own branch above."* v12 changes the envelope. So:
 `perks` and every stat id are validated against content in `validateSimContentRefs`, like
 every other content reference in the envelope.
 
+### 8.5 The append-only rule — how a chapter adds a stat or a family
+
+The character's creation draw is **position-dependent**: `rollNewCharacter` draws stats in
+`STAT_IDS` order and then one option per active family in authored order. Position is
+therefore identity, and two rules follow.
+
+**Both lists are append-only.** Inserting a stat in the middle of the enum would silently
+re-roll every existing career's *other* stats, because every draw after the insertion point
+shifts. New entries go on the end. (This is why `charisma` is last, and why adding it moved
+the golden — it changed the perk draws that follow the stats.)
+
+**A version that activates a family draws from the career's LIVE stream, never from the root
+seed.** `extendCharacterPerks(stream, perks, held, gameVersion)` continues from where the
+career already is and skips any family already represented, so:
+
+- existing stats and perks are untouched *by construction*, not by care;
+- the draw is idempotent — running it twice cannot give anyone two perks from one family;
+- the addition is still deterministic and still replayable from the save.
+
+The v12 migration is the one case that legitimately restarts from `rootSeed`, because a v11
+career has no character at all and there is nothing to preserve. Every later chapter uses
+the live-stream path.
+
+The framing for the player is the same either way: **the trait was always true, the game had
+not modelled it yet.** A journal beat is the right place to say so.
+
 ---
 
 ## 9. Balance
@@ -671,9 +805,15 @@ Tests, not claims. The first four need no simulation.
 3. **The ladder is contiguous and exhaustive.** Reference rolls 1…20 map onto exactly one
    grade each. Enforced in the content schema, so a bad edit to `content/grades.json` fails
    `validate:content` rather than a play session.
-4. **No dormant stat, no dormant perk.** Every stat governs ≥1 graded activity; every
-   shipped perk's tag set is non-empty and contains ≥1 activity the unattended planner books
-   daily. §5.3's ruling as a build gate rather than prose.
+4. **`since` holds in both directions.** A stat or family at or below `GAME_VERSION` governs
+   a graded activity and has tags the routine actually books daily; one above it governs
+   nothing, has no tagged activities, and names the doc that activates it. This is what lets
+   the roster be whole-game without any of it being the dormant-mechanic failure SPEC §6.5
+   names — and the second half matters as much as the first, because a future mechanic that
+   quietly started working is the harder bug to see.
+4a. **Activation never rewrites a character.** Extending a career to a newly-active family
+   preserves every perk it already held, adds exactly one per newly-active family, and is
+   idempotent (§8.5).
 5. **`worst-legal-start` survives.** The §9.3 fixture, unattended, seven days: every bar ≥65
    at the morning check from Day 2, zero URGENT events, and Health ≥75 at the Day-3 morning
    check on the all-zeros recovery run — the existing §16.3 bands, unwidened.
@@ -785,13 +925,18 @@ motif for reward moments; a good roll is a good roll, not a prize.
 
 ## 12. Content
 
-**`content/stats.json`** — the four stats, their labels and their one-line blurbs. The
-activity→stat map lives on **the activity**, not here: one edge, authored once, and the
-activity schema can then enforce the graded/stat pairing in the same place it already
-enforces the nap's effective-use rule.
+**`content/stats.json`** — the five stats, each with a `since`, an optional `activatedBy`
+naming the doc that turns it on, a label and a one-line blurb. The activity→stat map lives on
+**the activity**, not here: one edge, authored once, and the activity schema can then enforce
+the graded/stat pairing in the same place it already enforces the nap's effective-use rule.
 
-**`content/perks.json`** — families, options, effects. RimWorld's three mechanisms kept
-separate in the schema rather than flattened:
+`StatsState` and `StatXpToday` are **derived from the stat enum**, never restated beside it —
+a hand-written four-key object was the drift that would have bitten the day `charisma`
+landed.
+
+**`content/perks.json`** — five families, each with a `since` and (when future) an
+`activatedBy`. RimWorld's three mechanisms kept separate in the schema rather than
+flattened:
 
 ```jsonc
 { "kind": "rollOffset",     "value": 2 }
@@ -831,22 +976,33 @@ does.
 
 ---
 
-## 14. Where this goes next
+## 14. The activation map
 
-- **Perks absorb preferences.** §9.2's four preference categories are already
+What each chapter has to write to turn its part of the roster on. Nothing below needs a
+schema change or a new mechanism — that is the point of declaring the roster now.
+
+| Chapter | Activates | The work |
+|---|---|---|
+| **v2** career (docs/02) | `charisma`, **Nerve** | Tag the job cards: busking and sets `audience`, studio takes and the L5 performance `pressure`. Point crowd moments at Charisma. Grade GP per set, never the base appearance pay (§6.7). |
+| **v3** people (docs/03) | **Social energy** | Tag hangouts `social`, reading and solo games `solitary`. The battery physics become the family's effects, so §1's personality and this family are one system. **Connection itself stays ungraded** (§6.7). |
+| **v4** growth (docs/04) | **Roots** | Tag home upgrades and Cook `domestic`, class sessions and outings `outing`. Cook goes to Dexterity, gym sessions to Strength. **Credits stay ungraded** (§6.7). |
+| **v5** partner (docs/05) | — | Conversation beats become a graded subject on Charisma; Love and compatibility stay closed (§6.7). Stat levels feed docs/05's *existing* secondary tags rather than adding a term. |
+| **v6** editor (docs/06) | — | Stats and perks become visible and re-rollable at creation. No engine change. |
+
+Each row is a `GAME_VERSION` bump plus content. The build fails immediately if the content
+for that chapter is not there, which is the difference between a roadmap and a promise.
+
+### Still open
+
+- **Perks absorb preferences.** SPEC §9.2's four preference categories are already
   mutually-exclusive families with visible tags — §5's shape exactly. They merge once perks
-  have shipped and proven the schema; doing both in one change would couple a new mechanic
-  to the migration of a working one.
-- **Social energy turns on** with the first graded conversation (docs/03, v3) — two lines of
-  content, no engine change. Or earlier, as a third Approach option, if Joe takes §5.3's
-  flagged alternative.
-- **Hard gates** land with v2's job types, where "cannot do this work" is a decision to
-  route around rather than a wall in a one-room house.
-- **Perk downsides on bars** become possible the moment a bar has a margin that can absorb
-  them. §5.0 is a rule about §6.8's current numbers, not a rule about perks forever.
-- **Stat rust**, if ever, belongs to a save spanning months.
-
----
+  have shipped and proven the schema; doing both in one change would couple a new mechanic to
+  the migration of a working one.
+- **Stat rust**, if ever, belongs to a save spanning months — v4 is the first chapter long
+  enough for decay to read as a system rather than a bug.
+- **The stat ceiling.** Level 10 at `100 × L` is ~40 focused days away, so mastery lands
+  somewhere in v3/v4. That is deliberate — it should not be reachable inside the chapter that
+  introduces it — but it is a number to re-check when v2's real day length exists.
 
 ## 15. Rejected
 
@@ -862,5 +1018,7 @@ does.
 | Forecast the grade | Predicts randomness the player has not been dealt (§8.3), and contradicts §11.2's own reveal rule. |
 | Skill rust in v1 | A seven-day arc cannot distinguish decay from a bug. |
 | Twelve skills, twenty levels | Nine graded activities cannot fill them; dormant mechanics are the §6.5 failure. |
-| Introvert/Extrovert as a v1 pair | Extrovert's tag set would be empty — a rolled trait that does nothing. Flagged for veto at §5.3 with a cheaper alternative. |
+| Introvert/Extrovert as a *new* v1 family | Two mistakes at once: Extrovert's tag set would be empty, and docs/03 §1 already specs that personality with its own physics. The family is now declared `since: 3` and **is** that system (§5.3). |
+| Choosing the roster per chapter | A stat added later is a save migration; declared now it is a content edit. The roster is a whole-game decision made once (§0a). |
+| A grade on Connection, hobby credits, or Love | Each has an explicit ruling in its own doc, two of them paid for by a verifier. §6.7 writes all of them down before the chapters that would rediscover them. |
 | XP scaled by grade, or by perk-adjusted duration | Compounds luck, and lets Perfectionist buy growth as well as output. |

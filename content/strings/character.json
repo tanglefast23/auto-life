@@ -3,27 +3,44 @@
     "strength": "Strength",
     "dexterity": "Dexterity",
     "vitality": "Vitality",
-    "intellect": "Intellect"
+    "intellect": "Intellect",
+    "charisma": "Charisma"
   },
   "families": {
     "approach": "Approach",
-    "drive": "Drive"
+    "drive": "Drive",
+    "nerve": "Nerve",
+    "socialEnergy": "Social energy",
+    "roots": "Roots"
   },
   "perks": {
     "creative": "Creative",
     "methodical": "Methodical",
     "perfectionist": "Perfectionist",
-    "easygoing": "Easygoing"
+    "easygoing": "Easygoing",
+    "steady": "Steady",
+    "spirited": "Spirited",
+    "introvert": "Introvert",
+    "extrovert": "Extrovert",
+    "homebody": "Homebody",
+    "restless": "Restless"
   },
   "blurbs": {
     "strength": "Lifting, running, carrying things.",
     "dexterity": "Cooking, and anything fiddly.",
     "vitality": "Getting the most out of rest and a wash.",
     "intellect": "Focus, and how much practice sticks.",
+    "charisma": "Reading a room, and being read well.",
     "creative": "Takes longer over cooking and practice, and does them better.",
     "methodical": "Takes longer over the daily upkeep, and does it better.",
     "perfectionist": "Better at everything, and takes longer over it.",
-    "easygoing": "Gets through the day faster."
+    "easygoing": "Gets through the day faster.",
+    "steady": "Holds their nerve when it counts.",
+    "spirited": "Comes alive with people watching.",
+    "introvert": "Recharges alone, and spends that on people later.",
+    "extrovert": "Recharges around people, and goes quiet without them.",
+    "homebody": "At their best in their own place.",
+    "restless": "At their best out of the house."
   },
   "grades": {
     "aPlus": "A+",
@@ -46,7 +63,8 @@
     "title": "Character",
     "perksTitle": "Traits",
     "level": "Lv",
-    "toNext": "to next"
+    "toNext": "to next",
+    "dormant": "Nothing uses this yet"
   },
   "roll": {
     "rolled": "Rolled",

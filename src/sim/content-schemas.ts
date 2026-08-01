@@ -4,17 +4,50 @@ export const BarIdSchema = z.enum(['energy', 'nutrition', 'movement', 'hygiene']
 export type BarId = z.infer<typeof BarIdSchema>;
 
 /**
- * The four stats (docs/08 §4) and the tags perks match on (§5.1).
+ * The five stats (docs/08 §4) and the tags perks match on (§5).
  *
- * `solitary`/`social` are declared but unused by v1 content: docs/08 §5.3 defers the
- * Introvert/Extrovert family precisely because `social` has no member yet, and assertion 4
- * turns that into a build failure rather than an opinion. Declaring the tag costs nothing
- * and stops v3 inventing a second spelling of it.
+ * Both lists are **whole-game**, not v1's. RimWorld's colonists carry all twelve skills from
+ * the first pawn even in a colony that will never make art; the world opens up around a
+ * fixed roster rather than the roster growing to meet it. `charisma` therefore ships now and
+ * activates with v2's busking (docs/02 §5), which costs one inert key in the save and buys
+ * v2 a content edit where it would otherwise need a migration.
+ *
+ * **Both enums are append-only.** A stat's position is its draw order at character creation
+ * (`rollNewCharacter`), so inserting one in the middle would silently re-roll every existing
+ * career's other stats. New entries go on the end, and a version that activates one draws it
+ * from the career's LIVE stream rather than restarting from the root seed — docs/08 §8.5.
  */
-export const StatIdSchema = z.enum(['strength', 'dexterity', 'vitality', 'intellect']);
+export const StatIdSchema = z.enum([
+  'strength',
+  'dexterity',
+  'vitality',
+  'intellect',
+  'charisma',
+]);
 export type StatId = z.infer<typeof StatIdSchema>;
 
-export const RollTagSchema = z.enum(['expressive', 'routine', 'solitary', 'social']);
+/**
+ * What a perk matches on. This is RimWorld's `StatPart` idea in the small: a future system
+ * attaches to an existing stat by tagging its activities, rather than by adding a stat.
+ *
+ * Tags with no member activity yet are legal — the `since` gate in `content.ts` is what
+ * requires an ACTIVE perk family's tags to be reachable, so a tag can be declared for the
+ * version that will use it without becoming decoration in this one.
+ */
+export const RollTagSchema = z.enum([
+  // v1
+  'expressive',
+  'routine',
+  // v2 — the job scene (docs/02 §5)
+  'pressure',
+  'audience',
+  // v3 — the social battery (docs/03 §1)
+  'solitary',
+  'social',
+  // v4 — the weekend split (docs/04 §3)
+  'domestic',
+  'outing',
+]);
 export type RollTag = z.infer<typeof RollTagSchema>;
 
 const finiteNonNegative = z.number().finite().min(0);
@@ -236,6 +269,16 @@ export const StatsSchema = z
     stats: z.array(
       z.strictObject({
         id: StatIdSchema,
+        /**
+         * The game version that gives this stat something to do.
+         *
+         * A stat below the shipped version must govern a graded activity; one above it must
+         * govern none, and must name the doc that will activate it. `content.ts` enforces
+         * both, which is how the roster can be whole-game without any of it being the
+         * dormant-mechanic failure SPEC §6.5 names.
+         */
+        since: z.number().int().min(1),
+        activatedBy: z.string().min(1).optional(),
         labelStringId: z.string().min(1),
         blurbStringId: z.string().min(1),
       }),
@@ -283,6 +326,9 @@ export const PerksSchema = z
     families: z.array(
       z.strictObject({
         id: z.string().min(1),
+        /** Same contract as a stat's `since` — see `StatsSchema`. */
+        since: z.number().int().min(1),
+        activatedBy: z.string().min(1).optional(),
         labelStringId: z.string().min(1),
         options: z.array(
           z.strictObject({
