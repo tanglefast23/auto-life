@@ -28,7 +28,10 @@ test('the first morning runs the wake block in order and finishes fed and clean'
   const completed = events.filter((e) => e.type === 'activityCompleted').map((e) => e.detail);
   expect(completed.slice(0, 4)).toEqual(['toilet', 'brush', 'shower', 'meal']);
   expect(toDisplay(state.bars.hygiene)).toBeGreaterThan(95);
-  expect(toDisplay(state.bars.nutrition)).toBeGreaterThan(90);
+  // "Fed", not "fed to a specific number": docs/08 made the meal's delivery depend on the
+  // career's Dexterity, and seed 1234 rolls a 4 (E[multiplier] 95.25%). The wake block still
+  // has to finish the job — it just no longer finishes it identically for everyone.
+  expect(toDisplay(state.bars.nutrition)).toBeGreaterThan(85);
 });
 
 test('a full unattended Day 1 reaches bedtime and sleeps to Day 2 wake with zero urgent events', () => {

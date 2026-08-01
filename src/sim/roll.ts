@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { mulberryNext } from './prng';
 import { STAT_IDS, type StatsState } from './stats';
+import { GAME_VERSION } from './version';
 import type {
   GradesConfig,
   PerksConfig,
@@ -247,10 +248,20 @@ export interface RolledCharacter {
 /**
  * Who this person turned out to be (docs/08 §4, §5).
  *
- * Draw order is fixed — the four stats in `STAT_IDS` order, then one option from each perk
- * family in authored order — so a seed always produces the same character. That is what
- * lets `migrateToV12` give an existing career *precisely* what a fresh career on the same
- * seed would have rolled, rather than inventing a flat 5 and no perks.
+ * **Every stat is rolled, including the ones no shipped chapter uses yet.** A person has a
+ * capacity for charm before the game contains anybody to charm — the world opens up around
+ * a fixed roster, which is why `charisma` is a live number in a v1 save and v2 costs a
+ * content edit rather than a migration.
+ *
+ * **Perks are drawn only for ACTIVE families**, because a perk is a rule that fires, and a
+ * rule with nothing to fire on is the §6.7 decoration class. A family activates by raising
+ * `GAME_VERSION`; existing careers pick theirs up through `extendCharacterPerks`.
+ *
+ * Draw order is fixed and **append-only**: stats in `STAT_IDS` order, then families in
+ * authored order. Position is identity here — inserting a stat in the middle would silently
+ * re-roll every existing career's other stats — so new entries go on the end, and a version
+ * that activates one draws it from the career's LIVE stream rather than restarting from the
+ * seed (§8.5).
  *
  * Stats start at 4…7 rather than 1…10. The floor is derived, not chosen: at a stat of 1 the
  * expected multiplier is 82.25%, which nets Nutrition −10/day against SPEC §6.8's +9 margin
@@ -260,6 +271,7 @@ export function rollNewCharacter(
   rootSeed: number,
   perks: PerksConfig,
   rates: RatesConfig,
+  gameVersion: number = GAME_VERSION,
 ): RolledCharacter {
   let stream = newRollStream(rootSeed);
   const span = rates.roll.statStartMax - rates.roll.statStartMin + 1;
@@ -269,13 +281,42 @@ export function rollNewCharacter(
     stream = draw.stream;
     levels[id] = { level: rates.roll.statStartMin + draw.value, xp: 0 };
   }
-  const chosen: string[] = [];
+  const extended = extendCharacterPerks(stream, perks, [], gameVersion);
+  return {
+    rollStream: extended.rollStream,
+    stats: levels as unknown as StatsState,
+    perks: extended.perks,
+  };
+}
+
+/**
+ * Give an existing character the perks a newly-activated family owes them.
+ *
+ * Drawn from the career's **live** stream, never from the root seed. Restarting from the
+ * seed would re-derive the perks they already hold, and any change to the draw order above
+ * it would rewrite a character mid-life — the one thing a trait must never do. Continuing
+ * the stream means existing values are untouched by construction.
+ *
+ * The framing for the player is the same one v12's migration used: the trait was always
+ * true, the game had not modelled it yet.
+ */
+export function extendCharacterPerks(
+  stream: RollStream,
+  perks: PerksConfig,
+  held: readonly string[],
+  gameVersion: number = GAME_VERSION,
+): { rollStream: RollStream; perks: string[] } {
+  let next = stream;
+  const chosen = [...held];
+  const heldSet = new Set(held);
   for (const family of perks.families) {
-    const draw = drawIndex(stream, family.options.length);
-    stream = draw.stream;
+    if (family.since > gameVersion) continue;
+    if (family.options.some((option) => heldSet.has(option.id))) continue;
+    const draw = drawIndex(next, family.options.length);
+    next = draw.stream;
     chosen.push(family.options[draw.value]!.id);
   }
-  return { rollStream: stream, stats: levels as unknown as StatsState, perks: chosen };
+  return { rollStream: next, perks: chosen };
 }
 
 /** The C entry — what the forecaster models for every future roll (docs/08 §8.3). */

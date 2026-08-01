@@ -27,6 +27,7 @@ import rawAppShellStrings from '../../content/strings/app-shell.json';
 import rawSettingsStrings from '../../content/strings/settings.json';
 import rawLetterStrings from '../../content/strings/letter.json';
 import { ratePerMinuteFixed } from './fixed';
+import { GAME_VERSION } from './version';
 import {
   ActivitiesSchema,
   AdjacencySchema,
@@ -707,17 +708,25 @@ function authoredStringIds(
 }
 
 /**
- * docs/08 assertion 4, as a build gate: no dormant stat, no dormant perk.
+ * docs/08 assertion 4, as a build gate — and the thing that lets the roster be whole-game.
  *
- * The failure this prevents is the one SPEC §6.5 and §6.7 both name — a mechanic that
- * ships, occupies a slot in the character, and can never fire. It is why the
- * Introvert/Extrovert family is *not* in `perks.json`: `social` has no member activity, so
- * Extrovert would be a rolled trait that does nothing, and this function would say so.
+ * The character carries every stat and every perk family the finished game will ever have,
+ * because that is how the fixed layer stays fixed: RimWorld's colonists have all twelve
+ * skills from the first pawn, and its DLCs attach new content to those skills rather than
+ * growing the list. A stat added later is a save migration; a stat declared now is a
+ * content edit.
  *
- * "Observable" is deliberately stricter than "non-empty". A perk whose only tagged activity
- * is `practice` would technically be live, but the planner never schedules practice (SPEC
- * §8), so an unattended career would never see it. The anchor blocks are what the planner
- * books every day, so they are the right bar.
+ * What stops that becoming the dormant-mechanic failure SPEC §6.5 names is `since`:
+ *
+ *  - a stat or family **at or below** the shipped version must be genuinely live — governing
+ *    a graded activity, with tags the routine actually reaches;
+ *  - one **above** it must govern nothing at all, and must name the doc that will activate
+ *    it. A "future" entry that quietly started working would be a mechanic nobody specced.
+ *
+ * "Live" is deliberately stricter than "non-empty". A perk whose only tagged activity is
+ * `practice` would technically fire, but the planner never schedules practice (SPEC §8), so
+ * an unattended career would never see it. The anchor blocks are what the planner books
+ * every day, so they are the right bar.
  */
 function validateCharacterContent(
   registry: ContentRegistry,
@@ -728,9 +737,20 @@ function validateCharacterContent(
   for (const stat of registry.stats.stats) {
     requireString(stat.labelStringId, `stat "${stat.id}"`);
     requireString(stat.blurbStringId, `stat "${stat.id}"`);
-    if (!governed.has(stat.id)) {
+    const live = stat.since <= GAME_VERSION;
+    if (live && !governed.has(stat.id)) {
       throw new Error(
-        `invalid content registry: stat "${stat.id}" governs no graded activity`,
+        `invalid content registry: stat "${stat.id}" is live at v${GAME_VERSION} but governs no graded activity`,
+      );
+    }
+    if (!live && governed.has(stat.id)) {
+      throw new Error(
+        `invalid content registry: stat "${stat.id}" is marked since v${stat.since} but already governs a graded activity`,
+      );
+    }
+    if (!live && stat.activatedBy === undefined) {
+      throw new Error(
+        `invalid content registry: stat "${stat.id}" arrives in v${stat.since} and must name the doc that activates it`,
       );
     }
   }
@@ -748,6 +768,12 @@ function validateCharacterContent(
 
   for (const family of registry.perks.families) {
     requireString(family.labelStringId, `perk family "${family.id}"`);
+    const live = family.since <= GAME_VERSION;
+    if (!live && family.activatedBy === undefined) {
+      throw new Error(
+        `invalid content registry: perk family "${family.id}" arrives in v${family.since} and must name the doc that activates it`,
+      );
+    }
     for (const option of family.options) {
       requireString(option.labelStringId, `perk "${option.id}"`);
       requireString(option.blurbStringId, `perk "${option.id}"`);
@@ -755,6 +781,17 @@ function validateCharacterContent(
         const tag = effect.kind === 'durationFactor' ? effect.tag : effect.kind === 'rollShape' ? effect.tag : undefined;
         if (tag === undefined) continue;
         const tagged = activitiesWithTag(tag);
+        if (!live) {
+          // A future family's tags must have no members yet. If one did, the perk would be
+          // quietly working in a version that never specced it — the opposite failure to a
+          // dormant mechanic, and a harder one to notice.
+          if (tagged.length > 0) {
+            throw new Error(
+              `invalid content registry: perk "${option.id}" arrives in v${family.since} but its tag "${tag}" already has graded activities`,
+            );
+          }
+          continue;
+        }
         if (tagged.length === 0) {
           throw new Error(
             `invalid content registry: perk "${option.id}" matches tag "${tag}", which no graded activity carries`,

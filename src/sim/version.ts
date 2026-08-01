@@ -129,3 +129,20 @@
  * Both goldens re-recorded; `content/harness-bands.json` re-derived.
  */
 export const ENGINE_VERSION = 12 as const;
+
+/**
+ * Which **chapter** of the game is shipped — SPEC §19's roadmap, not the save format.
+ *
+ * The two version numbers answer different questions and must not be conflated.
+ * `ENGINE_VERSION` bumps on any behaviour change and governs whether a save loads;
+ * `GAME_VERSION` says how much of the game exists, and governs which content is allowed to
+ * be live. v1 is the apartment; v2 adds the career, v3 people, v4 growth, v5 a partner,
+ * v6 the editor.
+ *
+ * It exists because docs/08's roster is whole-game: a character carries every stat and perk
+ * family the finished game will have, and `content.ts` uses this number to require that
+ * anything at or below it is genuinely live and anything above it is genuinely inert.
+ * Raising it is therefore the single switch that turns a chapter on — and the build fails
+ * immediately if the content for that chapter is not there.
+ */
+export const GAME_VERSION = 1 as const;

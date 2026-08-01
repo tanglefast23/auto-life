@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-08-01, ENGINE_VERSION 12 (docs/08 stats, perks and the activity check), seed 1234. The unattended career now rolls a character: seed 1234 gives Creative + Easygoing with Strength 5 / Dexterity 5 / Vitality 7 / Intellect 8 by the end of the week (Intellect started at 7 and gained one level from Read). Measured over seven unattended days: no urgent events or missed anchors, the reactive snack still never fires, 7 dinners, and every bar clears the morning check from Day 2. Two bands moved and neither was widened to green a test. nutritionMin 52.6 -> 45.8: docs/08 \u00a79.4 predicted exactly this \u2014 a below-C evening meal delivers a negative completion delta, so the overnight decay starts lower and the pre-breakfast trough follows it down. The trough still sits ten points clear of the snack band at 35. travel 95-125 -> 85-150/day: Easygoing shortens every activity by 15%, which buys free time the routine planner spends on Read, and Read is in another room.",
+  "recordedAt": "2026-08-01, ENGINE_VERSION 12 (docs/08 stats, perks and the activity check), seed 1234. Re-recorded when the roster went whole-game: `charisma` joins the creation draw, which moves every seed's character. Seed 1234 now rolls Methodical + Easygoing with Strength 5 / Dexterity 5 / Vitality 7 / Intellect 8 / Charisma 4 by the end of the week. Measured over seven unattended days: no urgent events or missed anchors, the reactive snack still never fires, 7 dinners, every bar clears the morning check from Day 2. nutritionMin 52.6 -> 46.5: docs/08 \u00a79.4 predicted this \u2014 a below-C evening meal delivers a negative completion delta, so the overnight decay starts lower and the pre-breakfast trough follows it down. The trough still sits eleven points clear of the snack band at 35. travel 95-125 -> 85-160/day: Easygoing shortens every activity by 15%, which buys free time the routine planner spends on Read, and Read is in another room. The upper bound covers the worst-legal-start fixture's 153 as well as the golden seed's 140.",
   "morningCheck": {
     "floor": 65,
     "fromDay": 2
@@ -8,13 +8,13 @@
   "anchorsMissedMax": 0,
   "nutritionMinBand": [
     43,
-    49
+    50
   ],
   "mealCapWastePerDayMax": 22,
   "dinnersMinPerWeek": 6,
   "travelMinutesPerDayBand": [
     85,
-    150
+    160
   ],
   "neglect": {
     "movementBelow": 20,

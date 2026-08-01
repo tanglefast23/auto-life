@@ -135,7 +135,12 @@ test('the canonical CareerState payload has a reviewed engine-v12 digest', () =>
     // `statXpToday`, `perks` and `rollStream` (docs/08 §8.1). Reviewed: those four plus the
     // version number are the whole difference from the v11 digest; nothing existing was
     // reshaped, which is why v8–v11 envelopes transform forward by adding fields only.
-    'e488158ad3123a64f1cc833e8409e3dee7b42aa5353c05dd21f7332a08325f5e',
+    //
+    // Re-reviewed when the roster went whole-game: `stats` and `statXpToday` gained a fifth
+    // key (`charisma`, inert until v2 — docs/08 §4), which also moves every seed's rolled
+    // character. No field was reshaped by that change either; one key was appended to two
+    // maps that are now DERIVED from the stat enum rather than restated beside it.
+    '40e3b8e9a8c70997b2132bc1a2af183df8fee35e1b046009aa2b15e873ab508e',
   );
 });
 

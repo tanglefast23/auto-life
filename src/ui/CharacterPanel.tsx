@@ -24,7 +24,11 @@ export function CharacterPanel({ character }: CharacterPanelProps) {
     <View testID="character-panel" style={styles.root}>
       <Text style={styles.heading}>{characterString('character:panel.title')}</Text>
       {character.stats.map((stat) => (
-        <View key={stat.id} testID={`character-stat:${stat.id}`} style={styles.statRow}>
+        <View
+          key={stat.id}
+          testID={`character-stat:${stat.id}`}
+          style={[styles.statRow, !stat.live && styles.statRowDormant]}
+        >
           <View style={styles.statHeader}>
             <Text style={styles.statName}>{statLabel(stat.id)}</Text>
             <Text style={styles.statLevel}>
@@ -32,14 +36,21 @@ export function CharacterPanel({ character }: CharacterPanelProps) {
             </Text>
           </View>
           <Text numberOfLines={1} style={styles.statBlurb}>
-            {statBlurb(stat.id)}
+            {/* Said plainly rather than hidden: a stat the chapter has no use for yet is
+                still part of who they are, and pretending otherwise would make the panel
+                lie about the character rather than about the world. */}
+            {stat.live
+              ? statBlurb(stat.id)
+              : `${statBlurb(stat.id)} ${characterString('character:panel.dormant')}.`}
           </Text>
-          <View style={styles.track}>
-            <View
-              testID={`character-xp:${stat.id}`}
-              style={[styles.fill, { width: `${Math.round(stat.progress * 100)}%` }]}
-            />
-          </View>
+          {stat.live && (
+            <View style={styles.track}>
+              <View
+                testID={`character-xp:${stat.id}`}
+                style={[styles.fill, { width: `${Math.round(stat.progress * 100)}%` }]}
+              />
+            </View>
+          )}
         </View>
       ))}
 
@@ -66,6 +77,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   statRow: { gap: 2 },
+  /** Present, dimmed, and labelled — not hidden. */
+  statRowDormant: { opacity: 0.55 },
   statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   statName: { ...TYPE_SCALE.body, fontFamily: FONT.prose, color: theme.color.ink },
   // A level is data, so it keeps the pixel face — at the body step, per the P7 pairing rule.

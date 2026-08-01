@@ -44,6 +44,7 @@ import type { SimState } from './state';
 import { deriveRenderView, type RenderView, type TravelView } from './render-view';
 import { type BarId } from './types';
 import { DEFAULT_SIM_RULES, type SimRules } from './rules';
+import { GAME_VERSION } from './version';
 
 export type Command =
   | { type: 'insertPlayer'; activityId: string }
@@ -160,7 +161,14 @@ export interface SimSnapshot {
 }
 
 export interface CharacterView {
-  stats: { id: StatId; level: number; xp: number; progress: number }[];
+  /**
+   * Every stat, including the ones no shipped chapter uses yet.
+   *
+   * `live` is what the panel reads to say so out loud. A character carrying a Charisma of 6
+   * in a game with nobody to charm is not a bug to hide — it is the promise that the person
+   * is whole and the world is what grows.
+   */
+  stats: { id: StatId; level: number; xp: number; progress: number; live: boolean }[];
   perkIds: string[];
 }
 
@@ -1282,6 +1290,7 @@ export function buildSnapshot(
         level: s.stats[id].level,
         xp: s.stats[id].xp,
         progress: levelProgress(s.stats[id], content.rates),
+        live: (content.stats.stats.find((stat) => stat.id === id)?.since ?? 1) <= GAME_VERSION,
       })),
       perkIds: [...s.perks],
     },

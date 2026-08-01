@@ -15,6 +15,8 @@ import { activityDurationTicksAtCurrentSpeed } from '../activities';
 import { newGameState } from '../state';
 import { step } from '../step';
 import { toFixed } from '../fixed';
+import { GAME_VERSION } from '../version';
+import { extendCharacterPerks } from '../roll';
 
 /**
  * docs/08's assertions. The first four contain no simulation at all — they are properties
@@ -133,12 +135,38 @@ test('reference rolls 1..20 map onto exactly one grade each, with no gap and no 
 
 // ---- assertion 4: nothing ships dormant (the rest is a content-registry gate) ----
 
-test('every stat governs at least one graded activity, and no graded activity lacks a stat', () => {
+test('every LIVE stat governs a graded activity, and every future one governs none', () => {
+  // The roster is whole-game (docs/08 §4): a character carries stats for chapters that do
+  // not exist yet. `since` is what keeps that from being the dormant-mechanic failure —
+  // live means live, future means genuinely inert, and both halves are checked.
   const graded = content.activities.activities.filter((a) => a.graded === true);
   expect(graded.length).toBeGreaterThan(0);
   for (const activity of graded) expect(activity.stat).toBeDefined();
-  for (const stat of STAT_IDS) {
-    expect(graded.some((a) => a.stat === stat)).toBe(true);
+  for (const stat of content.stats.stats) {
+    const governs = graded.some((a) => a.stat === stat.id);
+    expect(governs).toBe(stat.since <= GAME_VERSION);
+    if (stat.since > GAME_VERSION) expect(stat.activatedBy).toBeDefined();
+  }
+  // And the enum and the content file cannot drift apart.
+  expect(content.stats.stats.map((stat) => stat.id).sort()).toEqual([...STAT_IDS].sort());
+});
+
+test('a future perk family is declared, inert, and points at the doc that turns it on', () => {
+  const future = content.perks.families.filter((family) => family.since > GAME_VERSION);
+  expect(future.length).toBeGreaterThan(0); // the roadmap is represented, not deferred to memory
+  const gradedTags = new Set(
+    content.activities.activities
+      .filter((a) => a.graded === true)
+      .flatMap((a) => a.rollTags ?? []),
+  );
+  for (const family of future) {
+    expect(family.activatedBy).toBeDefined();
+    for (const option of family.options) {
+      for (const effect of option.effects) {
+        const tag = effect.kind === 'rollShape' ? effect.tag : effect.kind === 'durationFactor' ? effect.tag : undefined;
+        if (tag !== undefined) expect(gradedTags.has(tag)).toBe(false);
+      }
+    }
   }
 });
 
@@ -218,7 +246,7 @@ test('one seed always produces the same character', () => {
   expect(rollNewCharacter(5678, content.perks, content.rates)).not.toEqual(a);
 });
 
-test('starting stats land inside the derived 4..7 floor, and there are exactly two perks', () => {
+test('starting stats land inside the derived 4..7 floor, and one perk comes from each live family', () => {
   for (let seed = 0; seed < 200; seed += 1) {
     const c = rollNewCharacter(seed, content.perks, content.rates);
     for (const id of STAT_IDS) {
@@ -226,7 +254,10 @@ test('starting stats land inside the derived 4..7 floor, and there are exactly t
       expect(c.stats[id].level).toBeLessThanOrEqual(content.rates.roll.statStartMax);
       expect(c.stats[id].xp).toBe(0);
     }
-    expect(c.perks).toHaveLength(content.perks.families.length);
+    // One per ACTIVE family — a perk is a rule that fires, and a family whose chapter has
+    // not shipped has nothing to fire on.
+    const liveFamilies = content.perks.families.filter((f) => f.since <= GAME_VERSION);
+    expect(c.perks).toHaveLength(liveFamilies.length);
     expect(new Set(c.perks).size).toBe(c.perks.length);
   }
 });
@@ -332,6 +363,36 @@ test('the roll stream is its own record, seeded from the career root seed', () =
   const seeded = newRollStream(777);
   // The character draws advance it, so the state moves — but the number of draws is exactly
   // four stats plus one per perk family, and nothing else has touched it yet.
-  expect(s.rollStream.calls).toBe(STAT_IDS.length + content.perks.families.length);
+  expect(s.rollStream.calls).toBe(
+    STAT_IDS.length + content.perks.families.filter((f) => f.since <= GAME_VERSION).length,
+  );
   expect(s.rollStream.state).not.toBe(seeded.state);
+});
+
+
+// ---- the roster is whole-game, and grows without rewriting anyone ----
+
+test('activating a family gives an existing character its perk without touching the ones they have', () => {
+  // The append-only rule (docs/08 §8.5). Drawn from the career's LIVE stream, never from the
+  // root seed: restarting would re-derive what they already hold, and any change to the draw
+  // order above it would rewrite a character mid-life.
+  const before = rollNewCharacter(1234, content.perks, content.rates, 1);
+  const after = extendCharacterPerks(before.rollStream, content.perks, before.perks, 3);
+
+  expect(after.perks.slice(0, before.perks.length)).toEqual(before.perks);
+  const liveAt3 = content.perks.families.filter((f) => f.since <= 3);
+  expect(after.perks).toHaveLength(liveAt3.length);
+  for (const family of liveAt3) {
+    expect(family.options.some((option) => after.perks.includes(option.id))).toBe(true);
+  }
+  // The stream moved forward rather than restarting, so nothing already drawn is re-drawn.
+  expect(after.rollStream.calls).toBeGreaterThan(before.rollStream.calls);
+});
+
+test('a second activation is idempotent — nobody gets two perks from one family', () => {
+  const base = rollNewCharacter(99, content.perks, content.rates, 1);
+  const once = extendCharacterPerks(base.rollStream, content.perks, base.perks, 4);
+  const twice = extendCharacterPerks(once.rollStream, content.perks, once.perks, 4);
+  expect(twice.perks).toEqual(once.perks);
+  expect(twice.rollStream).toEqual(once.rollStream);
 });

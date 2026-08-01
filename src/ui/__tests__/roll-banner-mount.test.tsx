@@ -121,15 +121,19 @@ test('a practice grade reports points rather than a bar', () => {
   tree.unmount();
 });
 
-test('the character panel shows four stats with progress, and both rolled traits', () => {
+test('the character panel shows every stat, marks the inert one, and lists the rolled traits', () => {
   const character: CharacterView = {
     stats: [
-      { id: 'strength', level: 5, xp: 250, progress: 0.5 },
-      { id: 'dexterity', level: 6, xp: 0, progress: 0 },
-      { id: 'vitality', level: 4, xp: 100, progress: 0.25 },
-      { id: 'intellect', level: 7, xp: 350, progress: 0.5 },
+      { id: 'strength', level: 5, xp: 250, progress: 0.5, live: true },
+      { id: 'dexterity', level: 6, xp: 0, progress: 0, live: true },
+      { id: 'vitality', level: 4, xp: 100, progress: 0.25, live: true },
+      { id: 'intellect', level: 7, xp: 350, progress: 0.5, live: true },
+      // Rolled, shown, and honestly labelled as not yet in use — docs/08 §4.
+      { id: 'charisma', level: 6, xp: 0, progress: 0, live: false },
     ],
-    perkIds: content.perks.families.map((family) => family.options[0]!.id),
+    perkIds: content.perks.families
+      .filter((family) => family.since <= 1)
+      .map((family) => family.options[0]!.id),
   };
   let tree!: ReactTestRenderer;
   act(() => {
@@ -137,10 +141,16 @@ test('the character panel shows four stats with progress, and both rolled traits
   });
   for (const stat of character.stats) {
     expect(tree.root.findAllByProps({ testID: `character-stat:${stat.id}` }).length).toBeGreaterThan(0);
-    expect(tree.root.findAllByProps({ testID: `character-xp:${stat.id}` }).length).toBeGreaterThan(0);
+    // A stat with nothing to do yet shows its level but no progress bar — there is no
+    // progress to make, and a permanently empty track would read as neglect.
+    expect(
+      tree.root.findAllByProps({ testID: `character-xp:${stat.id}` }).length > 0,
+    ).toBe(stat.live);
   }
   for (const perkId of character.perkIds) {
     expect(tree.root.findAllByProps({ testID: `character-perk:${perkId}` }).length).toBeGreaterThan(0);
   }
-  tree.unmount();
+  act(() => {
+    tree.unmount();
+  });
 });

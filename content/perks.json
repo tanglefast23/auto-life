@@ -2,6 +2,7 @@
   "families": [
     {
       "id": "approach",
+      "since": 1,
       "labelStringId": "character:families.approach",
       "options": [
         {
@@ -9,8 +10,16 @@
           "labelStringId": "character:perks.creative",
           "blurbStringId": "character:blurbs.creative",
           "effects": [
-            { "kind": "rollShape", "shape": "advantage", "tag": "expressive" },
-            { "kind": "durationFactor", "percent": 115, "tag": "expressive" }
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "expressive"
+            },
+            {
+              "kind": "durationFactor",
+              "percent": 115,
+              "tag": "expressive"
+            }
           ]
         },
         {
@@ -18,14 +27,23 @@
           "labelStringId": "character:perks.methodical",
           "blurbStringId": "character:blurbs.methodical",
           "effects": [
-            { "kind": "rollShape", "shape": "advantage", "tag": "routine" },
-            { "kind": "durationFactor", "percent": 115, "tag": "routine" }
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "routine"
+            },
+            {
+              "kind": "durationFactor",
+              "percent": 115,
+              "tag": "routine"
+            }
           ]
         }
       ]
     },
     {
       "id": "drive",
+      "since": 1,
       "labelStringId": "character:families.drive",
       "options": [
         {
@@ -33,8 +51,14 @@
           "labelStringId": "character:perks.perfectionist",
           "blurbStringId": "character:blurbs.perfectionist",
           "effects": [
-            { "kind": "rollOffset", "value": 2 },
-            { "kind": "durationFactor", "percent": 115 }
+            {
+              "kind": "rollOffset",
+              "value": 2
+            },
+            {
+              "kind": "durationFactor",
+              "percent": 115
+            }
           ]
         },
         {
@@ -42,7 +66,106 @@
           "labelStringId": "character:perks.easygoing",
           "blurbStringId": "character:blurbs.easygoing",
           "effects": [
-            { "kind": "durationFactor", "percent": 85 }
+            {
+              "kind": "durationFactor",
+              "percent": 85
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nerve",
+      "since": 2,
+      "labelStringId": "character:families.nerve",
+      "activatedBy": "docs/02-funds-career.md \u00a75 \u2014 crowd moments, studio takes and the L5 hall",
+      "options": [
+        {
+          "id": "steady",
+          "labelStringId": "character:perks.steady",
+          "blurbStringId": "character:blurbs.steady",
+          "effects": [
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "pressure"
+            }
+          ]
+        },
+        {
+          "id": "spirited",
+          "labelStringId": "character:perks.spirited",
+          "blurbStringId": "character:blurbs.spirited",
+          "effects": [
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "audience"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "socialEnergy",
+      "since": 3,
+      "labelStringId": "character:families.socialEnergy",
+      "activatedBy": "docs/03-social.md \u00a71 \u2014 this family IS the social battery personality, not a second copy of it",
+      "options": [
+        {
+          "id": "introvert",
+          "labelStringId": "character:perks.introvert",
+          "blurbStringId": "character:blurbs.introvert",
+          "effects": [
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "solitary"
+            }
+          ]
+        },
+        {
+          "id": "extrovert",
+          "labelStringId": "character:perks.extrovert",
+          "blurbStringId": "character:blurbs.extrovert",
+          "effects": [
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "social"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roots",
+      "since": 4,
+      "labelStringId": "character:families.roots",
+      "activatedBy": "docs/04-growth.md \u00a73 \u2014 the weekend contention between home upgrades and going out",
+      "options": [
+        {
+          "id": "homebody",
+          "labelStringId": "character:perks.homebody",
+          "blurbStringId": "character:blurbs.homebody",
+          "effects": [
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "domestic"
+            }
+          ]
+        },
+        {
+          "id": "restless",
+          "labelStringId": "character:perks.restless",
+          "blurbStringId": "character:blurbs.restless",
+          "effects": [
+            {
+              "kind": "rollShape",
+              "shape": "advantage",
+              "tag": "outing"
+            }
           ]
         }
       ]
