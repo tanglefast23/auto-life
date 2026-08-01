@@ -3,12 +3,15 @@ import { passiveContribution, type BodyMode } from './rates';
 import {
   crossedWakeBoundary,
   activityDurationTicksAtCurrentSpeed,
+  gradeContribution,
   napEligibility,
   progressTimedActivity,
   sleepContribution,
   startTimedActivity,
   type ActiveTimedActivity,
 } from './activities';
+import { modifiersFor, neutralGrade, rollActivity, type ResolvedRoll } from './roll';
+import { awardStatXp, emptyStatXpToday, levelProgress, STAT_IDS } from './stats';
 import { anchorsToEnqueue, isMissed, resolveBlock } from './planner/anchors';
 import { evaluateReactive } from './planner/reactive';
 import { refillRoutineQueue } from './planner/routine';
@@ -36,6 +39,7 @@ import { dayNumber, minuteOfDay, morningCheckMinute, targetsFor, TICKS_PER_DAY }
 import { healthDisplay, isWellFedAtStart, mOutAtStart, mSpeedAtStart } from './bars';
 import { toDisplay, toFixed } from './fixed';
 import { activityByIdIn, objectForActivityIn, type ContentRegistry } from './content';
+import type { ActivityDef, StatId } from './content-schemas';
 import type { SimState } from './state';
 import { deriveRenderView, type RenderView, type TravelView } from './render-view';
 import { type BarId } from './types';
@@ -99,6 +103,17 @@ export interface DomainEvent {
      * class of lie as HFM's cancel-inherits-celebration.
      */
     | 'adjacencyGranted'
+    /**
+     * An activity check paid out (docs/08 §6). Detail is `<activityId>:<gradeId>`.
+     *
+     * Same rule as `adjacencyGranted`: the cue and the banner announce what the engine
+     * DID, not what a forecast predicted — the forecaster deliberately declines to roll,
+     * so the two disagree by construction and a grade sound for a grade nobody rolled
+     * would be the same class of lie as cancel-inherits-celebration.
+     */
+    | 'activityGraded'
+    /** A stat crossed a level. Detail is `<statId>:<newLevel>`. */
+    | 'statLeveled'
     | 'slept';
   detail: string;
   atMinute: number;
@@ -126,12 +141,42 @@ export interface SimSnapshot {
    */
   processed: 'travel' | 'activity' | 'sleep' | 'idle';
   practicePoints: number;
+  /** The four stats and the two perks, for the character panel (docs/08 §11.3). */
+  character: CharacterView;
+  /**
+   * The check that paid out on THIS tick, or null.
+   *
+   * Read-model only, and deliberately not stored in `SimState`: a stored "last grade" would
+   * survive a reload and re-stamp a banner for something the player already watched land.
+   * The UI reads it on the tick it appears and animates from there.
+   */
+  grade: GradeView | null;
   /**
    * Everything the renderer needs and nothing it does not (P3 T3, master §4's
    * "snapshots and interpolation data"). Derived per tick from state — never stored,
    * so `SimState`, the golden digest, and `ENGINE_VERSION` are all untouched.
    */
   render: RenderView;
+}
+
+export interface CharacterView {
+  stats: { id: StatId; level: number; xp: number; progress: number }[];
+  perkIds: string[];
+}
+
+export interface GradeView {
+  activityId: string;
+  cardId: string;
+  gradeId: string;
+  band: 'high' | 'mid' | 'low';
+  natural: number;
+  shape: 'plain' | 'advantage' | 'disadvantage';
+  modifier: number;
+  statId: StatId | null;
+  /** Display-scale signed deltas the grade added on top of the fill. */
+  deltas: Partial<Record<BarId, number>>;
+  /** Practice-only: extra points the grade was worth, display scale. */
+  practicePoints: number | null;
 }
 
 export interface SimQueueCard {
@@ -160,6 +205,16 @@ export interface StepOptions {
    * advances until play resumes.
    */
   commandsOnly?: boolean;
+  /**
+   * Headless lookahead (SPEC §7.5): suppress every activity check (docs/08 §8.3).
+   *
+   * The forecaster runs this same `step()` on cloned state, so drawing here would
+   * reproduce the exact rolls the real run is about to make and embed real future grades
+   * in a projection. Every future roll is modelled as grade C instead, and `rollStream`
+   * is not advanced — which is the correct model, not merely the safe one, because C is
+   * the expected outcome at par.
+   */
+  forecast?: boolean;
 }
 
 type RuleSource = SimRules['objectBlocks'][number]['source'];
@@ -440,6 +495,8 @@ export function step(
   const events: DomainEvent[] = [];
   const outcomes: CommandOutcome[] = [];
   const startedCardIds = new Set<string>();
+  /** The check that paid out on this tick, published on the snapshot for the UI beat. */
+  let gradeView: GradeView | null = null;
   const now = s.clock.absoluteMinute;
   const wakeTarget = targetsFor(s.chronotype, content.rates).wake;
   const today = dayNumber(now);
@@ -979,7 +1036,7 @@ export function step(
       }
       s.position = { x: ix, y: iy };
     }
-    s.current = beginCard(s, card, content, rules, emit);
+    s.current = beginCard(s, card, content, rules, emit, options.forecast === true);
     if (s.current !== null) startedCardIds.add(card.id);
     if (s.current !== null) break;
     if (s.queue.some((c) => c.id === card.id)) break; // dropped-nothing safety: never loop on a card beginCard kept
@@ -1057,6 +1114,7 @@ export function step(
             content,
             rules,
             emit,
+            options.forecast === true,
           );
         }
       }
@@ -1069,7 +1127,7 @@ export function step(
     processedProgress = dur > 0 ? Math.min(1, (s.current.dto.elapsedTicks + 1) / dur) : null;
     contributions.push(r.contribution);
     if (r.completed) {
-      completeActivity(s, s.current.cardId, s.current.dto, content, emit, now, wakeTarget);
+      gradeView = completeActivity(s, s.current.cardId, s.current.dto, content, emit, now, wakeTarget);
       s.current = null;
     } else {
       s.current = { ...s.current, dto: r.next as ActiveTimedActivity };
@@ -1114,6 +1172,9 @@ export function step(
       s.bars.energy = toFixed(wakeModifier.energy);
     }
     s.napEffectiveUsesToday = 0;
+    // docs/08 §7: the per-stat daily XP cap resets on the same boundary, for the same
+    // reason the nap budget does — a day is a wake-to-wake thing here, never midnight.
+    s.statXpToday = emptyStatXpToday();
     s.practice.sessionsCountedToday = 0;
     s.practice.mintyPaidToday = false;
     // §8: BLOCK status resets at wake too (audit round 4) — an all-night practice
@@ -1158,7 +1219,7 @@ export function step(
     next: s,
     events,
     outcomes: finalOutcomes,
-    snapshot: buildSnapshot(s, content, processed, processedTravel, processedProgress),
+    snapshot: buildSnapshot(s, content, processed, processedTravel, processedProgress, gradeView),
   };
 }
 
@@ -1176,6 +1237,7 @@ export function buildSnapshot(
   processed: SimSnapshot['processed'] = 'idle',
   processedTravel: TravelView | null = null,
   processedProgress: number | null = null,
+  grade: GradeView | null = null,
 ): SimSnapshot {
   const queue: SimQueueCard[] = s.queue.map((card) => {
     const def = activityByIdIn(content, card.activityId);
@@ -1214,6 +1276,16 @@ export function buildSnapshot(
     currentProgress: progress,
     processed,
     practicePoints: s.practice.points100 / 100,
+    character: {
+      stats: STAT_IDS.map((id) => ({
+        id,
+        level: s.stats[id].level,
+        xp: s.stats[id].xp,
+        progress: levelProgress(s.stats[id], content.rates),
+      })),
+      perkIds: [...s.perks],
+    },
+    grade,
     render: deriveRenderView(s, content, processedTravel, processedProgress),
   };
   // The snapshot is the published read-model, so make it genuinely immutable rather than
@@ -1226,6 +1298,14 @@ export function buildSnapshot(
 /** Freeze the snapshot's own objects/arrays. Not a general deep-freeze: the shape is known. */
 function deepFreezeSnapshot(snap: SimSnapshot): SimSnapshot {
   Object.freeze(snap.bars);
+  snap.character.stats.forEach((stat) => Object.freeze(stat));
+  Object.freeze(snap.character.stats);
+  Object.freeze(snap.character.perkIds);
+  Object.freeze(snap.character);
+  if (snap.grade !== null) {
+    Object.freeze(snap.grade.deltas);
+    Object.freeze(snap.grade);
+  }
   for (const card of snap.queue) {
     if (card.reason !== undefined) Object.freeze(card.reason);
     Object.freeze(card);
@@ -1304,12 +1384,60 @@ function intrinsicCardCanBegin(
   return true;
 }
 
+/**
+ * The activity check, resolved once at start (docs/08 §6.4).
+ *
+ * Two things make this the right moment rather than completion. It is the moment SPEC §6.6
+ * already picked for every other multiplier, so a card's preview cannot shift under the
+ * player; and it makes the roll *state*, so a save reloaded mid-activity replays the same
+ * die instead of flipping a fresh one.
+ *
+ * Under `forecast` nothing is drawn at all. The forecaster runs this same `step()` on cloned
+ * state, so a clone drawn forward would reproduce the exact rolls the real run is about to
+ * make and quietly embed real future grades in a projection the player is shown. Modelling
+ * every future roll as grade C is not merely the safe answer — it is the *correct* one,
+ * because C is exactly the expected outcome at par.
+ */
+function resolveActivityRoll(
+  s: SimState,
+  def: ActivityDef,
+  content: ContentRegistry,
+  forecast: boolean,
+): { roll: ResolvedRoll | undefined; durationPercents: number[] } {
+  if (def.stat === undefined) return { roll: undefined, durationPercents: [] };
+  const mods = modifiersFor(content.perks, s.perks, def.rollTags ?? []);
+  if (def.graded !== true) return { roll: undefined, durationPercents: mods.durationPercents };
+  if (forecast) {
+    const neutral = neutralGrade(content.grades);
+    return {
+      roll: {
+        natural: 0,
+        shape: 'plain',
+        modifier: 0,
+        gradeId: neutral.gradeId,
+        band: neutral.band,
+        multiplier100: neutral.multiplier100,
+      },
+      durationPercents: mods.durationPercents,
+    };
+  }
+  const drawn = rollActivity(s.rollStream, {
+    statLevel: s.stats[def.stat].level,
+    modifiers: mods,
+    grades: content.grades,
+    rates: content.rates,
+  });
+  s.rollStream = drawn.stream;
+  return { roll: drawn.roll, durationPercents: mods.durationPercents };
+}
+
 function beginCard(
   s: SimState,
   card: QueueCard,
   content: ContentRegistry,
   rules: SimRules,
   emit: (t: DomainEvent['type'], d: string) => void,
+  forecast = false,
 ): SimState['current'] {
   const def = activityByIdIn(content, card.activityId);
   const now = s.clock.absoluteMinute;
@@ -1343,7 +1471,10 @@ function beginCard(
     return null;
   }
   if (def.kind === 'practice') {
-    const durationTicks = activityDurationTicksAtCurrentSpeed(def, s.bars);
+    // Practice builds its own DTO, so the roll has to be sampled on this path too — the
+    // timed path below is not the only start in the engine.
+    const practiceRoll = resolveActivityRoll(s, def, content, forecast);
+    const durationTicks = activityDurationTicksAtCurrentSpeed(def, s.bars, practiceRoll.durationPercents);
     if (durationTicks === null) throw new Error('practice must have a finite duration');
     // §6.6: EVERY award multiplier samples at start. Gaps measure first-END to
     // second-START (§6.7); lastCompletion is the intervener rule by construction.
@@ -1386,7 +1517,13 @@ function beginCard(
       fillStartTick: 0,
       effectTotalsFixed: {},
       suppressPassiveEnergy: false,
-      sampled: { mSpeed: mSpeedAtStart(s.bars), wellFed, effectiveUse: true, pointsMultiplier },
+      sampled: {
+        mSpeed: mSpeedAtStart(s.bars),
+        wellFed,
+        effectiveUse: true,
+        pointsMultiplier,
+        ...(practiceRoll.roll !== undefined ? { roll: practiceRoll.roll } : {}),
+      },
     };
     if (consumedMinty) dto.consumedMinty = true;
     return { type: 'activity', cardId: card.id, dto };
@@ -1404,7 +1541,12 @@ function beginCard(
     effectiveUse = elig.effective;
     if (effectiveUse) s.napEffectiveUsesToday += 1;
   }
-  const dto = startTimedActivity(def, s.bars, content.rates, { effectiveUse });
+  const timedRoll = resolveActivityRoll(s, def, content, forecast);
+  const dto = startTimedActivity(def, s.bars, content.rates, {
+    effectiveUse,
+    roll: timedRoll.roll,
+    durationPercents: timedRoll.durationPercents,
+  });
   const slowdown = rules.activitySlowdowns.find(
     (entry) =>
       sourceAppliesOnDay(entry.source, dayNumber(now)) &&
@@ -1489,9 +1631,10 @@ function completeActivity(
   emit: (t: DomainEvent['type'], d: string) => void,
   now: number,
   wakeTarget: number,
-): void {
+): GradeView | null {
   const def = activityByIdIn(content, dto.activityId);
   const completedCard = s.queue.find((card) => card.id === cardId);
+  let practiceGradeBonus: number | null = null;
   s.queue = s.queue.filter((c) => c.id !== cardId);
   const noMealMarker = dto.grantedModifierSources?.find(
     (source) => source.startsWith('wrinkle-no-meal:'),
@@ -1516,17 +1659,67 @@ function completeActivity(
     const idx = s.practice.sessionsCountedToday;
     const curve = s.practice.prevCompletionWasPractice ? p.blockCurve : p.scatteredCurve;
     const factor = idx < p.maxCountedSessionsPerDay ? (curve[idx] ?? 0) : 0;
-    const mult = dto.sampled.pointsMultiplier ?? 1; // frozen at start (§6.6)
+    const base = dto.sampled.pointsMultiplier ?? 1; // frozen at start (§6.6)
+    // docs/08 §6.4: practice has no bar effect, so its graded output is points. The
+    // multiplier joins the existing stack rather than replacing any of it.
+    const graded = dto.sampled.roll !== undefined ? base * (dto.sampled.roll.multiplier100 / 100) : base;
     if (factor > 0) {
-      const award = Math.round(p.basePoints * factor * mult * 100); // one round per award (SPEC §8)
+      const award = Math.round(p.basePoints * factor * graded * 100); // one round per award (SPEC §8)
+      const ungraded = Math.round(p.basePoints * factor * base * 100);
       s.practice.points100 += award;
       s.practice.sessionsCountedToday += 1;
       emit('practiceAwarded', String(award));
+      practiceGradeBonus = (award - ungraded) / 100;
+    }
+  }
+
+  // docs/08 §6.4: the grade rides in as ONE signed instant delta, on the reducer that
+  // already sums and clamps once per tick. Stage 4 drains the queue before the block that
+  // completes an activity, so it commits on the next tick — one game-minute, stated rather
+  // than hidden. The source is keyed by card id because a duplicate source throws and an
+  // adjacency barDelta can land on the same commit.
+  const gradeDelta = gradeContribution(dto, cardId);
+  if (gradeDelta !== null) s.pendingInstantDeltas.push(gradeDelta);
+  let gradeView: GradeView | null = null;
+  const roll = dto.sampled.roll;
+  if (roll !== undefined) {
+    emit('activityGraded', `${def.id}:${roll.gradeId}`);
+    const deltas: Partial<Record<BarId, number>> = {};
+    for (const [bar, fixed] of Object.entries(gradeDelta?.deltas ?? {})) {
+      deltas[bar as BarId] = toDisplay(fixed as number);
+    }
+    gradeView = {
+      activityId: def.id,
+      cardId,
+      gradeId: roll.gradeId,
+      band: roll.band,
+      natural: roll.natural,
+      shape: roll.shape,
+      modifier: roll.modifier,
+      statId: def.stat ?? null,
+      deltas,
+      practicePoints: practiceGradeBonus,
+    };
+  }
+
+  // docs/08 §7: XP is for DOING. It uses the authored `baseMin` rather than the
+  // perk-adjusted duration, or Perfectionist would buy faster growth as well as a better
+  // roll — and it is unaffected by the grade, or a lucky streak would compound into a
+  // permanently better character.
+  // A flavor-only later nap restored nothing, so it trained nothing either.
+  const didSomething = dto.sampled.effectiveUse;
+  if (didSomething && def.stat !== undefined && def.kind !== 'sleepWindow' && def.kind !== 'idle') {
+    const awarded = awardStatXp(s.stats, s.statXpToday, def.stat, def.baseMin, content.rates);
+    s.stats = awarded.stats;
+    s.statXpToday = awarded.today;
+    if (awarded.leveledTo !== null) {
+      emit('statLeveled', `${def.stat}:${awarded.leveledTo}`);
     }
   }
 
   s.practice.prevCompletionWasPractice = def.kind === 'practice';
   s.lastCompletion = { activityId: def.id, isWorkout: def.kind === 'timed' && (def.tags?.includes('workout') ?? false), atMinute: now };
+  return gradeView;
 }
 
 function endSleep(s: SimState, content: ContentRegistry, emit: (t: DomainEvent['type'], d: string) => void): void {

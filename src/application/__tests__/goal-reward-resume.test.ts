@@ -29,7 +29,7 @@ test('a Practice threshold in the live loop grants Goal 4 exactly once', () => {
     'baseline',
     content.rates,
     seed,
-    prng,
+    content.perks,
   );
   sim.practice.points100 = 10_000;
   const career = newCareerState({ rootSeed: seed, sim, prng });
@@ -56,7 +56,7 @@ test('a pending Goal 3 choice resumes on the same complete boundary', () => {
     'baseline',
     content.rates,
     seed,
-    prng,
+    content.perks,
   );
   const game = newCareerState({
     rootSeed: seed,

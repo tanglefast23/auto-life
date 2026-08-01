@@ -102,7 +102,7 @@ describe('bill of materials — no placeholders (SPEC §18)', () => {
     // poses stayed undrawable through an entire phase in the first place.
     reachable.add(
       deriveRenderView(
-        newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize()),
+        newGameState('baseline', content.rates, 1234, content.perks),
         content,
       ).pose,
     );

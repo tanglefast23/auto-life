@@ -1,0 +1,19 @@
+{
+  "grades": [
+    { "id": "a-plus",  "labelStringId": "character:grades.aPlus",  "minMargin": 10,  "multiplier100": 150, "band": "high" },
+    { "id": "a",       "labelStringId": "character:grades.a",      "minMargin": 9,   "multiplier100": 140, "band": "high" },
+    { "id": "a-minus", "labelStringId": "character:grades.aMinus", "minMargin": 8,   "multiplier100": 130, "band": "high" },
+    { "id": "b-plus",  "labelStringId": "character:grades.bPlus",  "minMargin": 7,   "multiplier100": 120, "band": "high" },
+    { "id": "b",       "labelStringId": "character:grades.b",      "minMargin": 5,   "multiplier100": 115, "band": "high" },
+    { "id": "b-minus", "labelStringId": "character:grades.bMinus", "minMargin": 4,   "multiplier100": 110, "band": "high" },
+    { "id": "c-plus",  "labelStringId": "character:grades.cPlus",  "minMargin": 2,   "multiplier100": 105, "band": "mid" },
+    { "id": "c",       "labelStringId": "character:grades.c",      "minMargin": 0,   "multiplier100": 100, "band": "mid" },
+    { "id": "c-minus", "labelStringId": "character:grades.cMinus", "minMargin": -2,  "multiplier100": 95,  "band": "mid" },
+    { "id": "d-plus",  "labelStringId": "character:grades.dPlus",  "minMargin": -4,  "multiplier100": 90,  "band": "low" },
+    { "id": "d",       "labelStringId": "character:grades.d",      "minMargin": -5,  "multiplier100": 85,  "band": "low" },
+    { "id": "d-minus", "labelStringId": "character:grades.dMinus", "minMargin": -6,  "multiplier100": 80,  "band": "low" },
+    { "id": "f-plus",  "labelStringId": "character:grades.fPlus",  "minMargin": -7,  "multiplier100": 70,  "band": "low" },
+    { "id": "f",       "labelStringId": "character:grades.f",      "minMargin": -8,  "multiplier100": 60,  "band": "low" },
+    { "id": "f-minus", "labelStringId": "character:grades.fMinus", "minMargin": -99, "multiplier100": 45,  "band": "low" }
+  ]
+}

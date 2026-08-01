@@ -145,7 +145,7 @@ test('the real step path publishes five cards at wake and keeps five after a com
     'baseline',
     content.rates,
     1234,
-    PrngStreams.create(1234).serialize(),
+    content.perks,
   );
   let firstQueue: string[] | null = null;
   let sawCompletion = false;
@@ -178,7 +178,7 @@ test('the real step path moves a Snack into the next slot when Nutrition dips be
     'baseline',
     content.rates,
     1234,
-    PrngStreams.create(1234).serialize(),
+    content.perks,
   );
 
   for (let tick = 0; tick < 500; tick += 1) {
@@ -274,7 +274,7 @@ describe('§7.4 suppression', () => {
       'baseline',
       content.rates,
       1234,
-      PrngStreams.create(1234).serialize(),
+      content.perks,
     );
     state.clock.absoluteMinute = 600;
     state.bars = bars(100, 70, 100, 100);
@@ -305,7 +305,7 @@ test('severe hunger upgrades an unstarted routine Snack to the existing reactive
     'baseline',
     content.rates,
     1234,
-    PrngStreams.create(1234).serialize(),
+    content.perks,
   );
   state.clock.absoluteMinute = 600;
   state.bars = bars(100, 19, 100, 100);

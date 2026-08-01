@@ -37,7 +37,7 @@ function sleepingState(
     chronotype,
     content.rates,
     ROOT_SEED,
-    PrngStreams.create(ROOT_SEED).serialize(),
+    content.perks,
   );
   const wake = targetsFor(chronotype, content.rates).wake;
   const minute = options.daytime

@@ -39,7 +39,7 @@ function rules(
 }
 
 function freshAt(minute: number) {
-  const state = newGameState('baseline', content.rates, 7);
+  const state = newGameState('baseline', content.rates, 7, content.perks);
   state.clock.absoluteMinute = minute;
   state.queue = [];
   state.current = null;

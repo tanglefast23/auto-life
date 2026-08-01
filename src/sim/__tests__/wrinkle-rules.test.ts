@@ -61,7 +61,7 @@ function freshState(minute: number): SimState {
     'baseline',
     content.rates,
     81,
-    PrngStreams.create(81).serialize(),
+    content.perks,
   );
   state.clock.absoluteMinute = minute;
   state.queue = [];
@@ -404,9 +404,11 @@ test('burned breakfast gives only +10 Nutrition and does not start the meal gate
     state = result.next;
     events.push(...result.events);
   }
+  // docs/08: the burned meal is still graded — the wrinkle says what was cooked, the roll
+  // says how it went — so `activityGraded` now trails the completion.
   expect(
-    events.map((event) => event.type).slice(-2),
-  ).toEqual(['wrinkleEffectApplied', 'activityCompleted']);
+    events.map((event) => event.type).slice(-3),
+  ).toEqual(['wrinkleEffectApplied', 'activityCompleted', 'activityGraded']);
   expect(state.lastMealCompletedAt).toBeNull();
 
   const game = advanceGame(

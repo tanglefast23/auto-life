@@ -113,6 +113,28 @@ export const NARROW_MAX = 900;
 /** Gutter between regions and the viewport edge. On the 4px grid, per Joe's rules. */
 export const GUTTER = 8;
 
+/**
+ * The frame: a right column and a bottom bar, with the room in the corner they leave.
+ *
+ * Reserving space alone did not compose. The first cut put STATUS top-left, notices
+ * bottom-left and focus centred on the stage — which stopped surfaces colliding with each
+ * other but still let the morning recap sit on the bedroom every morning, and left the
+ * chips floating mid-screen at whatever `hudHeight + 8` happened to be that frame.
+ *
+ * The shape is now taken from a reference this game is being modelled on: **one bottom bar
+ * holding the task queue and the vitals, one right column holding time, information and
+ * the journal, and the room filling everything they do not.** Nothing overlaps the room —
+ * not because of a z value, but because no UI rectangle is ever inside it.
+ */
+export const RIGHT_W = 240;
+export const BOTTOM_H = 128;
+/** Vitals sit at the bottom-right; the queue takes the rest of the bar. */
+export const VITALS_W = 360;
+/** The top of the right column: date, journal button, time controls. */
+export const TEMPORAL_H = 184;
+/** Chips and toasts, between the time controls and the information panel. */
+export const NOTICE_H = 132;
+
 /** Bottom-sheet height when the rail collapses on a narrow viewport. */
 const RAIL_SHEET_H = 96;
 
@@ -153,10 +175,9 @@ export function statusWidth(textScale = 1): number {
 /**
  * Lay every region out for a viewport.
  *
- * Order matters: chrome reserves first, `NOTICE` takes space chrome does not occupy, and
- * `STAGE` is whatever remains. `FOCUS` deliberately overlaps everything — it is the one
- * region that is allowed to, because at most one focus surface exists at a time and it is
- * the player's whole attention while it does.
+ * The frame is reserved first and the room takes the corner that is left. Every rectangle
+ * below is disjoint, including `focus` and `stage` — the gate asserts it across five
+ * viewports and four text scales, which is what stops a panel drifting back over the room.
  */
 export function regionsFor(input: RegionInput): Regions {
   const width = Math.max(0, input.width);
@@ -166,62 +187,77 @@ export function regionsFor(input: RegionInput): Regions {
     : 1;
   const narrow = width < NARROW_MAX;
 
-  const statusH = Math.min(statusHeight(scale), height);
-  const statusW = Math.min(statusWidth(scale), width);
-
   if (narrow) {
-    // `TEMPORAL` collapses to zero and `STATUS` widens to span the top bar, absorbing the
-    // clock and speed controls. The region *names* are stable across breakpoints; their
-    // rectangles are not, and a collapsed region hands its contents to a named sibling.
-    const railH = Math.min(RAIL_SHEET_H, Math.max(0, height - statusH));
-    const status: Rect = { x: 0, y: 0, width, height: statusH };
-    const temporal: Rect = { x: width, y: 0, width: 0, height: 0 };
-    const rail: Rect = { x: 0, y: height - railH, width, height: railH };
-    const stage: Rect = {
+    // Folded, not redesigned: the right column lies down as a second bottom row. The
+    // region names are stable across the breakpoint; only their rectangles move.
+    const barH = Math.min(BOTTOM_H, height);
+    const vitalsH = Math.min(Math.round(barH * 0.6), Math.max(0, height - barH));
+    const temporalH = Math.min(Math.round(TEMPORAL_H * 0.4), height);
+    const temporal: Rect = { x: 0, y: 0, width, height: temporalH };
+    const rail: Rect = { x: 0, y: height - barH, width, height: barH };
+    const status: Rect = {
       x: 0,
-      y: statusH,
+      y: Math.max(temporalH, height - barH - vitalsH),
       width,
-      height: Math.max(0, height - statusH - railH),
+      height: vitalsH,
     };
-    const notice: Rect = {
-      x: GUTTER,
-      y: Math.max(stage.y, rail.y - GUTTER - 40),
-      width: Math.max(0, width - GUTTER * 2),
-      height: Math.min(40, Math.max(0, stage.height - GUTTER)),
+    const stageY = temporalH;
+    const stageH = Math.max(0, status.y - stageY);
+    const stage: Rect = { x: 0, y: stageY, width, height: stageH };
+    // Nothing is left for a separate notice or focus band on a phone, so both ride the
+    // stage's own rectangle and are drawn over it rather than beside it.
+    const notice: Rect = { x: 0, y: stageY, width, height: Math.min(NOTICE_H, stageH) };
+    const focus: Rect = {
+      x: 0,
+      y: stageY + notice.height,
+      width,
+      height: Math.max(0, stageH - notice.height),
     };
-    return { status, temporal, rail, notice, stage, focus: { x: 0, y: 0, width, height } };
+    return { status, temporal, rail, notice, stage, focus };
   }
 
-  const railW = Math.min(QUEUE_W, width);
-  const temporalH = Math.min(statusH, height);
+  const rightW = Math.min(RIGHT_W, width);
+  const barH = Math.min(BOTTOM_H, height);
+  const vitalsW = Math.min(VITALS_W, Math.max(0, width - rightW));
 
-  const status: Rect = { x: 0, y: 0, width: Math.min(statusW, width - railW), height: statusH };
-  const temporal: Rect = { x: width - railW, y: 0, width: railW, height: temporalH };
+  // The bottom bar: the queue takes the wide left run, the vitals the right end of it.
   const rail: Rect = {
-    x: width - railW,
-    y: temporalH,
-    width: railW,
-    height: Math.max(0, height - temporalH),
+    x: 0,
+    y: height - barH,
+    width: Math.max(0, width - vitalsW),
+    height: barH,
   };
+  const status: Rect = {
+    x: Math.max(0, width - vitalsW),
+    y: height - barH,
+    width: vitalsW,
+    height: barH,
+  };
+
+  // The right column, top to bottom: time, then what reports, then what asks. The
+  // information panel gets the remainder, and scrolls rather than growing.
+  const colX = width - rightW;
+  const colH = Math.max(0, height - barH);
+  const temporalH = Math.min(Math.round(TEMPORAL_H * Math.max(1, scale)), colH);
+  const noticeH = Math.min(NOTICE_H, Math.max(0, colH - temporalH));
+  const temporal: Rect = { x: colX, y: 0, width: rightW, height: temporalH };
+  const notice: Rect = { x: colX, y: temporalH, width: rightW, height: noticeH };
+  const focus: Rect = {
+    x: colX,
+    y: temporalH + noticeH,
+    width: rightW,
+    height: Math.max(0, colH - temporalH - noticeH),
+  };
+
+  // The room: everything the frame does not take.
   const stage: Rect = {
     x: 0,
     y: 0,
-    width: Math.max(0, width - railW),
-    height: Math.max(0, height - 0),
-  };
-  // `NOTICE` is a column at the bottom-left of the space chrome leaves: left of the rail,
-  // below `STATUS`. One stack growing upward, so notices never scatter and never overlap
-  // the two surfaces the player steers with.
-  const noticeW = Math.min(320, Math.max(0, width - railW - GUTTER * 2));
-  const noticeH = Math.max(0, height - statusH - GUTTER * 2);
-  const notice: Rect = {
-    x: GUTTER,
-    y: Math.max(statusH + GUTTER, height - GUTTER - noticeH),
-    width: noticeW,
-    height: noticeH,
+    width: Math.max(0, width - rightW),
+    height: Math.max(0, height - barH),
   };
 
-  return { status, temporal, rail, notice, stage, focus: { x: 0, y: 0, width, height } };
+  return { status, temporal, rail, notice, stage, focus };
 }
 
 /**
@@ -235,10 +271,12 @@ export function worldReservation(input: RegionInput): {
   queueWidth: number;
 } {
   const r = regionsFor(input);
-  const narrow = Math.max(0, input.width) < NARROW_MAX;
+  const height = Math.max(0, input.height);
+  const width = Math.max(0, input.width);
+  // The room is `stage`; the solver wants the space the frame costs it.
   return {
-    hudHeight: narrow ? r.status.height + r.rail.height : r.status.height,
-    queueWidth: narrow ? 0 : r.rail.width,
+    hudHeight: Math.max(0, height - r.stage.height),
+    queueWidth: Math.max(0, width - r.stage.width),
   };
 }
 

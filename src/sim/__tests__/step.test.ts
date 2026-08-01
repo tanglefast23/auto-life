@@ -4,7 +4,7 @@ import { PrngStreams } from '../prng';
 import { toDisplay, toFixed } from '../fixed';
 import { content } from '../content';
 
-const fresh = (): SimState => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = (): SimState => newGameState('baseline', content.rates, 1234, content.perks);
 
 const run = (s: SimState, ticks: number, commandsAt: Record<number, Command[]> = {}) => {
   let state = s;

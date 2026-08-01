@@ -18,7 +18,7 @@ const index = atlasIndexJson as AtlasIndex;
  * can be checked without a compositor is checked here instead.
  */
 
-const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = () => newGameState('baseline', content.rates, 1234, content.perks);
 
 /** Drive a whole day at a given speed, sampling the character quad every tick. */
 function watchOneDay(speed: 1 | 2 | 4) {

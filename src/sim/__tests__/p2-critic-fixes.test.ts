@@ -7,7 +7,7 @@ import { toDisplay, toFixed } from '../fixed';
 import { content } from '../content';
 import type { QueueCard } from '../queue';
 
-const fresh = (): SimState => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = (): SimState => newGameState('baseline', content.rates, 1234, content.perks);
 const reactive = content.reactive;
 
 const run = (s: SimState, ticks: number, commandsAt: Record<number, Command[]> = {}) => {
@@ -97,10 +97,25 @@ test('practice multiplier is frozen at start: two morning sessions differ only b
   // Consecutive practices: block curve ×1.0 then ×0.85 on the SAME sampled multiplier
   // basis except each session re-samples at its own start; the ratio must sit near
   // 0.85 (small drift from bar movement between starts, but bounded).
-  const ratio = awards[1]! / awards[0]!;
+  //
+  // docs/08 adds a fifth factor, and it is the one factor that is NOT a function of the
+  // bars: each session rolls its own grade. Dividing it back out is what keeps this test
+  // measuring the thing it was written to measure — that the other four multipliers are
+  // frozen at start — rather than measuring the dice.
+  const grades = events
+    .filter((e) => e.type === 'activityGraded' && e.detail.startsWith('practice:'))
+    .map((e) => gradeMultiplier(e.detail.slice('practice:'.length)));
+  expect(grades).toHaveLength(2);
+  const ratio = (awards[1]! / grades[1]!) / (awards[0]! / grades[0]!);
   expect(ratio).toBeGreaterThan(0.78);
   expect(ratio).toBeLessThan(0.88);
 });
+
+function gradeMultiplier(gradeId: string): number {
+  const grade = content.grades.grades.find((g) => g.id === gradeId);
+  if (grade === undefined) throw new Error(`unknown grade "${gradeId}"`);
+  return grade.multiplier100 / 100;
+}
 
 test('the 5th practice of a day awards nothing', () => {
   const at = 420 + 150;

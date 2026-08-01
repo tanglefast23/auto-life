@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -16,6 +16,11 @@ import { solveScale } from '../render/scale';
 import { Hud } from '../ui/Hud';
 import { QueueStrip, UndoToastNotice, type QueueStripHandle } from '../ui/QueueStrip';
 import { type NoticeItem } from '../ui/NoticeColumn';
+import { RollBanner, useLatestGrade } from '../ui/RollBanner';
+import { gradeLabel, statLabel } from '../ui/character-copy';
+import { titleCase } from '../ui/queue-copy';
+import type { BarId } from '../sim/types';
+import { JournalPanel } from '../ui/JournalPanel';
 import {
   WorldInteractions,
   type WorldInteractionsHandle,
@@ -60,6 +65,13 @@ export interface GameScreenProps {
   idleVariantId?: string | null;
   /** One walk-cycle contact. The composition root owns the bus; this only reports the step. */
   onFootstep?: (material: FloorMaterial) => void;
+  /**
+   * The bar beat of the grade sequence (docs/08 §11.1).
+   *
+   * Reported from here rather than routed from a domain event, for the same reason
+   * `onFootstep` is: the sound belongs to a moment inside an animation, not to a tick.
+   */
+  onBarPop?: () => void;
 }
 
 export function GameScreen(props: GameScreenProps = {}) {
@@ -81,6 +93,7 @@ function HydratedGameScreen({
   appearancePresetId,
   idleVariantId = null,
   onFootstep,
+  onBarPop,
 }: { loop: GameLoop } & GameScreenProps) {
   const snapshot = useGameStore((s) => s.snapshot);
   const speed = useGameStore((s) => s.speed);
@@ -160,20 +173,46 @@ function HydratedGameScreen({
    * A surface belongs here if it *reports*; it stays anchored if it *points* at something
    * on screen — which is why the goal and intention chips are not in this list (§7.2).
    */
+  /**
+   * The journal opens over the information column and closes back to it — same rectangle,
+   * so the screen never changes shape. It is the reason `FOCUS` is a region rather than a
+   * centred overlay.
+   */
+  const [journalOpen, setJournalOpen] = useState(false);
+
+  const reducedMotion = useReducedMotionPreference(
+    preferences.display.reducedMotion,
+  );
+  const liveGrade = useLatestGrade(snapshot?.grade ?? null, reducedMotion, onBarPop);
+
   const notices = useMemo<NoticeItem[]>(() => {
     const items: NoticeItem[] = [];
+    // Undo goes FIRST, and that ordering is the rule rather than a habit: `NoticeColumn`
+    // keeps the first `MAX_VISIBLE` and drops the rest, and on a narrow viewport that cap is
+    // one. Undo is a five-second window on something the player did; a grade is a report on
+    // something the sim did. The report is the one that can be missed.
     if (undoToast !== null) {
       items.push({
         id: `undo:${undoToast.receiptId}`,
         node: <UndoToastNotice undoToast={undoToast} onUndo={undoLastRemove} />,
       });
     }
+    if (liveGrade !== null) {
+      items.push({
+        id: `grade:${liveGrade.cardId}`,
+        node: (
+          <RollBanner
+            grade={liveGrade}
+            gradeLabel={gradeLabel(liveGrade.gradeId)}
+            statLabel={liveGrade.statId === null ? null : statLabel(liveGrade.statId)}
+            activityLabel={titleCase(liveGrade.activityId)}
+            reducedMotion={reducedMotion}
+          />
+        ),
+      });
+    }
     return items;
-  }, [undoToast, undoLastRemove]);
-
-  const reducedMotion = useReducedMotionPreference(
-    preferences.display.reducedMotion,
-  );
+  }, [undoToast, undoLastRemove, liveGrade, reducedMotion]);
   const queueStripRef = useRef<QueueStripHandle>(null);
   const worldInteractionsRef = useRef<WorldInteractionsHandle>(null);
   const firstSessionRef = useRef<FirstSessionUIHandle>(null);
@@ -454,6 +493,8 @@ function HydratedGameScreen({
       </View>
       <Hud
         regions={regions}
+        journalOpen={journalOpen}
+        onOpenJournal={() => setJournalOpen((open) => !open)}
         snapshot={snapshot}
         speed={speed}
         onSpeed={setSpeed}
@@ -467,6 +508,11 @@ function HydratedGameScreen({
         }}
         muted={preferences.audio.muted}
         reducedMotion={reducedMotion}
+        gradePop={
+          liveGrade === null
+            ? null
+            : { key: liveGrade.cardId, bars: Object.keys(liveGrade.deltas) as BarId[] }
+        }
         textScale={hudTextScale}
         nonColorUrgency={preferences.accessibility.nonColorUrgency}
         screenReaderVerbosity={
@@ -515,6 +561,13 @@ function HydratedGameScreen({
           snapshot?.session.recap.completedActivityIds
         }
       />
+      {snapshot !== null && journalOpen && (
+        <JournalPanel
+          session={snapshot.session}
+          region={regions.focus}
+          onClose={() => setJournalOpen(false)}
+        />
+      )}
       {snapshot !== null && (
         <FirstSessionUI
           regions={regions}
@@ -529,6 +582,7 @@ function HydratedGameScreen({
           onRespondToLetter={respondToLetter}
           currentDay={snapshot.day}
           autonomy={autonomy}
+          character={snapshot.character}
           practicePoints100={Math.round(
             snapshot.practicePoints * 100,
           )}

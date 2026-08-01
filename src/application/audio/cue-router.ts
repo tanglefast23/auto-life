@@ -36,7 +36,8 @@ export type DomainCueEvent =
   | { kind: 'queue-card-inserted' }
   | { kind: 'queue-card-removed' }
   | { kind: 'activity-started'; activityId: string }
-  | { kind: 'activity-completed'; activityId: string }
+  /** `graded` is the band when this completion resolved a check (docs/08 §11.4). */
+  | { kind: 'activity-completed'; activityId: string; graded?: 'high' | 'mid' | 'low' }
   | { kind: 'activity-stopped'; activityId: string }
   | { kind: 'adjacency-granted' }
   | { kind: 'urgent-raised' }
@@ -193,6 +194,18 @@ export class CueRouter {
     else if (this.bus.has(RAIN_KEY)) this.bus.remove(RAIN_KEY);
   }
 
+  /**
+   * The bar beat of the grade sequence (docs/08 §11.1), fired by the UI's own timeline.
+   *
+   * Driven from presentation rather than from a domain event for the same reason
+   * `onFootstep` is: the sound belongs to a moment inside an animation, not to a tick. Sound
+   * *policy* still lives here, so pause and hydration silence it like everything else.
+   */
+  onBarPop(): void {
+    if (this.paused || this.hydrating) return;
+    this.bus.playCue('sfx.bar.pop', this.audio.cues.barPop);
+  }
+
   /** A footstep per walk-cycle contact, pitched by the floor the sim is standing on. */
   onFootstep(material: FloorMaterial): void {
     if (this.paused || this.hydrating) return;
@@ -234,10 +247,24 @@ export class CueRouter {
         this.bus.playLoop(key, loop, 'sfx');
         return;
       }
-      case 'activity-completed':
+      case 'activity-completed': {
         this.stopLoop(event.activityId);
+        // A graded completion plays the grade INSTEAD of the generic settle. It is a more
+        // specific sound, not an extra one — playing both would put two cues on one
+        // completed action, which is exactly the rule at the top of this file.
+        if (event.graded !== undefined) {
+          const cue =
+            event.graded === 'high'
+              ? this.audio.cues.gradeHigh
+              : event.graded === 'mid'
+                ? this.audio.cues.gradeMid
+                : this.audio.cues.gradeLow;
+          this.bus.playCue('sfx.grade', cue);
+          return;
+        }
         this.bus.playCue('sfx.queue.complete', this.audio.cues.queueComplete);
         return;
+      }
       case 'activity-stopped':
         // Stop is a player cancelling. The loop ends; no completion sound is earned.
         this.stopLoop(event.activityId);

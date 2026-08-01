@@ -24,7 +24,10 @@ export type MotionTrigger =
   | 'urgent'
   | 'recap-shown'
   | 'queue-changed'
-  | 'lighting-changed';
+  | 'lighting-changed'
+  | 'roll-revealed'
+  | 'grade-stamped'
+  | 'bar-popped';
 
 export interface Motion {
   /** Milliseconds. Zero means "apply the end state immediately". */
@@ -61,7 +64,24 @@ export const MOTION = {
   queueGlance: { durationMs: 500, frames: 0, trigger: 'queue-changed', decorative: true },
   /** design.md §7: the 19:00 change is "the coziest beat of the day" — a fade, not a cut. */
   lightingCrossfade: { durationMs: 4000, frames: 0, trigger: 'lighting-changed', decorative: false },
+  /**
+   * docs/08 §11.1's three-beat reveal, ~800 ms end to end.
+   *
+   * `dieTumble` is decoration and collapses to nothing under reduced motion — the face still
+   * renders, it simply arrives on its final number. `gradeStamp` is **not** decorative: the
+   * letter is the information the whole system exists to deliver, and SPEC §11.6's rule is
+   * that a state change keeps its end state and loses only the tween.
+   */
+  dieTumble: { durationMs: 240, frames: 6, trigger: 'roll-revealed', decorative: true },
+  gradeStamp: { durationMs: 360, frames: 0, trigger: 'grade-stamped', decorative: false, squash: 1.18 },
+  barPop: { durationMs: 200, frames: 0, trigger: 'bar-popped', decorative: true, squash: 1.15 },
 } as const satisfies Record<string, Motion>;
+
+/** When each beat of the reveal starts, measured from the completion tick (docs/08 §11.1). */
+export const ROLL_BEATS = { die: 0, grade: 240, bar: 600 } as const;
+
+/** The whole sequence, so the banner knows how long to stay alive. */
+export const ROLL_SEQUENCE_MS = ROLL_BEATS.bar + MOTION.barPop.durationMs;
 
 export type MotionName = keyof typeof MOTION;
 

@@ -12,11 +12,15 @@ import rawIntentions from '../../content/intentions.json';
 import rawWrinkles from '../../content/wrinkles.json';
 import rawStorylets from '../../content/storylets.json';
 import rawIdentity from '../../content/identity.json';
+import rawStats from '../../content/stats.json';
+import rawPerks from '../../content/perks.json';
+import rawGrades from '../../content/grades.json';
 import rawQueueStrings from '../../content/strings/queue.json';
 import rawFirstSessionStrings from '../../content/strings/first-session.json';
 import rawGoalStrings from '../../content/strings/goals.json';
 import rawIntentionStrings from '../../content/strings/intentions.json';
 import rawIdentityStrings from '../../content/strings/identity.json';
+import rawCharacterStrings from '../../content/strings/character.json';
 import rawWrinkleStrings from '../../content/strings/wrinkles.json';
 import rawStoryletStrings from '../../content/strings/storylets.json';
 import rawAppShellStrings from '../../content/strings/app-shell.json';
@@ -34,6 +38,9 @@ import {
   ReactiveSchema,
   GoalsSchema,
   IdentitySchema,
+  StatsSchema,
+  PerksSchema,
+  GradesSchema,
   IntentionsSchema,
   StoryletsSchema,
   StringCatalogSchema,
@@ -44,6 +51,9 @@ import {
   type GoalsConfig,
   type HomeMapConfig,
   type IdentityConfig,
+  type StatsConfig,
+  type PerksConfig,
+  type GradesConfig,
   type IntentionsConfig,
   type ObjectsConfig,
   type PracticeConfig,
@@ -78,6 +88,10 @@ export interface ContentRegistry {
   wrinkles: WrinklesConfig;
   storylets: StoryletsConfig;
   identity: IdentityConfig;
+  /** docs/08: the four stats, the perk families, and the grade ladder. */
+  stats: StatsConfig;
+  perks: PerksConfig;
+  grades: GradesConfig;
   strings: StringCatalog;
 }
 
@@ -433,6 +447,8 @@ export function validateContentRegistry(registry: ContentRegistry): void {
     }
   }
 
+  validateCharacterContent(registry, requireString);
+
   requireUniqueIds(registry.wrinkles.entries, 'wrinkle');
   const wrinklesById = new Map(
     registry.wrinkles.entries.map((wrinkle) => [wrinkle.id, wrinkle]),
@@ -690,6 +706,74 @@ function authoredStringIds(
   );
 }
 
+/**
+ * docs/08 assertion 4, as a build gate: no dormant stat, no dormant perk.
+ *
+ * The failure this prevents is the one SPEC §6.5 and §6.7 both name — a mechanic that
+ * ships, occupies a slot in the character, and can never fire. It is why the
+ * Introvert/Extrovert family is *not* in `perks.json`: `social` has no member activity, so
+ * Extrovert would be a rolled trait that does nothing, and this function would say so.
+ *
+ * "Observable" is deliberately stricter than "non-empty". A perk whose only tagged activity
+ * is `practice` would technically be live, but the planner never schedules practice (SPEC
+ * §8), so an unattended career would never see it. The anchor blocks are what the planner
+ * books every day, so they are the right bar.
+ */
+function validateCharacterContent(
+  registry: ContentRegistry,
+  requireString: (stringId: string, owner: string) => void,
+): void {
+  const graded = registry.activities.activities.filter((a) => a.graded === true);
+  const governed = new Set(graded.map((a) => a.stat));
+  for (const stat of registry.stats.stats) {
+    requireString(stat.labelStringId, `stat "${stat.id}"`);
+    requireString(stat.blurbStringId, `stat "${stat.id}"`);
+    if (!governed.has(stat.id)) {
+      throw new Error(
+        `invalid content registry: stat "${stat.id}" governs no graded activity`,
+      );
+    }
+  }
+
+  const dailyBooked = new Set(
+    registry.anchors.anchors.flatMap((anchor) =>
+      anchor.block.flatMap((id) =>
+        // The workout anchor books whichever workout the character prefers; both count.
+        id === '__preferredWorkout' ? ['weights', 'treadmill'] : [id],
+      ),
+    ),
+  );
+  const activitiesWithTag = (tag: string) =>
+    graded.filter((a) => a.rollTags?.includes(tag as never) === true);
+
+  for (const family of registry.perks.families) {
+    requireString(family.labelStringId, `perk family "${family.id}"`);
+    for (const option of family.options) {
+      requireString(option.labelStringId, `perk "${option.id}"`);
+      requireString(option.blurbStringId, `perk "${option.id}"`);
+      for (const effect of option.effects) {
+        const tag = effect.kind === 'durationFactor' ? effect.tag : effect.kind === 'rollShape' ? effect.tag : undefined;
+        if (tag === undefined) continue;
+        const tagged = activitiesWithTag(tag);
+        if (tagged.length === 0) {
+          throw new Error(
+            `invalid content registry: perk "${option.id}" matches tag "${tag}", which no graded activity carries`,
+          );
+        }
+        if (!tagged.some((a) => dailyBooked.has(a.id))) {
+          throw new Error(
+            `invalid content registry: perk "${option.id}" matches tag "${tag}", which the routine never books — it would be invisible in an unattended career`,
+          );
+        }
+      }
+    }
+  }
+
+  for (const grade of registry.grades.grades) {
+    requireString(grade.labelStringId, `grade "${grade.id}"`);
+  }
+}
+
 const parsedContent: ContentRegistry = {
   rates: RatesSchema.parse(rawRates),
   activities: ActivitiesSchema.parse(rawActivities),
@@ -705,6 +789,9 @@ const parsedContent: ContentRegistry = {
   wrinkles: WrinklesSchema.parse(rawWrinkles),
   storylets: StoryletsSchema.parse(rawStorylets),
   identity: IdentitySchema.parse(rawIdentity),
+  stats: StatsSchema.parse(rawStats),
+  perks: PerksSchema.parse(rawPerks),
+  grades: GradesSchema.parse(rawGrades),
   strings: StringCatalogSchema.parse({
     ids: [
       ...authoredStringIds('queue', rawQueueStrings),
@@ -712,6 +799,7 @@ const parsedContent: ContentRegistry = {
       ...authoredStringIds('goals', rawGoalStrings),
       ...authoredStringIds('intentions', rawIntentionStrings),
       ...authoredStringIds('identity', rawIdentityStrings),
+      ...authoredStringIds('character', rawCharacterStrings),
       ...authoredStringIds('wrinkles', rawWrinkleStrings),
       ...authoredStringIds('storylets', rawStoryletStrings),
       ...authoredStringIds('app-shell', rawAppShellStrings),

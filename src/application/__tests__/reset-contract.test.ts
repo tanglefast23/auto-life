@@ -13,7 +13,7 @@ function justBeforePackage(): SimState {
     'baseline',
     content.rates,
     ROOT_SEED,
-    PrngStreams.create(ROOT_SEED).serialize(),
+    content.perks,
   );
   state.clock.absoluteMinute = 599;
   state.bars = {

@@ -37,8 +37,15 @@ export const PrngSnapshotSchema = z.strictObject({
 });
 export type PrngSnapshot = z.infer<typeof PrngSnapshotSchema>;
 
-/** One mulberry32 step from a uint32 state; returns the next state and the draw. */
-function mulberryNext(state: number): { state: number; value: number } {
+/**
+ * One mulberry32 step from a uint32 state; returns the next state and the draw.
+ *
+ * Exported for `roll.ts`, whose stream record lives inside `SimState` rather than in this
+ * snapshot (docs/08 §8.1): `step()` takes no PRNG, so the activity check has to advance its
+ * record functionally, and `SimState` must stay a plain JSON DTO with no class instances.
+ * Same generator, so the sixth stream is the same kind of thing as the five.
+ */
+export function mulberryNext(state: number): { state: number; value: number } {
   let a = state >>> 0;
   a = (a + 0x6d2b79f5) | 0;
   let t = Math.imul(a ^ (a >>> 15), 1 | a);

@@ -10,7 +10,7 @@ import { newSession } from '../../game/session';
  * knows about the loop, and `game/` never runs before the sim step it is observing.
  */
 
-const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = () => newGameState('baseline', content.rates, 1234, content.perks);
 
 test('a new loop starts on a fresh session', () => {
   expect(new GameLoop(fresh(), content).session).toEqual(newSession());

@@ -23,7 +23,7 @@ function fresh(): SimState {
     'baseline',
     content.rates,
     seed,
-    PrngStreams.create(seed).serialize(),
+    content.perks,
   );
 }
 

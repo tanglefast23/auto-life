@@ -23,7 +23,8 @@
         "wakeOffsetStart": 60,
         "wakeOffsetEnd": 780
       },
-      "suppressPassiveEnergyWhenEffective": true
+      "suppressPassiveEnergyWhenEffective": true,
+      "stat": "vitality"
     },
     {
       "id": "meal",
@@ -34,7 +35,12 @@
       "effects": {
         "nutrition": 35
       },
-      "fillStartsAfterFraction": 0.4
+      "fillStartsAfterFraction": 0.4,
+      "stat": "dexterity",
+      "graded": true,
+      "rollTags": [
+        "expressive"
+      ]
     },
     {
       "id": "snack",
@@ -44,7 +50,9 @@
       "baseMin": 10,
       "effects": {
         "nutrition": 10
-      }
+      },
+      "stat": "dexterity",
+      "graded": true
     },
     {
       "id": "weights",
@@ -58,7 +66,9 @@
       "effects": {
         "movement": 50,
         "nutrition": -5
-      }
+      },
+      "stat": "strength",
+      "graded": true
     },
     {
       "id": "treadmill",
@@ -72,7 +82,9 @@
       "effects": {
         "movement": 50,
         "hygiene": -5
-      }
+      },
+      "stat": "strength",
+      "graded": true
     },
     {
       "id": "stretch",
@@ -82,7 +94,12 @@
       "baseMin": 15,
       "effects": {
         "movement": 8
-      }
+      },
+      "stat": "strength",
+      "graded": true,
+      "rollTags": [
+        "routine"
+      ]
     },
     {
       "id": "shower",
@@ -92,7 +109,12 @@
       "baseMin": 20,
       "effects": {
         "hygiene": 40
-      }
+      },
+      "stat": "vitality",
+      "graded": true,
+      "rollTags": [
+        "routine"
+      ]
     },
     {
       "id": "quickwash",
@@ -102,7 +124,12 @@
       "baseMin": 8,
       "effects": {
         "hygiene": 15
-      }
+      },
+      "stat": "vitality",
+      "graded": true,
+      "rollTags": [
+        "routine"
+      ]
     },
     {
       "id": "brush",
@@ -112,7 +139,12 @@
       "baseMin": 5,
       "effects": {
         "hygiene": 10
-      }
+      },
+      "stat": "vitality",
+      "graded": true,
+      "rollTags": [
+        "routine"
+      ]
     },
     {
       "id": "toilet",
@@ -137,14 +169,20 @@
       "object": "couch",
       "pose": "sit",
       "baseMin": 15,
-      "effects": {}
+      "effects": {},
+      "stat": "intellect"
     },
     {
       "id": "practice",
       "kind": "practice",
       "object": "guitar",
       "pose": "practice",
-      "baseMin": 60
+      "baseMin": 60,
+      "stat": "intellect",
+      "graded": true,
+      "rollTags": [
+        "expressive"
+      ]
     },
     {
       "id": "idle",

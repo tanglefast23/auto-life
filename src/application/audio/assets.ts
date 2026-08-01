@@ -34,4 +34,8 @@ export const AUDIO_ASSETS: Record<string, number> = {
   'ui.adjacency': require('../../../assets/audio/ui.adjacency.wav'),
   'ui.urgency': require('../../../assets/audio/ui.urgency.wav'),
   'ui.recap': require('../../../assets/audio/ui.recap.wav'),
+  'ui.grade.high': require('../../../assets/audio/ui.grade.high.wav'),
+  'ui.grade.mid': require('../../../assets/audio/ui.grade.mid.wav'),
+  'ui.grade.low': require('../../../assets/audio/ui.grade.low.wav'),
+  'ui.bar.pop': require('../../../assets/audio/ui.bar.pop.wav'),
 };

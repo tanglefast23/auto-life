@@ -8,7 +8,7 @@ import { newGameState, restoreSimState, type SimState } from '../state';
 import { step } from '../step';
 
 const fresh = (): SimState =>
-  newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+  newGameState('baseline', content.rates, 1234, content.perks);
 
 const card = (over: Partial<QueueCard> & { id: string; activityId: string }): QueueCard => ({
   owner: 'AUTO',

@@ -20,7 +20,7 @@ function pastDayTenCareer() {
     'baseline',
     content.rates,
     seed,
-    prng,
+    content.perks,
   );
   sim.clock.absoluteMinute = 10 * TICKS_PER_DAY + 600;
   sim.practice.points100 = 30_000;

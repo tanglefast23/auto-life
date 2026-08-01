@@ -60,7 +60,7 @@ describe('GameScreen fatal recovery surface', () => {
           'baseline',
           content.rates,
           1234,
-          prng,
+          content.perks,
         ),
         prng,
       }),

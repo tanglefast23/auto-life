@@ -9,7 +9,7 @@ import { interpolateTravel } from '../../sim/render-view';
  * Every test below is a defect that existed.
  */
 
-const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = () => newGameState('baseline', content.rates, 1234, content.perks);
 
 /** Advance until the predicate holds; returns the snapshot at that tick. */
 function until(loop: GameLoop, pred: (s: ReturnType<GameLoop['runOneTick']>) => boolean, max = 60) {

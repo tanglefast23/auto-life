@@ -17,7 +17,7 @@ import { FONT, MIN_READABLE, PIXEL_EM } from '../theme';
  */
 
 const snapshot = new GameLoop(
-  newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize()),
+  newGameState('baseline', content.rates, 1234, content.perks),
   content,
 ).snapshot;
 

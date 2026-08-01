@@ -23,7 +23,7 @@ interface DayDigest {
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 function runGoldenWeek() {
-  let s = newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+  let s = newGameState('baseline', content.rates, 1234, content.perks);
   const mc = morningCheckMinute('baseline', content.rates);
   const days: DayDigest[] = [];
   const freshDay = (): DayDigest => ({ morningCheck: null, minPerBar: { energy: 100, nutrition: 100, movement: 100, hygiene: 100 }, maxPerBar: { energy: 0, nutrition: 0, movement: 0, hygiene: 0 }, completions: {}, travelMinutes: 0, urgentEvents: 0 });
@@ -63,7 +63,7 @@ function runGoldenWeek() {
 
 test('golden week: digest matches the recorded replay and the pinned ENGINE_VERSION', () => {
   const golden = runGoldenWeek();
-  expect(golden.engineVersion).toBe(11);
+  expect(golden.engineVersion).toBe(12);
   expect(golden.firstWakeOrder).toEqual(['toilet', 'brush', 'shower', 'meal']); // §7.1 Day-1 order
   expect(golden).toMatchSnapshot();
 });

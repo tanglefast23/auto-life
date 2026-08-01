@@ -38,7 +38,7 @@ test('a pending dealt wrinkle survives an exact save/resume without a second dra
     'baseline',
     content.rates,
     rootSeed,
-    prng,
+    content.perks,
   );
   sim.clock.absoluteMinute = 1440 + 7 * 60;
   const career = newCareerState({

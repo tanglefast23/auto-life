@@ -16,7 +16,7 @@ import {
 import {
   newAppPreferencesEnvelope,
   newCareerState,
-  STAMP_FORWARD_ENGINE_VERSIONS,
+  MIGRATABLE_ENGINE_VERSIONS,
   type StoredCareer,
 } from '../career-state';
 
@@ -101,7 +101,7 @@ function freshCareer(
       'baseline',
       content.rates,
       seed,
-      prng,
+      content.perks,
     ),
     prng,
     careerId,
@@ -276,9 +276,9 @@ test('engine v8 careers migrate without losing the saved queue', async () => {
  * This iterates the declared list rather than naming versions, because a hand-maintained
  * list of "versions we remembered to test" is the same shape of mistake as the
  * hand-maintained literal that caused it. Adding a version to
- * `STAMP_FORWARD_ENGINE_VERSIONS` now automatically requires it to load.
+ * `MIGRATABLE_ENGINE_VERSIONS` now automatically requires it to load.
  */
-test.each(STAMP_FORWARD_ENGINE_VERSIONS)(
+test.each(MIGRATABLE_ENGINE_VERSIONS)(
   'an engine v%i career migrates forward rather than falling into recovery',
   async (version) => {
     const store = new FakeKvStore();
@@ -315,7 +315,7 @@ test.each(STAMP_FORWARD_ENGINE_VERSIONS)(
 test('every engine version below the current one is either migrated or deliberately not', () => {
   // The gap this closes: v10 was current, v9 had shipped, and nothing anywhere asserted
   // that the set of loadable versions reached back to the current one without a hole.
-  const covered = [...STAMP_FORWARD_ENGINE_VERSIONS];
+  const covered = [...MIGRATABLE_ENGINE_VERSIONS];
   expect(Math.max(...covered)).toBe(ENGINE_VERSION - 1);
   for (let v = Math.min(...covered); v < ENGINE_VERSION; v += 1) {
     expect(covered).toContain(v);

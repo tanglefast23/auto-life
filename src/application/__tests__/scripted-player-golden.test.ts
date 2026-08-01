@@ -40,7 +40,7 @@ function fresh(): SimState {
     'baseline',
     content.rates,
     ROOT_SEED,
-    PrngStreams.create(ROOT_SEED).serialize(),
+    content.perks,
   );
 }
 
@@ -401,7 +401,7 @@ function recordedScriptedPlayerReplay() {
 test('scripted player golden covers the P4 command surface and full sim plus game state', () => {
   const replay = recordedScriptedPlayerReplay();
 
-  expect(replay.engineVersion).toBe(11);
+  expect(replay.engineVersion).toBe(12);
   expect(replay.digest.session.goals['meet-the-routine']?.status).toBe('rewarded');
   expect(replay.digest.session.goals['change-of-plans']?.status).toBe(
     'rewarded',

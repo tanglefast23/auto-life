@@ -72,7 +72,7 @@ import { content } from '../../sim/content';
 import { PrngStreams } from '../../sim/prng';
 import type { RenderView } from '../../sim/render-view';
 
-const fresh = () => newGameState('baseline', content.rates, 1234, PrngStreams.create(1234).serialize());
+const fresh = () => newGameState('baseline', content.rates, 1234, content.perks);
 
 /** Deterministic RAF: frames only advance when the test says so. */
 function installFakeRaf() {

@@ -22,7 +22,7 @@ function copyStringsFixture(): {
 }
 
 test('the reviewed authored-string batch is current', () => {
-  expect(validateWritingReviews()).toBe(10);
+  expect(validateWritingReviews()).toBe(11);
 });
 
 test('changing authored copy without a matching review makes validation fail', () => {

@@ -115,6 +115,22 @@
     "recap": {
       "assetId": "ui.recap",
       "gain": 0.75
+    },
+    "gradeHigh": {
+      "assetId": "ui.grade.high",
+      "gain": 0.5
+    },
+    "gradeMid": {
+      "assetId": "ui.grade.mid",
+      "gain": 0.42
+    },
+    "gradeLow": {
+      "assetId": "ui.grade.low",
+      "gain": 0.42
+    },
+    "barPop": {
+      "assetId": "ui.bar.pop",
+      "gain": 0.45
     }
   }
 }

@@ -12,7 +12,7 @@ import bands from '../../../../content/harness-bands.json';
  * TUNING (which P4.5 may invalidate); unit tests keep hard-coded values because they
  * verify formulas. Figures were recorded travel-inclusive before asserting (Q6).
  */
-const fresh = (seed: number): SimState => newGameState('baseline', content.rates, seed, PrngStreams.create(seed).serialize());
+const fresh = (seed: number): SimState => newGameState('baseline', content.rates, seed, content.perks);
 
 test('fairness: unattended week holds every band', () => {
   let s = fresh(1234);
@@ -57,6 +57,44 @@ test('fairness: unattended week holds every band', () => {
     expect(travel).toBeGreaterThanOrEqual(bands.travelMinutesPerDayBand[0]!);
     expect(travel).toBeLessThanOrEqual(bands.travelMinutesPerDayBand[1]!);
   }
+});
+
+/**
+ * docs/08 §9.3's floor, as the falsifiable gate the derivation promised.
+ *
+ * The fixture is named rather than seed-rolled, because "an all-stats-4 career" tests
+ * whatever perks the seed happens to deal. The worst legal character is specific: the
+ * lowest legal stats, the Drive perk that adds nothing to the roll, the Approach perk whose
+ * advantage misses the Hygiene activities, and the workout that costs Hygiene on top.
+ *
+ * At E[multiplier] 95.25% that character nets Nutrition +4.0/day, Hygiene −3.8 on treadmill
+ * days and Movement −0.4. If this ever fails, the answer is to raise `statStartMin` to 5 and
+ * re-derive §9.2's table — never to widen a band (SPEC §16.3).
+ */
+test('the worst legal starting character still survives an unattended week', () => {
+  let s = fresh(1234);
+  for (const id of Object.keys(s.stats) as (keyof typeof s.stats)[]) {
+    s.stats[id] = { level: content.rates.roll.statStartMin, xp: 0 };
+  }
+  s.perks = ['creative', 'easygoing'];
+  s.preferredWorkout = 'treadmill';
+
+  const mc = morningCheckMinute('baseline', content.rates);
+  let dayIndex = 1;
+  const mcFailures: string[] = [];
+  for (let t = 0; t < 7 * 1440; t++) {
+    const r = step(s, [], content);
+    s = r.next;
+    if (r.events.some((e) => e.type === 'wakeBoundary')) dayIndex += 1;
+    if (r.snapshot.minuteOfDay === mc && dayIndex >= bands.morningCheck.fromDay) {
+      for (const [bar, v] of Object.entries(r.snapshot.bars)) {
+        if (v < bands.morningCheck.floor) mcFailures.push(`day ${dayIndex} ${bar}=${v}`);
+      }
+    }
+  }
+  expect(mcFailures).toEqual([]);
+  expect(s.events.urgentCount).toBe(0);
+  expect(s.events.anchorsMissed).toBe(0);
 });
 
 test('routine Snacks maintain Nutrition without creating an urgent crisis', () => {

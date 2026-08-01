@@ -84,7 +84,7 @@ function career(careerId = 'shared-career', rootSeed = 7): StoredCareer {
       'baseline',
       content.rates,
       rootSeed,
-      PrngStreams.create(rootSeed).serialize(),
+      content.perks,
     ),
     careerId,
   });

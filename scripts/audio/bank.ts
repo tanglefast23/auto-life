@@ -211,6 +211,37 @@ const UI_CUES: Record<string, () => Samples> = {
       tone({ wave: 'sine', freq: (t) => 300 + 420 * t, duration: 0.3, gain: 0.28, attack: 0.02, release: 0.24 }),
       tone({ wave: 'noise', freq: 0, duration: 0.3, gain: 0.06, attack: 0.02, release: 0.28, seed: 131 }),
     ), 0.35),
+  /**
+   * The grade stamp (docs/08 §11.4). Three variants, and exactly one of them REPLACES
+   * `queue.complete` on a graded completion — a completion still owns one sound.
+   *
+   * None of them is the adjacency figure. That bright ascending motif is reserved for reward
+   * moments, in the palette and here; a good roll is a good roll, not a prize. So the high
+   * variant rises by a fifth rather than the octave-and-a-half `adjacency` climbs, and it
+   * stays on the same triangle voice the queue cues use.
+   */
+  'grade.high': () =>
+    normalize(join(
+      tone({ wave: 'triangle', freq: note(7), duration: 0.07, gain: 0.45 }),
+      tone({ wave: 'triangle', freq: note(14), duration: 0.18, gain: 0.42, release: 0.15 }),
+    ), 0.5),
+  // Mid is one note, deliberately: an average result should not editorialise.
+  'grade.mid': () =>
+    normalize(tone({ wave: 'triangle', freq: note(7), duration: 0.14, gain: 0.4, release: 0.11 }), 0.42),
+  // Low falls, but gently — a disappointing shower is not an alarm, and `urgency` already
+  // owns the game's only warning shape.
+  'grade.low': () =>
+    normalize(join(
+      tone({ wave: 'triangle', freq: note(7), duration: 0.07, gain: 0.38 }),
+      tone({ wave: 'triangle', freq: note(2), duration: 0.18, gain: 0.36, release: 0.16 }),
+    ), 0.42),
+  // The bar beat: a short pluck with a touch of noise for the attack, so it reads as
+  // something landing rather than another note in the melody.
+  'bar.pop': () =>
+    normalize(mix(
+      tone({ wave: 'sine', freq: (t) => 520 - 140 * t, duration: 0.12, gain: 0.34, attack: 0.005, release: 0.1 }),
+      tone({ wave: 'noise', freq: 0, duration: 0.05, gain: 0.05, attack: 0.002, release: 0.045, seed: 977 }),
+    ), 0.4),
 };
 
 /** Every asset id the bank renders, and the samples for it. */

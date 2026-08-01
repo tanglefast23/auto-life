@@ -82,7 +82,7 @@
         },
         {
           "id": "details.practiceUncounted",
-          "before": "Past today's {max} counted sessions — earns no points.",
+          "before": "Past today's {max} counted sessions \u2014 earns no points.",
           "after": "Only the first {max} sessions a day earn points. This one earns nothing.",
           "reason": "Removed the em dash and the sentence fragment, and said plainly that this card scores zero."
         }
@@ -578,6 +578,103 @@
       ],
       "rewrites": [],
       "checklist": "Humanizer 2.2.0 and writing.md section 5 passed. The choice and bonus are explicit, decline timing is plain, and acceptance does not promise playable v2 systems."
+    },
+    {
+      "file": "content/strings/character.json",
+      "sha256": "a41fa2f75e31a6926a8f5d7526e60e60baf9ed31cda6499b6e27121e25742033",
+      "reviewedAt": "2026-08-01",
+      "humanizer": {
+        "name": "humanizer",
+        "version": "2.2.0",
+        "invocation": "Humanizer 2.2.0 full-batch pattern scan, read-aloud pass, anti-AI pass, and writing.md checklist for the docs/08 stat, perk and grade strings."
+      },
+      "stringIds": [
+        "blurbs.creative",
+        "blurbs.dexterity",
+        "blurbs.easygoing",
+        "blurbs.intellect",
+        "blurbs.methodical",
+        "blurbs.perfectionist",
+        "blurbs.strength",
+        "blurbs.vitality",
+        "families.approach",
+        "families.drive",
+        "grades.a",
+        "grades.aMinus",
+        "grades.aPlus",
+        "grades.b",
+        "grades.bMinus",
+        "grades.bPlus",
+        "grades.c",
+        "grades.cMinus",
+        "grades.cPlus",
+        "grades.d",
+        "grades.dMinus",
+        "grades.dPlus",
+        "grades.f",
+        "grades.fMinus",
+        "grades.fPlus",
+        "panel.level",
+        "panel.perksTitle",
+        "panel.title",
+        "panel.toNext",
+        "perks.creative",
+        "perks.easygoing",
+        "perks.methodical",
+        "perks.perfectionist",
+        "roll.advantage",
+        "roll.disadvantage",
+        "roll.rolled",
+        "stats.dexterity",
+        "stats.intellect",
+        "stats.strength",
+        "stats.vitality"
+      ],
+      "rewrites": [
+        {
+          "id": "blurbs.strength",
+          "before": "Lifting, running, moving the body.",
+          "after": "Lifting, running, carrying things.",
+          "reason": "\"Moving the body\" is clinical where the other three name real activities; a concrete third item reads as a person rather than a stat block."
+        },
+        {
+          "id": "blurbs.dexterity",
+          "before": "Hands, cooking, the fine work.",
+          "after": "Cooking, and anything fiddly.",
+          "reason": "Rule of three with a vague third item. One concrete noun plus one plain adjective says the same in fewer words."
+        },
+        {
+          "id": "blurbs.vitality",
+          "before": "How well the body takes care.",
+          "after": "Getting the most out of rest and a wash.",
+          "reason": "The original is not quite grammatical and hides the mechanic. The rewrite names the two activities the stat actually governs."
+        },
+        {
+          "id": "blurbs.intellect",
+          "before": "Attention, learning, practice.",
+          "after": "Focus, and how much practice sticks.",
+          "reason": "Three bare abstract nouns is the flattest AI cadence in the file. \"Sticks\" is the word a person would use for retention."
+        },
+        {
+          "id": "blurbs.creative",
+          "before": "Better and slower at the expressive things.",
+          "after": "Takes longer over cooking and practice, and does them better.",
+          "reason": "\"The expressive things\" leaks the internal tag name. Naming the activities makes the trade legible without the player learning our vocabulary."
+        },
+        {
+          "id": "blurbs.methodical",
+          "before": "Better and slower at the routine things.",
+          "after": "Takes longer over the daily upkeep, and does it better.",
+          "reason": "Same tag leak as its pair, and \"daily upkeep\" is what the player already calls brushing and showering."
+        },
+        {
+          "id": "blurbs.easygoing",
+          "before": "Gets through the day quickly.",
+          "after": "Gets through the day faster.",
+          "reason": "Comparative, because the trait only means anything against the alternative Drive option."
+        }
+      ],
+      "checklist": "Humanizer 2.2.0 and writing.md section 5 passed. Grade labels are the bare letters and carry no adjectives, so the letter stays the whole signal (docs/08 \u00a711.5). Perk blurbs state the cost as well as the benefit, because every one of them is a trade."
     }
   ]
 }

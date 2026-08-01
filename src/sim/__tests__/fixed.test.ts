@@ -47,6 +47,6 @@ test('fillDelta rejects invalid inputs', () => {
   expect(() => fillDelta(toFixed(10), 10, 11)).toThrow();
 });
 
-test('engine version is pinned (bumped to 11 by the audit food-mood planner fix)', () => {
-  expect(ENGINE_VERSION).toBe(11);
+test('engine version is pinned (bumped to 12 by docs/08 stats, perks, and the activity check)', () => {
+  expect(ENGINE_VERSION).toBe(12);
 });

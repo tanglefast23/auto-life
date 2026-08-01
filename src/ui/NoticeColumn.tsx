@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
-import { LAYER, type Rect } from './layout';
+import { GUTTER, LAYER, type Rect } from './layout';
 import { FONT, TYPE_SCALE, theme } from './theme';
 
 /**
@@ -47,9 +47,9 @@ export function NoticeColumn({ region, items }: NoticeColumnProps) {
     region === undefined
       ? { left: 8, bottom: 8 }
       : {
-          left: region.x,
+          left: region.x + GUTTER,
           top: region.y,
-          width: region.width,
+          width: Math.max(0, region.width - GUTTER * 2),
           height: region.height,
         };
 
@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
   column: {
     position: 'absolute',
     flexDirection: 'column',
-    justifyContent: 'flex-end',
-    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
     gap: 8,
     zIndex: LAYER.notice,
   },
-  slot: { alignSelf: 'flex-start', maxWidth: '100%' },
+  slot: { alignSelf: 'stretch', width: '100%' },
   overflow: {
     color: theme.color.ink,
     ...TYPE_SCALE.caption,

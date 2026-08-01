@@ -3,6 +3,20 @@ import { z } from 'zod';
 export const BarIdSchema = z.enum(['energy', 'nutrition', 'movement', 'hygiene']);
 export type BarId = z.infer<typeof BarIdSchema>;
 
+/**
+ * The four stats (docs/08 §4) and the tags perks match on (§5.1).
+ *
+ * `solitary`/`social` are declared but unused by v1 content: docs/08 §5.3 defers the
+ * Introvert/Extrovert family precisely because `social` has no member yet, and assertion 4
+ * turns that into a build failure rather than an opinion. Declaring the tag costs nothing
+ * and stops v3 inventing a second spelling of it.
+ */
+export const StatIdSchema = z.enum(['strength', 'dexterity', 'vitality', 'intellect']);
+export type StatId = z.infer<typeof StatIdSchema>;
+
+export const RollTagSchema = z.enum(['expressive', 'routine', 'solitary', 'social']);
+export type RollTag = z.infer<typeof RollTagSchema>;
+
 const finiteNonNegative = z.number().finite().min(0);
 
 /**
@@ -57,6 +71,26 @@ export const RatesSchema = z.strictObject({
     early: TargetSchema,
     owl: TargetSchema,
   }),
+  /**
+   * The activity check (docs/08 §6.1) and stat growth (§7).
+   *
+   * `dc` is deliberately one global number rather than a per-activity field: every graded
+   * activity except practice feeds a bar whose daily budget SPEC §6.8 has already balanced,
+   * so any other value would silently re-balance that budget and buy nothing.
+   */
+  roll: z
+    .strictObject({
+      dc: z.number().int().min(1).max(30),
+      statParLevel: z.number().int().min(1),
+      statMax: z.number().int().min(2),
+      statStartMin: z.number().int().min(1),
+      statStartMax: z.number().int().min(1),
+      xpDailyCap: z.number().int().positive(),
+      xpPerLevelStep: z.number().int().positive(),
+    })
+    .refine((r) => r.statStartMin <= r.statStartMax, 'statStartMin must not exceed statStartMax')
+    .refine((r) => r.statStartMax <= r.statMax, 'statStartMax must not exceed statMax')
+    .refine((r) => r.statParLevel <= r.statMax, 'statParLevel must not exceed statMax'),
 });
 
 export type RatesConfig = z.infer<typeof RatesSchema>;
@@ -93,6 +127,17 @@ const ActivityBase = {
   pose: PoseSchema,
   /** System-only activities (for example the Day-1 package) never enter player pickers. */
   playerSelectable: z.boolean().optional(),
+  /** Which stat this activity trains (docs/08 §7) and, when graded, rolls against. */
+  stat: StatIdSchema.optional(),
+  /**
+   * Whether a completion resolves a check (docs/08 §6). Explicit rather than derived from
+   * `effects`, because two activities that *do* have effects are deliberately ungraded:
+   * sleep pins SPEC §6.1's exact Energy closure, and the nap's output is the only graded
+   * output that would sit inside the 15-point margin between its own reactive band (Energy
+   * <30) and urgent sleep (<15). Both still train Vitality.
+   */
+  graded: z.boolean().optional(),
+  rollTags: z.array(RollTagSchema).nonempty().optional(),
 };
 
 const TimedActivitySchema = z
@@ -165,9 +210,152 @@ export const ActivitiesSchema = z
     for (const a of doc.activities) {
       if (seen.has(a.id)) ctx.addIssue({ code: 'custom', message: `duplicate activity id "${a.id}"` });
       seen.add(a.id);
+      // The roll mechanic is one coherent unit, the same shape the nap's effective-use rule
+      // uses above: a half-configured activity fails the build rather than rolling silently
+      // against nothing.
+      if (a.graded === true && a.stat === undefined) {
+        ctx.addIssue({ code: 'custom', message: `${a.id}: graded activities must name a stat` });
+      }
+      const hasOutput =
+        a.kind === 'practice' ||
+        (a.kind === 'timed' && Object.keys(a.effects).length > 0);
+      if (a.graded === true && !hasOutput) {
+        ctx.addIssue({ code: 'custom', message: `${a.id}: graded activities must produce something to grade` });
+      }
+      if (a.rollTags !== undefined && a.graded !== true) {
+        ctx.addIssue({ code: 'custom', message: `${a.id}: rollTags require graded: true` });
+      }
     }
   });
 export type ActivitiesConfig = z.infer<typeof ActivitiesSchema>;
+
+// ---------- stats, perks, grades (docs/08 §4, §5, §6.3) ----------
+
+export const StatsSchema = z
+  .strictObject({
+    stats: z.array(
+      z.strictObject({
+        id: StatIdSchema,
+        labelStringId: z.string().min(1),
+        blurbStringId: z.string().min(1),
+      }),
+    ).length(StatIdSchema.options.length),
+  })
+  .superRefine((doc, ctx) => {
+    const seen = new Set(doc.stats.map((s) => s.id));
+    if (seen.size !== doc.stats.length) {
+      ctx.addIssue({ code: 'custom', message: 'duplicate stat id' });
+    }
+  });
+export type StatsConfig = z.infer<typeof StatsSchema>;
+
+/**
+ * A perk's three mechanisms, kept apart in data exactly as RimWorld keeps
+ * statOffsets / statFactors / disabledWorkTags apart (docs/08 §2, §5.4).
+ *
+ * `rollOffset` is refined non-negative and `rollShape` to `advantage` only. That is docs/08
+ * §5.0 as a build gate: SPEC §6.8's verified daily margins are Nutrition +9, Hygiene +4 and
+ * Movement +2 — 2–8% of daily restore — while a disadvantage roll is worth −13.9%, an order
+ * of magnitude too coarse to sit on the wrong side of any of them. The audited first draft
+ * put disadvantage on `meal` and cost half the cast 5.6 Nutrition a day. Every perk downside
+ * is therefore paid in duration, which has a 12.8-hour budget rather than a 2-point one.
+ *
+ * `disadvantage` survives in the roll engine because the symmetry property test needs it;
+ * it simply may not be authored.
+ */
+const PerkEffectSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('rollOffset'), value: z.number().int().min(0).max(5) }),
+  z.strictObject({
+    kind: z.literal('rollShape'),
+    shape: z.literal('advantage'),
+    tag: RollTagSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('durationFactor'),
+    percent: z.number().int().min(50).max(200),
+    tag: RollTagSchema.optional(),
+  }),
+]);
+export type PerkEffect = z.infer<typeof PerkEffectSchema>;
+
+export const PerksSchema = z
+  .strictObject({
+    families: z.array(
+      z.strictObject({
+        id: z.string().min(1),
+        labelStringId: z.string().min(1),
+        options: z.array(
+          z.strictObject({
+            id: z.string().min(1),
+            labelStringId: z.string().min(1),
+            blurbStringId: z.string().min(1),
+            effects: z.array(PerkEffectSchema).nonempty(),
+          }),
+        ).min(2),
+      }),
+    ).min(1),
+  })
+  .superRefine((doc, ctx) => {
+    const families = new Set<string>();
+    const options = new Set<string>();
+    for (const family of doc.families) {
+      if (families.has(family.id)) {
+        ctx.addIssue({ code: 'custom', message: `duplicate perk family "${family.id}"` });
+      }
+      families.add(family.id);
+      for (const option of family.options) {
+        // Perk ids are unique across families, not merely within one: SimState stores a flat
+        // list of two, so a shared id would make "which family did this come from" ambiguous.
+        if (options.has(option.id)) {
+          ctx.addIssue({ code: 'custom', message: `duplicate perk id "${option.id}"` });
+        }
+        options.add(option.id);
+      }
+    }
+  });
+export type PerksConfig = z.infer<typeof PerksSchema>;
+
+/**
+ * The grade ladder (docs/08 §6.3), ordered from best to worst.
+ *
+ * The refinements make the ladder's two structural properties unbreakable by a content
+ * edit: it is strictly descending in both margin and multiplier, and its last entry is a
+ * catch-all below any reachable margin. The E = 100.00% identity that SPEC §6.8's budgets
+ * rest on is a *test* rather than a refinement, because it is a property of these fifteen
+ * numbers together and not of any one of them.
+ */
+export const GradesSchema = z
+  .strictObject({
+    grades: z.array(
+      z.strictObject({
+        id: z.string().min(1),
+        labelStringId: z.string().min(1),
+        minMargin: z.number().int().min(-99).max(99),
+        multiplier100: z.number().int().min(1).max(1000),
+        band: z.enum(['high', 'mid', 'low']),
+      }),
+    ).min(3),
+  })
+  .superRefine((doc, ctx) => {
+    for (let i = 1; i < doc.grades.length; i += 1) {
+      const prev = doc.grades[i - 1]!;
+      const here = doc.grades[i]!;
+      if (here.minMargin >= prev.minMargin) {
+        ctx.addIssue({ code: 'custom', message: `grade "${here.id}" must sit below "${prev.id}" on margin` });
+      }
+      if (here.multiplier100 >= prev.multiplier100) {
+        ctx.addIssue({ code: 'custom', message: `grade "${here.id}" must sit below "${prev.id}" on multiplier` });
+      }
+    }
+    const last = doc.grades[doc.grades.length - 1];
+    if (last !== undefined && last.minMargin > -20) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `the lowest grade must catch every margin (got minMargin ${last.minMargin})`,
+      });
+    }
+  });
+export type GradesConfig = z.infer<typeof GradesSchema>;
 
 // ---------- planner content (SPEC §7.1–§7.3, §6.7, §8; offsets are minutes from wakeTarget) ----------
 
@@ -887,6 +1075,16 @@ export const AudioSchema = z
       adjacency: AudioCueSchema,
       urgency: AudioCueSchema,
       recap: AudioCueSchema,
+      /**
+       * The grade stamp (docs/08 §11.4). One of these REPLACES `queueComplete` on a graded
+       * completion — it is a more specific sound, not an extra one, and playing both would
+       * be the doubled-cue mistake the router exists to prevent.
+       */
+      gradeHigh: AudioCueSchema,
+      gradeMid: AudioCueSchema,
+      gradeLow: AudioCueSchema,
+      /** The bar beat, fired by the UI timeline through `onBarPop` — same path as footsteps. */
+      barPop: AudioCueSchema,
     }),
   })
   .superRefine((doc, ctx) => {
